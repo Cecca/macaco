@@ -1,7 +1,15 @@
+import numpy as np
+import zipfile
+import multiprocessing
+from gensim.models.ldamulticore import LdaMulticore
+from gensim.corpora.wikicorpus import WikiCorpus
+from gensim.corpora.dictionary import Dictionary
 import requests
 from tqdm import tqdm
 import os
 import logging
+
+logging.getLogger().setLevel(logging.INFO)
 
 
 CACHE_DIR=".datasets/"
@@ -22,32 +30,127 @@ def download_file(url, dest):
             progress_bar.close()
 
 
+class GloveMap(object):
+    URL = "http://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
+    CACHE = os.path.join(CACHE_DIR, "glove", os.path.basename(URL))
+
+    def __init__(self, dimensions):
+        assert dimensions in [50, 100, 200, 300]
+        self.mapping = {}
+        self.dimension = dimensions
+        if not os.path.isfile(GloveMap.CACHE):
+            download_file(GloveMap.URL, GloveMap.CACHE)
+        with zipfile.ZipFile(GloveMap.CACHE) as zipfp:
+            with zipfp.open("glove.6B.{}d.txt".format(dimensions)) as fp:
+                for line in fp.readlines():
+                    tokens = line.decode("utf-8").split()
+                    self.mapping[tokens[0]] = np.array(
+                        [float(t) for t in tokens[1:]])
+                    assert self.dimension == len(tokens) - 1
+        logging.info("Glove map with {} entries".format(len(self.mapping)))
+
+    def get(self, word):
+        return self.mapping.get(word)
+
+    def map_bow(self, mapping, bow):
+        vec = np.zeros(self.dimension)
+        cnt = 0
+        for (word_idx, count) in bow:
+            wordvec = self.get(mapping[word_idx])
+            if wordvec is not None:
+                vec += (wordvec * count)
+                cnt += 1
+            else:
+                pass
+        if cnt > 0:
+            return vec / np.float(cnt)
+        else:
+            return None
+
+
 class Wikipedia(object):
 
-    def __init__(self, date):
+    def __init__(self, date, dimensions, categories):
         self.date = date
+        self.dimensions = dimensions
+        self.categories = categories
         self.url = "https://dumps.wikimedia.org/enwiki/{}/enwiki-{}-pages-articles-multistream.xml.bz2".format(date, date)
-        self.cache_dir = os.path.join(".datasets/wikipedia")
+        self.cache_dir = os.path.join(".datasets/wikipedia", date)
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
         self.dump_file = os.path.join(self.cache_dir, os.path.basename(self.url))
+        self.dictionary = os.path.join(self.cache_dir, "dictionary")
+        self.lda_model_path = os.path.join(
+            self.cache_dir, "model-lda-{}".format(self.categories))
 
     def metadata(self):
         return {
             "version": 1,
             "parameters": {
+                "dimensions": self.dimensions,
+                "categories": self.categories,
                 "date": self.date,
                 "url": self.url
             }
         }
 
+    def load_lda(self, docs, dictionary):
+        cores = multiprocessing.cpu_count()
+        if not os.path.exists(self.lda_model_path):
+            logging.info("Training LDA")
+            lda = LdaMulticore(docs, 
+                               id2word=dictionary,
+                               num_topics=self.categories,
+                               passes=1,
+                               workers = 4)
+            logging.info("Saving LDA")
+            lda.save(self.lda_model_path)
+        else:
+            logging.info("Model file found, loading")
+            lda = LdaMulticore.load("wiki.ldamodel")
+        return lda
+
     def preprocess(self):
+        cores = multiprocessing.cpu_count()
         download_file(self.url, self.dump_file)
+        if not os.path.isfile(self.dictionary):
+            logging.info("Creating gensim dictionary (takes a long time)")
+            wiki = WikiCorpus(self.dump_file)
+            wiki.dictionary.save(self.dictionary)
+        dictionary = Dictionary.load(self.dictionary)
+        wiki = WikiCorpus(self.dump_file, 
+                          dictionary=dictionary)
+        wiki.metadata = True
+
+        logging.info("Loading documents into memory")
+        # This is a workaround because WikiCorpus does not 
+        # implement `len`, which is needed to compute the LDA
+        # docs_with_meta = [d for (i, d) in enumerate(wiki)
+        #                   if i < 10]
+        docs_with_meta = []
+        for i, d in enumerate(wiki):
+            if i > 10:
+                break
+            docs_with_meta.append(d)
+        logging.info("Copying just the bows")
+        docs_no_meta = [bow for (bow, meta) in docs_with_meta]
+        logging.info("...done")
+
+        logging.info("Loading word embeddings")
+        glove = GloveMap(self.dimensions)
+        lda = self.load_lda(docs_no_meta, dictionary)
+
+        for (bow, meta) in docs_with_meta:
+            vector = glove.map_bow(dictionary, bow)
+            if vector is not None:
+                topics = lda.get_document_topics(
+                    bow, minimum_probability=0.1)
+                print(topics)
 
 
 if __name__ == "__main__":
     from pprint import pprint
-    wiki = Wikipedia("20210120")
+    wiki = Wikipedia("20210120", dimensions=50, categories=100)
     pprint(wiki.metadata())
     wiki.preprocess()
 
