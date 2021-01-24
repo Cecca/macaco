@@ -1,3 +1,4 @@
+import msgpack
 import numpy as np
 import zipfile
 import multiprocessing
@@ -69,6 +70,7 @@ class GloveMap(object):
 
 
 class Wikipedia(object):
+    version = 1
 
     def __init__(self, date, dimensions, categories):
         self.date = date
@@ -82,10 +84,17 @@ class Wikipedia(object):
         self.dictionary = os.path.join(self.cache_dir, "dictionary")
         self.lda_model_path = os.path.join(
             self.cache_dir, "model-lda-{}".format(self.categories))
+        self.out_fname = os.path.join(
+            self.cache_dir, "wiki-d{}-c{}-v{}".format(
+                self.dimensions,
+                self.categories,
+                Wikipedia.version
+            )
+        )
 
     def metadata(self):
         return {
-            "version": 1,
+            "version": Wikipedia.version,
             "parameters": {
                 "dimensions": self.dimensions,
                 "categories": self.categories,
@@ -140,12 +149,25 @@ class Wikipedia(object):
         glove = GloveMap(self.dimensions)
         lda = self.load_lda(docs_no_meta, dictionary)
 
-        for (bow, meta) in docs_with_meta:
-            vector = glove.map_bow(dictionary, bow)
-            if vector is not None:
-                topics = lda.get_document_topics(
-                    bow, minimum_probability=0.1)
-                print(topics)
+        progress_bar = tqdm(total=len(docs_with_meta), 
+                            unit='pages', 
+                            unit_scale=False)
+        with open(self.out_fname, "wb") as out_fp:
+            for (bow, (id, title)) in docs_with_meta:
+                vector = list(glove.map_bow(dictionary, bow))
+                progress_bar.update(1)
+                if vector is not None:
+                    topics = lda.get_document_topics(
+                        bow, minimum_probability=0.1)
+                    outdata = {
+                        'id': int(id),
+                        'title': title,
+                        'topic': [p[0] for p in topics],
+                        'vector': vector
+                    }
+                    encoded = msgpack.packb(outdata)
+                    out_fp.write(encoded)
+        progress_bar.close()
 
 
 if __name__ == "__main__":
