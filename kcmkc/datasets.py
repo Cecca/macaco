@@ -85,7 +85,7 @@ class Wikipedia(object):
         self.lda_model_path = os.path.join(
             self.cache_dir, "model-lda-{}".format(self.categories))
         self.out_fname = os.path.join(
-            self.cache_dir, "wiki-d{}-c{}-v{}".format(
+            self.cache_dir, "wiki-d{}-c{}-v{}.msgpack".format(
                 self.dimensions,
                 self.categories,
                 Wikipedia.version
@@ -116,7 +116,7 @@ class Wikipedia(object):
             lda.save(self.lda_model_path)
         else:
             logging.info("Model file found, loading")
-            lda = LdaMulticore.load("wiki.ldamodel")
+            lda = LdaMulticore.load(self.lda_model_path)
         return lda
 
     def preprocess(self):
@@ -153,6 +153,8 @@ class Wikipedia(object):
                             unit='pages', 
                             unit_scale=False)
         with open(self.out_fname, "wb") as out_fp:
+            header = msgpack.packb(self.metadata())
+            out_fp.write(header)
             for (bow, (id, title)) in docs_with_meta:
                 vector = list(glove.map_bow(dictionary, bow))
                 progress_bar.update(1)
