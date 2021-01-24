@@ -1,4 +1,5 @@
 import msgpack
+import gzip
 import numpy as np
 import zipfile
 import multiprocessing
@@ -72,10 +73,10 @@ class GloveMap(object):
 class Wikipedia(object):
     version = 1
 
-    def __init__(self, date, dimensions, categories):
+    def __init__(self, date, dimensions, topics):
         self.date = date
         self.dimensions = dimensions
-        self.categories = categories
+        self.topics = topics
         self.url = "https://dumps.wikimedia.org/enwiki/{}/enwiki-{}-pages-articles-multistream.xml.bz2".format(date, date)
         self.cache_dir = os.path.join(".datasets/wikipedia", date)
         if not os.path.isdir(self.cache_dir):
@@ -83,25 +84,30 @@ class Wikipedia(object):
         self.dump_file = os.path.join(self.cache_dir, os.path.basename(self.url))
         self.dictionary = os.path.join(self.cache_dir, "dictionary")
         self.lda_model_path = os.path.join(
-            self.cache_dir, "model-lda-{}".format(self.categories))
+            self.cache_dir, "model-lda-{}".format(self.topics))
         self.out_fname = os.path.join(
-            self.cache_dir, "wiki-d{}-c{}-v{}.msgpack".format(
+            self.cache_dir, "wiki-d{}-c{}-v{}.msgpack.gz".format(
                 self.dimensions,
-                self.categories,
+                self.topics,
                 Wikipedia.version
             )
         )
 
     def metadata(self):
-        return {
+        meta = {
+            "name": "Wikipedia",
+            "constraint": {"transversal": {
+                "topics": list(range(0, self.topics))
+            }},
             "version": Wikipedia.version,
             "parameters": {
                 "dimensions": self.dimensions,
-                "categories": self.categories,
+                "topics": self.topics,
                 "date": self.date,
                 "url": self.url
             }
         }
+        return meta
 
     def load_lda(self, docs, dictionary):
         cores = multiprocessing.cpu_count()
@@ -109,7 +115,7 @@ class Wikipedia(object):
             logging.info("Training LDA")
             lda = LdaMulticore(docs, 
                                id2word=dictionary,
-                               num_topics=self.categories,
+                               num_topics=self.topics,
                                passes=1,
                                workers = 4)
             logging.info("Saving LDA")
@@ -120,6 +126,10 @@ class Wikipedia(object):
         return lda
 
     def preprocess(self):
+        if not os.path.isfile(self.out_fname):
+            self.do_preprocessing()
+
+    def do_preprocessing(self):
         cores = multiprocessing.cpu_count()
         download_file(self.url, self.dump_file)
         if not os.path.isfile(self.dictionary):
@@ -152,7 +162,7 @@ class Wikipedia(object):
         progress_bar = tqdm(total=len(docs_with_meta), 
                             unit='pages', 
                             unit_scale=False)
-        with open(self.out_fname, "wb") as out_fp:
+        with gzip.open(self.out_fname, "wb") as out_fp:
             header = msgpack.packb(self.metadata())
             out_fp.write(header)
             for (bow, (id, title)) in docs_with_meta:
@@ -164,7 +174,7 @@ class Wikipedia(object):
                     outdata = {
                         'id': int(id),
                         'title': title,
-                        'topic': [p[0] for p in topics],
+                        'topics': [p[0] for p in topics],
                         'vector': vector
                     }
                     encoded = msgpack.packb(outdata)
@@ -174,7 +184,7 @@ class Wikipedia(object):
 
 if __name__ == "__main__":
     from pprint import pprint
-    wiki = Wikipedia("20210120", dimensions=50, categories=100)
+    wiki = Wikipedia("20210120", dimensions=50, topics=100)
     pprint(wiki.metadata())
     wiki.preprocess()
 
