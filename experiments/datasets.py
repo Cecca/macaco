@@ -32,6 +32,32 @@ def download_file(url, dest):
                     fp.write(chunk)
             progress_bar.close()
 
+class Dataset(object):
+    """Base class providing common functionality for datasets"""
+
+    def metadata(self):
+        raise NotImplementedError()
+
+    def preprocess(self):
+        raise NotImplementedError()
+
+    def get_path(self):
+        raise NotImplementedError()
+
+    def __iter__(self):
+        with gzip.open(self.get_path(), "rb") as fp:
+            unpacker = msgpack.Unpacker(fp, raw=False)
+            # Skipt the metadata
+            next(unpacker)
+            # Iterate through the elements
+            for doc in unpacker:
+                yield doc
+
+    def num_elements(self):
+        cnt = 0
+        for doc in self:
+            cnt += 1
+        return cnt
 
 class GloveMap(object):
     URL = "http://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
@@ -105,7 +131,7 @@ class CachedBowsCorpus(object):
 
 
 
-class Wikipedia(object):
+class Wikipedia(Dataset):
     version = 1
 
     def __init__(self, date, dimensions, topics):
@@ -129,6 +155,9 @@ class Wikipedia(object):
                 Wikipedia.version
             )
         )
+
+    def get_path(self):
+        return self.out_fname
 
     def metadata(self):
         meta = {
@@ -206,26 +235,9 @@ class Wikipedia(object):
                     encoded = msgpack.packb(outdata)
                     out_fp.write(encoded)
 
-    def get_path(self):
-        return self.out_fname
-
-    def __iter__(self):
-        with gzip.open(self.get_path(), "rb") as fp:
-            unpacker = msgpack.Unpacker(fp, raw=False)
-            # Skipt the metadata
-            next(unpacker)
-            # Iterate through the elements
-            for doc in unpacker:
-                yield doc
-
-    def num_elements(self):
-        cnt = 0
-        for doc in self:
-            cnt += 1
-        return cnt
 
 
-class SampledDataset(object):
+class SampledDataset(Dataset):
     version = 1
 
     def __init__(self, base, size, seed):
@@ -235,14 +247,19 @@ class SampledDataset(object):
         self.cache_dir = os.path.join(".datasets/sampled")
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
+        params_list = list(base.metadata()['parameters'].items())
+        params_list.sort()
         params_str = "-".join(["{}-{}".format(k, v)
-                               for k, v in base.metadata()['parameters'].items()])
+                               for k, v in params_list])
         self.path = os.path.join(self.cache_dir,
                                  "{}-{}-sample{}-v{}.msgpack.gz".format(
                                      base.metadata()['name'],
                                      params_str,
                                      size,
                                      SampledDataset.version))
+
+    def get_path(self):
+        return self.path
 
     def metadata(self):
         parameters = self.base.metadata()['parameters']
@@ -260,6 +277,7 @@ class SampledDataset(object):
 
     def preprocess(self):
         if not os.path.isfile(self.path):
+            logging.info("file %s is missing", self.path)
             logging.info(
                 "preprocessing sampled dataset with sample size %d from %s",
                  self.size, self.base.metadata()['name'])
@@ -291,8 +309,7 @@ for size in [100000]:
     )
 
 if __name__ == "__main__":
-    from pprint import pprint
-    wiki = DATASETS["wiki-d50-c100-s100000"]
-    pprint(wiki.metadata())
-    wiki.preprocess()
+    dataset = DATASETS["wiki-d50-c100-s100000"]
+    dataset.preprocess()
+    print(dataset.get_path())
 
