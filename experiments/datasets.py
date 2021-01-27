@@ -39,7 +39,7 @@ def download_file(url, dest):
 class Dataset(object):
     """Base class providing common functionality for datasets"""
 
-    def metadata(self):
+    def build_metadata(self):
         raise NotImplementedError()
 
     def preprocess(self):
@@ -47,6 +47,29 @@ class Dataset(object):
 
     def get_path(self):
         raise NotImplementedError()
+
+    def metadata(self):
+        current_metadata = self.build_metadata()
+        if os.path.isfile(self.get_path()):
+            with gzip.open(self.get_path(), "rb") as fp:
+                unpacker = msgpack.Unpacker(fp)
+                file_metadata = next(unpacker)
+            if current_metadata != file_metadata:
+                logging.warning("metadata changed wrt to the file, updating")
+                # load the old data
+                with gzip.open(self.get_path(), "rb") as fp:
+                    unpacker = msgpack.Unpacker(fp)
+                    next(unpacker)  # skip metadata
+                    data = [d for d in unpacker]
+                # overwrite the file
+                with tqdm(total=len(data), unit="items") as pb:
+                    with gzip.open(self.get_path(), "wb") as fp:
+                        msgpack.pack(current_metadata, fp)
+                        for d in data:
+                            pb.update(1)
+                            msgpack.pack(d, fp)
+
+        return current_metadata
 
     def try_download_preprocessed(self):
         dirname, basename = os.path.split(self.get_path())
@@ -177,9 +200,10 @@ class Wikipedia(Dataset):
     def get_path(self):
         return self.out_fname
 
-    def metadata(self):
+    def build_metadata(self):
         meta = {
             "name": "Wikipedia",
+            "datatype": "WikiPage",
             "constraint": {"transversal": {"topics": list(range(0, self.topics))}},
             "version": Wikipedia.version,
             "parameters": {
@@ -272,7 +296,7 @@ class SampledDataset(Dataset):
     def get_path(self):
         return self.path
 
-    def metadata(self):
+    def build_metadata(self):
         parameters = self.base.metadata()["parameters"]
         parameters.update(
             {
@@ -284,6 +308,7 @@ class SampledDataset(Dataset):
         return {
             "name": "{}-sample-{}".format(self.base.metadata()["name"], self.size),
             "constraint": self.base.metadata()["constraint"],
+            "datatype": self.base.metadata()["datatype"],
             "parameters": parameters,
             "version": SampledDataset.version,
         }
