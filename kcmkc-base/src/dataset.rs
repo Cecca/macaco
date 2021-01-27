@@ -21,10 +21,10 @@ pub enum Constraint {
 
 #[derive(Deserialize, Debug)]
 pub struct Metadata {
-    version: u32,
-    name: String,
-    constraint: Constraint,
-    parameters: HashMap<String, MetadataValue>,
+    pub version: u32,
+    pub name: String,
+    pub constraint: Constraint,
+    pub parameters: HashMap<String, MetadataValue>,
 }
 
 pub enum Datatype {

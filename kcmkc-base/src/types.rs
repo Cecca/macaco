@@ -136,6 +136,13 @@ impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
 }
 
 impl<T: TransveralMatroidElement> TransveralMatroid<T> {
+    pub fn new(topics: Vec<u32>) -> Self {
+        Self {
+            topics,
+            _marker: PhantomData,
+        }
+    }
+
     // Return the indices of the elements in `set` that form a maximum matching
     // wrt the ground topics
     fn maximum_matching(&self, set: &[T]) -> impl Iterator<Item = usize> {
@@ -211,9 +218,10 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
 /// with a set of topics.
 #[derive(Deserialize, Debug, Abomonation, Clone)]
 pub struct WikiPage {
-    id: u32,
-    vector: Vector,
-    topics: Vec<u32>,
+    pub id: u32,
+    pub title: String,
+    pub vector: Vector,
+    pub topics: Vec<u32>,
 }
 
 impl WikiPage {
