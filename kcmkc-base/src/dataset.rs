@@ -13,9 +13,16 @@ pub enum MetadataValue {
 }
 
 #[derive(Deserialize, Debug)]
+pub enum Constraint {
+    #[serde(rename = "transversal")]
+    Transversal { topics: Vec<u32> },
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Metadata {
     version: u32,
     name: String,
+    constraint: Constraint,
     parameters: HashMap<String, MetadataValue>,
 }
 
