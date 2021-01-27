@@ -227,10 +227,13 @@ class Wikipedia(object):
                     encoded = msgpack.packb(outdata)
                     out_fp.write(encoded)
 
+DATASETS = {
+    "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100)
+}
 
 if __name__ == "__main__":
     from pprint import pprint
-    wiki = Wikipedia("20210120", dimensions=50, topics=100)
+    wiki = DATASETS["wiki-d50-c100"]
     pprint(wiki.metadata())
     wiki.preprocess()
 
