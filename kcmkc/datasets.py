@@ -10,6 +10,7 @@ import requests
 from tqdm import tqdm
 import os
 import logging
+import random
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -161,28 +162,6 @@ class Wikipedia(object):
             lda = LdaMulticore.load(self.lda_model_path)
         return lda
 
-    # def cached_bows(self, wiki, with_meta=True):
-    #     if not os.path.isfile(self.bow_cache):
-    #         logging.info("create cache of bag of words")
-    #         progress_bar = tqdm(unit='pages')
-    #         wiki.metadata = True
-    #         with open(self.bow_cache, "wb") as fp:
-    #             for doc in wiki:
-    #                 progress_bar.update(1)
-    #                 fp.write(msgpack.packb(doc))
-    #         progress_bar.close()
-
-    #     with open(self.bow_cache, "rb") as fp:
-    #         progress_bar = tqdm(unit='pages')
-    #         unpacker = msgpack.Unpacker(fp, raw=False)
-    #         for (doc, meta) in unpacker: 
-    #             progress_bar.update(1)
-    #             if with_meta:
-    #                 yield (doc, meta)
-    #             else:
-    #                 yield doc
-    #         progress_bar.close()
-
     def preprocess(self):
         if not os.path.isfile(self.out_fname):
             self.do_preprocessing()
@@ -227,13 +206,93 @@ class Wikipedia(object):
                     encoded = msgpack.packb(outdata)
                     out_fp.write(encoded)
 
+    def get_path(self):
+        return self.out_fname
+
+    def __iter__(self):
+        with gzip.open(self.get_path(), "rb"):
+            unpacker = msgpack.Unpacker(fp, raw=False)
+            # Skipt the metadata
+            next(unpacker)
+            # Iterate through the elements
+            for doc in unpacker:
+                yield doc
+
+    def num_elements(self):
+        cnt = 0
+        for doc in self:
+            cnt += 1
+        return cnt
+
+
+class SampledDataset(object):
+    version = 1
+
+    def __init__(self, base, size, seed):
+        self.base = base
+        self.size = size
+        self.seed = seed
+        self.cache_dir = os.path.join(".datasets/sampled")
+        if not os.path.isdir(self.cache_dir):
+            os.makedirs(self.cache_dir)
+        params_str = "-".join(["{}-{}".format(k, v)
+                               for k, v in base.metadata()['parameters']])
+        self.path = os.path.join(self.cache_dir,
+                                 "{}-{}-sample{}-v{}.msgpack.gz".format(
+                                     base.metadata()['name'],
+                                     params_str,
+                                     size,
+                                     SampledDataset.version))
+
+    def metadata(self):
+        parameters = self.base.metadata()['parameters']
+        parameters.update({
+            'size': self.size,
+            'seed': self.seed,
+            'base_version': self.base.metadata()['version']
+        })
+        return {
+            'name': '{}-sample-{}'.format(self.base.metadata()['name'],
+                                          self.size),
+            'parameters': parameters,
+            'version': SampledDataset.version
+        }
+
+    def preprocess(self):
+        if not os.path.isfile(self.path):
+            logging.info(
+                "preprocessing sampled dataset with sample size %d from %s",
+                 self.size, self.base['name'])
+            n = self.base.num_elements()
+            p = min(self.size / n, 1)
+            random.seed(self.seed)
+
+            progress_bar = tqdm(total=n, unit='pages', unit_scale=False)
+            with gzip.open(self.path, "wb") as out_fp:
+                header = msgpack.packb(self.metadata())
+                out_fp.write(header)
+                for doc in self.base:
+                    progress_bar.update(1)
+                    if random.random() <= p:
+                        out_fp.write(msgpack.packb(doc))
+            progress_bar.close()
+
+
 DATASETS = {
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100)
 }
 
+# Sampled datasets
+for size in [100000]:
+    DATASETS['wiki-d50-c100-s100000'] = SampledDataset(
+        base=DATASETS['wiki-d50-c100'],
+        size=size,
+        seed=12341245
+    )
+
 if __name__ == "__main__":
     from pprint import pprint
-    wiki = DATASETS["wiki-d50-c100"]
+    wiki = DATASETS["wiki-d50-c100-s100000"]
     pprint(wiki.metadata())
     wiki.preprocess()
 
