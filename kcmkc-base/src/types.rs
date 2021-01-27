@@ -47,7 +47,60 @@ impl Vector {
     }
 
     pub fn cosine_distance(&self, other: &Self) -> f32 {
-        self.inner_product(other).acos() * std::f32::consts::FRAC_1_PI
+        (self.inner_product(other) / (self.norm * other.norm)).acos() * std::f32::consts::FRAC_1_PI
+    }
+}
+
+#[derive(Debug, Deserialize, Abomonation, Clone)]
+pub struct SparseVector {
+    #[serde(rename = "d")]
+    pub dimension: u32,
+    #[serde(rename = "c")]
+    data: Vec<(u32, f32)>,
+}
+
+impl SparseVector {
+    pub fn new(dimension: u32, data: Vec<(u32, f32)>) -> Self {
+        Self { dimension, data }
+    }
+
+    pub fn norm(&self) -> f32 {
+        self.data
+            .iter()
+            .map(|pair| pair.1 * pair.1)
+            .sum::<f32>()
+            .sqrt()
+    }
+
+    pub fn inner_product(&self, other: &Self) -> f32 {
+        let mut s_iter = self.data.iter();
+        let mut o_iter = other.data.iter();
+
+        let mut sum = 0.0;
+
+        let mut cur_s = s_iter.next();
+        let mut cur_o = o_iter.next();
+        loop {
+            if cur_s.is_none() || cur_o.is_none() {
+                return sum;
+            }
+            let s = cur_s.unwrap();
+            let o = cur_o.unwrap();
+            if s.0 < o.0 {
+                cur_s = s_iter.next();
+            } else if s.0 > o.0 {
+                cur_o = o_iter.next();
+            } else {
+                sum += s.1 * o.1;
+                cur_s = s_iter.next();
+                cur_o = o_iter.next();
+            }
+        }
+    }
+
+    pub fn cosine_distance(&self, other: &Self) -> f32 {
+        (self.inner_product(other) / (self.norm() * other.norm())).acos()
+            * std::f32::consts::FRAC_1_PI
     }
 }
 
@@ -235,4 +288,11 @@ impl TransveralMatroidElement for WikiPage {
         let iter = self.topics.iter().copied();
         Box::new(iter) as Box<dyn Iterator<Item = u32>>
     }
+}
+
+#[derive(Deserialize, Debug, Abomonation, Clone)]
+pub struct Song {
+    pub track_id: String,
+    pub genre: String,
+    pub vector: SparseVector,
 }

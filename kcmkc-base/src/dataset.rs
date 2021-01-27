@@ -31,6 +31,7 @@ pub struct Metadata {
 #[derive(Deserialize, Debug)]
 pub enum Datatype {
     WikiPage,
+    Song,
 }
 
 #[derive(Deserialize, Debug)]
