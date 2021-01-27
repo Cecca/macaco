@@ -182,6 +182,31 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
     }
 }
 
+/// Element of a set on which we can impose a partition matroid
+pub trait PartitionMatroidElement: Clone {
+    fn category<'a>(&'a self) -> usize;
+}
+
+pub struct PartitionMatroid<T: PartitionMatroidElement> {
+    categories: Vec<usize>,
+    _marker: PhantomData<T>,
+}
+
+impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
+    fn is_independent(&self, set: &[T]) -> bool {
+        let mut counts = self.categories.clone();
+        for x in set {
+            let cat = x.category();
+            if counts[cat] == 0 {
+                return false;
+            } else {
+                counts[cat] -= 1;
+            }
+        }
+        true
+    }
+}
+
 /// A page of wikipedia, represented as a d-dimensional vector,
 /// with a set of topics.
 #[derive(Deserialize, Debug, Abomonation, Clone)]
