@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use abomonation_derive::Abomonation;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 /// A vector in a d-dimensional space.
 ///
