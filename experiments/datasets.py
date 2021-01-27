@@ -81,8 +81,8 @@ class Dataset(object):
         try:
             download_file(os.path.join(CACHE_URL, basename), self.get_path())
         except Exception as e:
-            logging.warn(e)
-            logging.warn("dataset not found online, computing locally")
+            logging.warning(e)
+            logging.warning("dataset not found online, computing locally")
             return False
         return True
 
@@ -339,7 +339,100 @@ class SampledDataset(Dataset):
             progress_bar.close()
 
 
-DATASETS = {"wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100)}
+class MusixMatch(Dataset):
+    version = 1
+
+    def __init__(self):
+        self.cache = os.path.join(CACHE_DIR, "mxm")
+        self.file_name = os.path.join(
+            self.cache, "mxm-v{}.msgpack.gz".format(MusixMatch.version)
+        )
+        self.train_url = "http://millionsongdataset.com/sites/default/files/AdditionalFiles/mxm_dataset_train.txt.zip"
+        self.test_url = "http://millionsongdataset.com/sites/default/files/AdditionalFiles/mxm_dataset_test.txt.zip"
+        self.genres_url = "http://www.tagtraum.com/genres/msd_tagtraum_cd2.cls.zip"
+        self.test_file = os.path.join(self.cache, "test.zip")
+        self.train_file = os.path.join(self.cache, "train.zip")
+        self.genres_file = os.path.join(self.cache, "genres.zip")
+
+    def get_path(self):
+        return self.file_name
+
+    def build_metadata(self):
+        meta = {
+            "name": "MusixMatch",
+            "datatype": "Song",
+            "constraint": {"partition": {"categories": self.genres_counts()}},
+            "version": MusixMatch.version,
+            "parameters": {},
+        }
+        return meta
+
+    def extract_file(self, genres, fp):
+        for line in tqdm(fp.readlines(), unit="songs", leave=False):
+            line = line.decode("utf-8")
+            if not line.startswith("#") and not line.startswith("%"):
+                tokens = line.split(",")
+                track_id = tokens[0]
+                genre = genres.get(track_id, "Unknown")
+                coordinates = []
+                for token in tokens[2:]:
+                    parts = token.split(":")
+                    idx = int(parts[0])
+                    value = int(parts[1])
+                    coordinates.append((idx, value))
+                yield {
+                    "track_id": track_id,
+                    "genre": genre,
+                    "vector": {"d": 5000, "c": coordinates},
+                }
+
+    def genres(self):
+        download_file(self.genres_url, self.genres_file)
+        genres = dict()
+        with zipfile.ZipFile(self.genres_file) as zipfp:
+            with zipfp.open("msd_tagtraum_cd2.cls") as fp:
+                for line in fp.readlines():
+                    line = line.decode("utf-8")
+                    tokens = line.split("\t")
+                    track_id = tokens[0]
+                    # ignore more specific genres
+                    genre = tokens[1] if len(tokens) > 1 else "Unknown"
+                    genres[track_id] = genre.strip()
+        return genres
+
+    def genres_counts(self):
+        counts = dict()
+        for genre in self.genres().values():
+            if genre not in counts:
+                counts[genre] = 0
+            counts[genre] += 1
+        return counts
+
+    def preprocess(self):
+        if not os.path.isfile(self.file_name):
+            download_file(self.test_url, self.test_file)
+            download_file(self.train_url, self.train_file)
+
+            genres = self.genres()
+
+            points = []
+            with zipfile.ZipFile(self.test_file) as zipfp:
+                with zipfp.open("mxm_dataset_test.txt") as fp:
+                    points.extend(self.extract_file(genres, fp))
+            with zipfile.ZipFile(self.train_file) as zipfp:
+                with zipfp.open("mxm_dataset_train.txt") as fp:
+                    points.extend(self.extract_file(genres, fp))
+
+            with gzip.open(self.file_name, "wb") as fp:
+                self.write_metadata(fp)
+                for song in tqdm(points, leave=False, unit="songs"):
+                    msgpack.pack(song, fp)
+
+
+DATASETS = {
+    "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
+    "MusixMatch": MusixMatch(),
+}
 
 # Sampled datasets
 for size in [100000]:
@@ -348,7 +441,10 @@ for size in [100000]:
     )
 
 if __name__ == "__main__":
-    dataset = DATASETS["wiki-d50-c100-s100000"]
+    from pprint import pprint
+
+    dataset = DATASETS["MusixMatch"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())
+    pprint(dataset.metadata())
