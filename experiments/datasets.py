@@ -276,7 +276,6 @@ class SampledDataset(Dataset):
         parameters = self.base.metadata()["parameters"]
         parameters.update(
             {
-                "constraint": self.base.metadata()["constraint"],
                 "size": self.size,
                 "seed": self.seed,
                 "base_version": self.base.metadata()["version"],
@@ -284,6 +283,7 @@ class SampledDataset(Dataset):
         )
         return {
             "name": "{}-sample-{}".format(self.base.metadata()["name"], self.size),
+            "constraint": self.base.metadata()["constraint"],
             "parameters": parameters,
             "version": SampledDataset.version,
         }

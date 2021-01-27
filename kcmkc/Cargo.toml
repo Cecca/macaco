@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 kcmkc-base = {path = "../kcmkc-base"}
 anyhow = "1.0"
+progress-logger = "0.3.1"

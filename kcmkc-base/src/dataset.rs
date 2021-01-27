@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
+use rmp_serde::decode::Error;
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::{collections::HashMap, io::BufReader};
@@ -26,6 +27,10 @@ pub struct Metadata {
     parameters: HashMap<String, MetadataValue>,
 }
 
+pub enum Datatype {
+    WikiPage,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Dataset {
     path: PathBuf,
@@ -39,5 +44,43 @@ impl Dataset {
         let file = BufReader::new(std::fs::File::open(&self.path)?);
         let input = GzDecoder::new(file);
         rmp_serde::from_read(input).context("reading metadata")
+    }
+    pub fn datatype(&self) -> Result<Datatype> {
+        // TODO: add the datatype as part of the metadata in the file
+        let meta = self.metadata()?;
+        if meta.name.starts_with("wiki") || meta.name.starts_with("Wiki") {
+            Ok(Datatype::WikiPage)
+        } else {
+            bail!("Unkown datatype {}", meta.name)
+        }
+    }
+    pub fn for_each<T, F: FnMut(u32, T)>(&self, mut f: F) -> Result<()>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        let file = BufReader::new(std::fs::File::open(&self.path)?);
+        let mut input = GzDecoder::new(file);
+        // Skip metadata
+        let _meta: Metadata = rmp_serde::from_read(&mut input).context("reading metadata")?;
+        let mut cnt = 0;
+        loop {
+            match rmp_serde::from_read::<_, T>(&mut input) {
+                Ok(item) => f(cnt, item),
+                Err(Error::InvalidDataRead(_)) | Err(Error::InvalidMarkerRead(_)) => return Ok(()),
+                Err(e) => bail!(e),
+            }
+            cnt += 1;
+        }
+    }
+
+    pub fn to_vec<T>(&self) -> Result<Vec<T>>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        let mut result = Vec::new();
+        self.for_each(|_, item| {
+            result.push(item);
+        })?;
+        Ok(result)
     }
 }
