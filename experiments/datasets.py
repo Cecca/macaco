@@ -16,23 +16,25 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 # The local cache directory for datasets
-CACHE_DIR=".datasets/"
+CACHE_DIR = ".datasets/"
 # The url for looking for already-preprocessed datasets
-CACHE_URL="https://www.inf.unibz.it/~ceccarello/data"
+CACHE_URL = "https://www.inf.unibz.it/~ceccarello/data"
+
 
 def download_file(url, dest):
     if not os.path.isfile(dest):
         logging.info("downloading %s to %s", url, dest)
         with requests.get(url, stream=True) as stream:
             stream.raise_for_status()
-            total_size_in_bytes= int(stream.headers.get('content-length', 0))
-            chunk_size = 1024*1024
-            progress_bar = tqdm(total=total_size_in_bytes, unit='B', unit_scale=True)
-            with open(dest, 'wb') as fp:
-                for chunk in stream.iter_content(chunk_size): 
+            total_size_in_bytes = int(stream.headers.get("content-length", 0))
+            chunk_size = 1024 * 1024
+            progress_bar = tqdm(total=total_size_in_bytes, unit="B", unit_scale=True)
+            with open(dest, "wb") as fp:
+                for chunk in stream.iter_content(chunk_size):
                     progress_bar.update(len(chunk))
                     fp.write(chunk)
             progress_bar.close()
+
 
 class Dataset(object):
     """Base class providing common functionality for datasets"""
@@ -51,8 +53,7 @@ class Dataset(object):
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
         try:
-            download_file(os.path.join(CACHE_URL, basename),
-                          self.get_path())
+            download_file(os.path.join(CACHE_URL, basename), self.get_path())
         except Exception as e:
             logging.warn(e)
             logging.warn("dataset not found online, computing locally")
@@ -74,6 +75,7 @@ class Dataset(object):
             cnt += 1
         return cnt
 
+
 class GloveMap(object):
     URL = "http://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
     CACHE = os.path.join(CACHE_DIR, "glove", os.path.basename(URL))
@@ -88,8 +90,7 @@ class GloveMap(object):
             with zipfp.open("glove.6B.{}d.txt".format(dimensions)) as fp:
                 for line in fp.readlines():
                     tokens = line.decode("utf-8").split()
-                    self.mapping[tokens[0]] = np.array(
-                        [float(t) for t in tokens[1:]])
+                    self.mapping[tokens[0]] = np.array([float(t) for t in tokens[1:]])
                     assert self.dimension == len(tokens) - 1
         logging.info("Glove map with {} entries".format(len(self.mapping)))
 
@@ -102,7 +103,7 @@ class GloveMap(object):
         for (word_idx, count) in bow:
             wordvec = self.get(mapping[word_idx])
             if wordvec is not None:
-                vec += (wordvec * count)
+                vec += wordvec * count
                 cnt += 1
             else:
                 pass
@@ -111,20 +112,22 @@ class GloveMap(object):
         else:
             return None
 
+
 class CachedBowsCorpus(object):
     """Cache of bag of word for a corpus
 
-    Iterating through the wiki corpus to retrieve the bag of 
+    Iterating through the wiki corpus to retrieve the bag of
     words representation for each page is *extremely* slow.
     Therefore we do it once and cache it to a file, which has
     10x more throughput once cached.
     """
+
     def __init__(self, wiki, path, meta):
         self.meta = meta
         self.path = path
         if not os.path.isfile(path):
             logging.info("create cache of bag of words")
-            progress_bar = tqdm(unit='pages')
+            progress_bar = tqdm(unit="pages")
             wiki.metadata = True
             with open(path, "wb") as fp:
                 for doc in wiki:
@@ -134,16 +137,15 @@ class CachedBowsCorpus(object):
 
     def __iter__(self):
         with open(self.path, "rb") as fp:
-            progress_bar = tqdm(unit='pages')
+            progress_bar = tqdm(unit="pages")
             unpacker = msgpack.Unpacker(fp, raw=False)
-            for (doc, meta) in unpacker: 
+            for (doc, meta) in unpacker:
                 progress_bar.update(1)
                 if self.meta:
                     yield (doc, meta)
                 else:
                     yield doc
             progress_bar.close()
-
 
 
 class Wikipedia(Dataset):
@@ -153,22 +155,23 @@ class Wikipedia(Dataset):
         self.date = date
         self.dimensions = dimensions
         self.topics = topics
-        self.url = "https://dumps.wikimedia.org/enwiki/{}/enwiki-{}-pages-articles-multistream.xml.bz2".format(date, date)
+        self.url = "https://dumps.wikimedia.org/enwiki/{}/enwiki-{}-pages-articles-multistream.xml.bz2".format(
+            date, date
+        )
         self.cache_dir = os.path.join(".datasets/wikipedia", date)
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
         self.dump_file = os.path.join(self.cache_dir, os.path.basename(self.url))
         self.dictionary = os.path.join(self.cache_dir, "dictionary")
         self.lda_model_path = os.path.join(
-            self.cache_dir, "model-lda-{}".format(self.topics))
-        self.bow_cache = os.path.join(
-            self.cache_dir, "bows.msgpack")
+            self.cache_dir, "model-lda-{}".format(self.topics)
+        )
+        self.bow_cache = os.path.join(self.cache_dir, "bows.msgpack")
         self.out_fname = os.path.join(
-            self.cache_dir, "wiki-d{}-c{}-v{}.msgpack.gz".format(
-                self.dimensions,
-                self.topics,
-                Wikipedia.version
-            )
+            self.cache_dir,
+            "wiki-d{}-c{}-v{}.msgpack.gz".format(
+                self.dimensions, self.topics, Wikipedia.version
+            ),
         )
 
     def get_path(self):
@@ -177,16 +180,14 @@ class Wikipedia(Dataset):
     def metadata(self):
         meta = {
             "name": "Wikipedia",
-            "constraint": {"transversal": {
-                "topics": list(range(0, self.topics))
-            }},
+            "constraint": {"transversal": {"topics": list(range(0, self.topics))}},
             "version": Wikipedia.version,
             "parameters": {
                 "dimensions": self.dimensions,
                 "topics": self.topics,
-                "date": self.date
+                "date": self.date,
             },
-            "url": self.url
+            "url": self.url,
         }
         return meta
 
@@ -194,11 +195,13 @@ class Wikipedia(Dataset):
         cores = multiprocessing.cpu_count()
         if not os.path.exists(self.lda_model_path):
             logging.info("Training LDA")
-            lda = LdaMulticore(docs, 
-                               id2word=dictionary,
-                               num_topics=self.topics,
-                               passes=1,
-                               workers = cores)
+            lda = LdaMulticore(
+                docs,
+                id2word=dictionary,
+                num_topics=self.topics,
+                passes=1,
+                workers=cores,
+            )
             logging.info("Saving LDA")
             lda.save(self.lda_model_path)
         else:
@@ -218,38 +221,32 @@ class Wikipedia(Dataset):
             wiki = WikiCorpus(self.dump_file)
             wiki.dictionary.save(self.dictionary)
         dictionary = Dictionary.load(self.dictionary)
-        wiki = WikiCorpus(self.dump_file, 
-                          dictionary=dictionary)
+        wiki = WikiCorpus(self.dump_file, dictionary=dictionary)
         wiki.metadata = True
 
         logging.info("Loading word embeddings")
         glove = GloveMap(self.dimensions)
         logging.info("Setting up LDA")
-        lda = self.load_lda(CachedBowsCorpus(wiki, 
-                                             self.bow_cache, 
-                                             meta=False),
-                            dictionary)
+        lda = self.load_lda(
+            CachedBowsCorpus(wiki, self.bow_cache, meta=False), dictionary
+        )
 
         logging.info("Remapping vectors")
         with gzip.open(self.out_fname, "wb") as out_fp:
             header = msgpack.packb(self.metadata())
             out_fp.write(header)
-            for (bow, (id, title)) in CachedBowsCorpus(wiki,
-                                                       self.bow_cache,
-                                                       meta=True):
+            for (bow, (id, title)) in CachedBowsCorpus(wiki, self.bow_cache, meta=True):
                 vector = list(glove.map_bow(dictionary, bow))
                 if vector is not None:
-                    topics = lda.get_document_topics(
-                        bow, minimum_probability=0.1)
+                    topics = lda.get_document_topics(bow, minimum_probability=0.1)
                     outdata = {
-                        'id': int(id),
-                        'title': title,
-                        'topics': [p[0] for p in topics],
-                        'vector': vector
+                        "id": int(id),
+                        "title": title,
+                        "topics": [p[0] for p in topics],
+                        "vector": vector,
                     }
                     encoded = msgpack.packb(outdata)
                     out_fp.write(encoded)
-
 
 
 class SampledDataset(Dataset):
@@ -262,32 +259,32 @@ class SampledDataset(Dataset):
         self.cache_dir = os.path.join(".datasets/sampled")
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
-        params_list = list(base.metadata()['parameters'].items())
+        params_list = list(base.metadata()["parameters"].items())
         params_list.sort()
-        params_str = "-".join(["{}-{}".format(k, v)
-                               for k, v in params_list])
-        self.path = os.path.join(self.cache_dir,
-                                 "{}-{}-sample{}-v{}.msgpack.gz".format(
-                                     base.metadata()['name'],
-                                     params_str,
-                                     size,
-                                     SampledDataset.version))
+        params_str = "-".join(["{}-{}".format(k, v) for k, v in params_list])
+        self.path = os.path.join(
+            self.cache_dir,
+            "{}-{}-sample{}-v{}.msgpack.gz".format(
+                base.metadata()["name"], params_str, size, SampledDataset.version
+            ),
+        )
 
     def get_path(self):
         return self.path
 
     def metadata(self):
-        parameters = self.base.metadata()['parameters']
-        parameters.update({
-            'size': self.size,
-            'seed': self.seed,
-            'base_version': self.base.metadata()['version']
-        })
+        parameters = self.base.metadata()["parameters"]
+        parameters.update(
+            {
+                "size": self.size,
+                "seed": self.seed,
+                "base_version": self.base.metadata()["version"],
+            }
+        )
         return {
-            'name': '{}-sample-{}'.format(self.base.metadata()['name'],
-                                          self.size),
-            'parameters': parameters,
-            'version': SampledDataset.version
+            "name": "{}-sample-{}".format(self.base.metadata()["name"], self.size),
+            "parameters": parameters,
+            "version": SampledDataset.version,
         }
 
     def preprocess(self):
@@ -295,12 +292,14 @@ class SampledDataset(Dataset):
             logging.info("file %s is missing", self.path)
             logging.info(
                 "preprocessing sampled dataset with sample size %d from %s",
-                 self.size, self.base.metadata()['name'])
+                self.size,
+                self.base.metadata()["name"],
+            )
             n = self.base.num_elements()
             p = min(self.size / n, 1)
             random.seed(self.seed)
 
-            progress_bar = tqdm(total=n, unit='pages', unit_scale=False)
+            progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
             with gzip.open(self.path, "wb") as out_fp:
                 header = msgpack.packb(self.metadata())
                 out_fp.write(header)
@@ -311,16 +310,12 @@ class SampledDataset(Dataset):
             progress_bar.close()
 
 
-DATASETS = {
-    "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100)
-}
+DATASETS = {"wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100)}
 
 # Sampled datasets
 for size in [100000]:
-    DATASETS['wiki-d50-c100-s100000'] = SampledDataset(
-        base=DATASETS['wiki-d50-c100'],
-        size=size,
-        seed=12341245
+    DATASETS["wiki-d50-c100-s100000"] = SampledDataset(
+        base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
     )
 
 if __name__ == "__main__":
@@ -328,4 +323,3 @@ if __name__ == "__main__":
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())
-
