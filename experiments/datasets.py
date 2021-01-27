@@ -320,7 +320,7 @@ for size in [100000]:
     )
 
 if __name__ == "__main__":
-    dataset = DATASETS["wiki-d50-c100-s100000"]
+    dataset = DATASETS["wiki-d50-c100"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())
