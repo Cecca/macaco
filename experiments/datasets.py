@@ -274,11 +274,13 @@ class SampledDataset(Dataset):
 
     def metadata(self):
         parameters = self.base.metadata()["parameters"]
+        for k in parameters:
+            parameters[k] = str(parameters[k])
         parameters.update(
             {
-                "size": self.size,
-                "seed": self.seed,
-                "base_version": self.base.metadata()["version"],
+                "size": str(self.size),
+                "seed": str(self.seed),
+                "base_version": str(self.base.metadata()["version"]),
             }
         )
         return {
