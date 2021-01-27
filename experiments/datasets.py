@@ -15,12 +15,14 @@ import random
 logging.getLogger().setLevel(logging.INFO)
 
 
+# The local cache directory for datasets
 CACHE_DIR=".datasets/"
-
+# The url for looking for already-preprocessed datasets
+CACHE_URL="https://www.inf.unibz.it/~ceccarello/data"
 
 def download_file(url, dest):
     if not os.path.isfile(dest):
-        logging.info("downloading", url, "to", dest)
+        logging.info("downloading %s to %s", url, dest)
         with requests.get(url, stream=True) as stream:
             stream.raise_for_status()
             total_size_in_bytes= int(stream.headers.get('content-length', 0))
@@ -43,6 +45,19 @@ class Dataset(object):
 
     def get_path(self):
         raise NotImplementedError()
+
+    def try_download_preprocessed(self):
+        dirname, basename = os.path.split(self.get_path())
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+        try:
+            download_file(os.path.join(CACHE_URL, basename),
+                          self.get_path())
+        except Exception as e:
+            logging.warn(e)
+            logging.warn("dataset not found online, computing locally")
+            return False
+        return True
 
     def __iter__(self):
         with gzip.open(self.get_path(), "rb") as fp:
@@ -310,6 +325,7 @@ for size in [100000]:
 
 if __name__ == "__main__":
     dataset = DATASETS["wiki-d50-c100-s100000"]
+    dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())
 
