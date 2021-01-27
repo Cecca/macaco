@@ -140,9 +140,9 @@ class Wikipedia(object):
             "parameters": {
                 "dimensions": self.dimensions,
                 "topics": self.topics,
-                "date": self.date,
-                "url": self.url
-            }
+                "date": self.date
+            },
+            "url": self.url
         }
         return meta
 
@@ -210,7 +210,7 @@ class Wikipedia(object):
         return self.out_fname
 
     def __iter__(self):
-        with gzip.open(self.get_path(), "rb"):
+        with gzip.open(self.get_path(), "rb") as fp:
             unpacker = msgpack.Unpacker(fp, raw=False)
             # Skipt the metadata
             next(unpacker)
@@ -236,7 +236,7 @@ class SampledDataset(object):
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
         params_str = "-".join(["{}-{}".format(k, v)
-                               for k, v in base.metadata()['parameters']])
+                               for k, v in base.metadata()['parameters'].items()])
         self.path = os.path.join(self.cache_dir,
                                  "{}-{}-sample{}-v{}.msgpack.gz".format(
                                      base.metadata()['name'],
@@ -262,7 +262,7 @@ class SampledDataset(object):
         if not os.path.isfile(self.path):
             logging.info(
                 "preprocessing sampled dataset with sample size %d from %s",
-                 self.size, self.base['name'])
+                 self.size, self.base.metadata()['name'])
             n = self.base.num_elements()
             p = min(self.size / n, 1)
             random.seed(self.seed)
