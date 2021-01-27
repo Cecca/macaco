@@ -71,6 +71,9 @@ class Dataset(object):
 
         return current_metadata
 
+    def write_metadata(self, fp):
+        msgpack.pack(self.build_metadata(), fp)
+
     def try_download_preprocessed(self):
         dirname, basename = os.path.split(self.get_path())
         if not os.path.isdir(dirname):
@@ -257,8 +260,7 @@ class Wikipedia(Dataset):
 
         logging.info("Remapping vectors")
         with gzip.open(self.out_fname, "wb") as out_fp:
-            header = msgpack.packb(self.metadata())
-            out_fp.write(header)
+            self.write_metadata(out_fp)
             for (bow, (id, title)) in CachedBowsCorpus(wiki, self.bow_cache, meta=True):
                 vector = list(glove.map_bow(dictionary, bow))
                 if vector is not None:
@@ -328,8 +330,7 @@ class SampledDataset(Dataset):
 
             progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
             with gzip.open(self.path, "wb") as out_fp:
-                header = msgpack.packb(self.metadata())
-                out_fp.write(header)
+                self.write_metadata(out_fp)
                 for doc in self.base:
                     progress_bar.update(1)
                     if random.random() <= p:
