@@ -69,6 +69,40 @@ class GloveMap(object):
         else:
             return None
 
+class CachedBowsCorpus(object):
+    """Cache of bag of word for a corpus
+
+    Iterating through the wiki corpus to retrieve the bag of 
+    words representation for each page is *extremely* slow.
+    Therefore we do it once and cache it to a file, which has
+    10x more throughput once cached.
+    """
+    def __init__(self, wiki, path, meta):
+        self.meta = meta
+        self.path = path
+        if not os.path.isfile(path):
+            logging.info("create cache of bag of words")
+            progress_bar = tqdm(unit='pages')
+            wiki.metadata = True
+            with open(path, "wb") as fp:
+                for doc in wiki:
+                    progress_bar.update(1)
+                    fp.write(msgpack.packb(doc))
+            progress_bar.close()
+
+    def __iter__(self):
+        with open(self.path, "rb") as fp:
+            progress_bar = tqdm(unit='pages')
+            unpacker = msgpack.Unpacker(fp, raw=False)
+            for (doc, meta) in unpacker: 
+                progress_bar.update(1)
+                if self.meta:
+                    yield (doc, meta)
+                else:
+                    yield doc
+            progress_bar.close()
+
+
 
 class Wikipedia(object):
     version = 1
@@ -85,6 +119,8 @@ class Wikipedia(object):
         self.dictionary = os.path.join(self.cache_dir, "dictionary")
         self.lda_model_path = os.path.join(
             self.cache_dir, "model-lda-{}".format(self.topics))
+        self.bow_cache = os.path.join(
+            self.cache_dir, "bows.msgpack")
         self.out_fname = os.path.join(
             self.cache_dir, "wiki-d{}-c{}-v{}.msgpack.gz".format(
                 self.dimensions,
@@ -117,13 +153,35 @@ class Wikipedia(object):
                                id2word=dictionary,
                                num_topics=self.topics,
                                passes=1,
-                               workers = 4)
+                               workers = cores)
             logging.info("Saving LDA")
             lda.save(self.lda_model_path)
         else:
             logging.info("Model file found, loading")
             lda = LdaMulticore.load(self.lda_model_path)
         return lda
+
+    # def cached_bows(self, wiki, with_meta=True):
+    #     if not os.path.isfile(self.bow_cache):
+    #         logging.info("create cache of bag of words")
+    #         progress_bar = tqdm(unit='pages')
+    #         wiki.metadata = True
+    #         with open(self.bow_cache, "wb") as fp:
+    #             for doc in wiki:
+    #                 progress_bar.update(1)
+    #                 fp.write(msgpack.packb(doc))
+    #         progress_bar.close()
+
+    #     with open(self.bow_cache, "rb") as fp:
+    #         progress_bar = tqdm(unit='pages')
+    #         unpacker = msgpack.Unpacker(fp, raw=False)
+    #         for (doc, meta) in unpacker: 
+    #             progress_bar.update(1)
+    #             if with_meta:
+    #                 yield (doc, meta)
+    #             else:
+    #                 yield doc
+    #         progress_bar.close()
 
     def preprocess(self):
         if not os.path.isfile(self.out_fname):
@@ -141,33 +199,22 @@ class Wikipedia(object):
                           dictionary=dictionary)
         wiki.metadata = True
 
-        logging.info("Loading documents into memory")
-        # This is a workaround because WikiCorpus does not 
-        # implement `len`, which is needed to compute the LDA
-        # docs_with_meta = [d for (i, d) in enumerate(wiki)
-        #                   if i < 10]
-        docs_with_meta = []
-        for i, d in enumerate(wiki):
-            if i > 10:
-                break
-            docs_with_meta.append(d)
-        logging.info("Copying just the bows")
-        docs_no_meta = [bow for (bow, meta) in docs_with_meta]
-        logging.info("...done")
-
         logging.info("Loading word embeddings")
         glove = GloveMap(self.dimensions)
-        lda = self.load_lda(docs_no_meta, dictionary)
+        logging.info("Setting up LDA")
+        lda = self.load_lda(CachedBowsCorpus(wiki, 
+                                             self.bow_cache, 
+                                             meta=False),
+                            dictionary)
 
-        progress_bar = tqdm(total=len(docs_with_meta), 
-                            unit='pages', 
-                            unit_scale=False)
+        logging.info("Remapping vectors")
         with gzip.open(self.out_fname, "wb") as out_fp:
             header = msgpack.packb(self.metadata())
             out_fp.write(header)
-            for (bow, (id, title)) in docs_with_meta:
+            for (bow, (id, title)) in CachedBowsCorpus(wiki,
+                                                       self.bow_cache,
+                                                       meta=True):
                 vector = list(glove.map_bow(dictionary, bow))
-                progress_bar.update(1)
                 if vector is not None:
                     topics = lda.get_document_topics(
                         bow, minimum_probability=0.1)
@@ -179,7 +226,6 @@ class Wikipedia(object):
                     }
                     encoded = msgpack.packb(outdata)
                     out_fp.write(encoded)
-        progress_bar.close()
 
 
 if __name__ == "__main__":
