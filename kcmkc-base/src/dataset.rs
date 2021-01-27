@@ -23,10 +23,12 @@ pub enum Constraint {
 pub struct Metadata {
     pub version: u32,
     pub name: String,
+    pub datatype: Datatype,
     pub constraint: Constraint,
     pub parameters: HashMap<String, MetadataValue>,
 }
 
+#[derive(Deserialize, Debug)]
 pub enum Datatype {
     WikiPage,
 }
@@ -46,13 +48,8 @@ impl Dataset {
         rmp_serde::from_read(input).context("reading metadata")
     }
     pub fn datatype(&self) -> Result<Datatype> {
-        // TODO: add the datatype as part of the metadata in the file
         let meta = self.metadata()?;
-        if meta.name.starts_with("wiki") || meta.name.starts_with("Wiki") {
-            Ok(Datatype::WikiPage)
-        } else {
-            bail!("Unkown datatype {}", meta.name)
-        }
+        Ok(meta.datatype)
     }
     pub fn for_each<T, F: FnMut(u32, T)>(&self, mut f: F) -> Result<()>
     where

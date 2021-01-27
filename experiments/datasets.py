@@ -60,7 +60,7 @@ class Dataset(object):
                 with gzip.open(self.get_path(), "rb") as fp:
                     unpacker = msgpack.Unpacker(fp)
                     next(unpacker)  # skip metadata
-                    data = [d for d in unpacker]
+                    data = [d for d in tqdm(unpacker)]
                 # overwrite the file
                 with tqdm(total=len(data), unit="items") as pb:
                     with gzip.open(self.get_path(), "wb") as fp:
