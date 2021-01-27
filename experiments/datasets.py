@@ -289,6 +289,7 @@ class SampledDataset(Dataset):
 
     def preprocess(self):
         if not os.path.isfile(self.path):
+            self.base.preprocess()
             logging.info("file %s is missing", self.path)
             logging.info(
                 "preprocessing sampled dataset with sample size %d from %s",
