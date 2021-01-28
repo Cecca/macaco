@@ -360,7 +360,7 @@ class MusixMatch(Dataset):
     def build_metadata(self):
         meta = {
             "name": "MusixMatch",
-            "datatype": "Song",
+            "datatype": {"Song": None},
             "constraint": {"partition": {"categories": self.genres_counts()}},
             "version": MusixMatch.version,
             "parameters": {},

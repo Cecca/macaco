@@ -17,6 +17,8 @@ pub enum MetadataValue {
 pub enum Constraint {
     #[serde(rename = "transversal")]
     Transversal { topics: Vec<u32> },
+    #[serde(rename = "partition")]
+    Partition { categories: HashMap<String, u32> },
 }
 
 #[derive(Deserialize, Debug)]
