@@ -1,5 +1,5 @@
 [package]
-name = "kcmkc"
+name = "kcmkc-sequential"
 version = "0.1.0"
 authors = ["Matteo Ceccarello <mceccarello@unibz.it>"]
 edition = "2018"
@@ -8,6 +8,3 @@ edition = "2018"
 
 [dependencies]
 kcmkc-base = {path = "../kcmkc-base"}
-kcmkc-sequential = {path = "../kcmkc-sequential"}
-anyhow = "1.0"
-progress-logger = "0.3.1"

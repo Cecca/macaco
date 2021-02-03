@@ -1,2 +1,2 @@
 [workspace]
-members = ["kcmkc", "kcmkc-base"]
+members = ["kcmkc", "kcmkc-base", "kcmkc-sequential"]

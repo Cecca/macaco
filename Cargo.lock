@@ -159,6 +159,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "kcmkc-base",
+ "kcmkc-sequential",
  "progress-logger",
 ]
 
@@ -172,6 +173,13 @@ dependencies = [
  "flate2",
  "rmp-serde",
  "serde",
+]
+
+[[package]]
+name = "kcmkc-sequential"
+version = "0.1.0"
+dependencies = [
+ "kcmkc-base",
 ]
 
 [[package]]

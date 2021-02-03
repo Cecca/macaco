@@ -206,7 +206,7 @@ class Wikipedia(Dataset):
     def build_metadata(self):
         meta = {
             "name": "Wikipedia",
-            "datatype": "WikiPage",
+            "datatype": {"WikiPage": None},
             "constraint": {"transversal": {"topics": list(range(0, self.topics))}},
             "version": Wikipedia.version,
             "parameters": {
@@ -443,7 +443,7 @@ for size in [100000]:
 if __name__ == "__main__":
     from pprint import pprint
 
-    dataset = DATASETS["MusixMatch"]
+    dataset = DATASETS["wiki-d50-c100-s100000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())

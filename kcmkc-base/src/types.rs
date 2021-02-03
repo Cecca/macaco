@@ -104,6 +104,10 @@ impl SparseVector {
     }
 }
 
+pub trait Distance {
+    fn distance(&self, other: &Self) -> f32;
+}
+
 pub trait Matroid<T>
 where
     T: Clone,
@@ -295,4 +299,16 @@ pub struct Song {
     pub track_id: String,
     pub genre: String,
     pub vector: SparseVector,
+}
+
+impl Distance for WikiPage {
+    fn distance(&self, other: &Self) -> f32 {
+        self.vector.cosine_distance(&other.vector)
+    }
+}
+
+impl Distance for Song {
+    fn distance(&self, other: &Self) -> f32 {
+        self.vector.cosine_distance(&other.vector)
+    }
 }
