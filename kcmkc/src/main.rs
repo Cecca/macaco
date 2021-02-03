@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let k = 5;
     let (centers, assignment) = kcenter(&items, k);
     for center in centers {
-        println!("{:?}", center);
+        println!("{:?}", center.title);
     }
 
     Ok(())
