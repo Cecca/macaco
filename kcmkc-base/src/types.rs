@@ -47,7 +47,14 @@ impl Vector {
     }
 
     pub fn cosine_distance(&self, other: &Self) -> f32 {
-        (self.inner_product(other) / (self.norm * other.norm)).acos() * std::f32::consts::FRAC_1_PI
+        let angle = self.inner_product(other) / (self.norm * other.norm);
+        if angle >= 1.0 {
+            // This branch is to handle some cases where precision errors make /
+            // the ratio computed above larger than one
+            0.0
+        } else {
+            angle.acos() * std::f32::consts::FRAC_1_PI
+        }
     }
 }
 

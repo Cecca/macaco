@@ -7,7 +7,7 @@ use kcmkc_base::types::Distance;
 /// item is a reference to the point, the second is the index of the cluster
 /// center (in the centers vector), and the third is the distance
 /// between the point and its center.
-pub fn kcenter<'a, V: Distance>(
+pub fn kcenter<'a, V: Distance + std::fmt::Debug>(
     points: &'a [V],
     k: usize,
 ) -> (
@@ -36,15 +36,17 @@ pub fn kcenter<'a, V: Distance>(
         // Look for the farthest, updating distances on the go
         for (j, p) in points.iter().enumerate() {
             let d = c.distance(p);
+            assert!(!d.is_nan(), "NaN distance: {:?} {:?}", c, p);
             if d < closest[j] {
                 closest[j] = d;
                 assignments[j] = i;
             }
-            if d > farthest_dist {
+            if closest[j] > farthest_dist {
                 farthest_dist = d;
                 farthest = j;
             }
         }
+        println!("Farthest point {} at {}", farthest, farthest_dist);
 
         if i < k - 1 {
             // Set up the center for the next iteration
