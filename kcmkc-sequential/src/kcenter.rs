@@ -21,7 +21,7 @@ pub fn kcenter<'a, V: Distance + std::fmt::Debug>(
             Box::new(points.iter().enumerate().map(|(i, p)| (p, i, 0.0))),
         );
     }
-    let mut closest = vec![std::f32::INFINITY; points.len()];
+    let mut min_dist = vec![std::f32::INFINITY; points.len()];
     let mut assignments = vec![0usize; points.len()];
     let mut centers = Vec::with_capacity(k);
 
@@ -29,20 +29,19 @@ pub fn kcenter<'a, V: Distance + std::fmt::Debug>(
     for i in 0..k {
         let c = centers[i];
 
-        // Initialize the farthest as the center itself
-        let mut farthest = i;
+        let mut farthest = 0;
         let mut farthest_dist = 0.0f32;
 
         // Look for the farthest, updating distances on the go
         for (j, p) in points.iter().enumerate() {
             let d = c.distance(p);
-            assert!(!d.is_nan(), "NaN distance: {:?} {:?}", c, p);
-            if d < closest[j] {
-                closest[j] = d;
+            assert!(d.is_finite());
+            if d < min_dist[j] {
+                min_dist[j] = d;
                 assignments[j] = i;
             }
-            if closest[j] > farthest_dist {
-                farthest_dist = d;
+            if min_dist[j] > farthest_dist {
+                farthest_dist = min_dist[j];
                 farthest = j;
             }
         }
@@ -62,7 +61,7 @@ pub fn kcenter<'a, V: Distance + std::fmt::Debug>(
             points
                 .iter()
                 .zip(assignments.into_iter())
-                .zip(closest.into_iter())
+                .zip(min_dist.into_iter())
                 .map(|((v, c_idx), d)| (v, c_idx, d)),
         ),
     )
