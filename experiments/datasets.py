@@ -435,15 +435,15 @@ DATASETS = {
 }
 
 # Sampled datasets
-for size in [100000]:
-    DATASETS["wiki-d50-c100-s100000"] = SampledDataset(
+for size in [100000, 1000]:
+    DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
     )
 
 if __name__ == "__main__":
     from pprint import pprint
 
-    dataset = DATASETS["wiki-d50-c100-s100000"]
+    dataset = DATASETS["wiki-d50-c100-s1000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())
