@@ -285,13 +285,11 @@ impl ExchangeGraph {
     ///
     /// If no path exist, then None is returned
     fn bellman_ford(&self, src: usize, dsts: &[usize]) -> Option<(i32, Vec<usize>)> {
-        // println!("        Invocation of bellman-ford from {}", src);
         let n = self.length.len();
         let mut distance: Vec<Option<i32>> = vec![None; n];
         let mut predecessor: Vec<Option<usize>> = vec![None; n];
 
         distance[src].replace(self.length[src]);
-        // predecessor[src].replace(src);
 
         // compute shortest paths
         for _ in 0..n {
@@ -333,9 +331,8 @@ impl ExchangeGraph {
         };
 
         // Check the lengths of the paths
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         for dst in dsts.iter() {
-            panic!();
             if let Some(d) = distance[*dst] {
                 let path: Vec<usize> = iter_path.clone()(*dst).collect();
                 let weights: Vec<i32> = path.iter().map(|v| self.length[*v]).collect();
