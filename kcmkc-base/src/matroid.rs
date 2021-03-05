@@ -274,6 +274,8 @@ impl ExchangeGraph {
                 scratch.pop();
             }
         }
+        edges.sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
+
         Self { length, edges }
     }
 
@@ -360,4 +362,27 @@ impl ExchangeGraph {
             None
         }
     }
+}
+
+/// Interleave the bits of the pairs. Using the resulting
+/// number as a sorting key improves cache locality
+#[inline]
+pub fn pair_to_zorder((mut x, mut y): (u32, u32)) -> u64 {
+    let mut z = 0;
+    let msb_mask = 1_u32 << 31;
+    for _ in 0..32 {
+        if x & msb_mask == 0 {
+            z = z << 1;
+        } else {
+            z = (z << 1) | 1;
+        }
+        if y & msb_mask == 0 {
+            z = z << 1;
+        } else {
+            z = (z << 1) | 1;
+        }
+        x = x << 1;
+        y = y << 1;
+    }
+    z
 }

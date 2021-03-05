@@ -1,8 +1,7 @@
-use std::time::Instant;
-
 use anyhow::{Context, Result};
 use kcmkc_base::{dataset::*, matroid::TransveralMatroid, types::*};
 use kcmkc_sequential::{chen_et_al::robust_matroid_center, kcenter::*};
+use std::time::Instant;
 
 fn main() -> Result<()> {
     let path = std::env::args().nth(1).context("provide the path")?;
@@ -16,15 +15,18 @@ fn main() -> Result<()> {
         TransveralMatroid::new((0..100u32).collect::<Vec<u32>>());
 
     let p = items.len() - 900;
+    let timer = Instant::now();
     let (centers, uncovered, assignment) = robust_matroid_center(&items, matroid, p);
+    let elapsed = timer.elapsed();
     let radius = assignment
         .flat_map(|(_, assignment)| assignment.into_iter())
         .map(|(_, d)| d)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     println!(
-        "Found clustering with {} centers, {} uncovered nodes, and radius {}",
+        "Found clustering with {} centers in {:?}, with {} uncovered nodes, and radius {}",
         centers.len(),
+        elapsed,
         uncovered,
         radius
     );
