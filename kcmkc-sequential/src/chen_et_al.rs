@@ -9,27 +9,43 @@ struct DistanceMatrix {
 
 impl DistanceMatrix {
     fn new<V: Distance>(points: &[V]) -> Self {
-        let distances = points
+        let distances: Vec<Vec<f32>> = points
             .iter()
             .enumerate()
             .map(|(i, a)| {
                 points
                     .iter()
                     .enumerate()
-                    .filter(|(j, _)| *j >= i)
+                    // build a lower triangular matrix
+                    .filter(|(j, _)| i >= *j)
                     .map(|(_, b)| a.distance(b))
                     .collect()
             })
             .collect();
+        println!(
+            "Allocated matrix of distances with {} rows",
+            distances.len()
+        );
         Self { distances }
     }
 
     fn distance(&self, i: usize, j: usize) -> f32 {
-        if i < j {
-            self.distances[j][i]
-        } else {
+        if i >= j {
             self.distances[i][j]
+        } else {
+            self.distances[j][i]
         }
+    }
+
+    fn iter_distances(&self) -> impl Iterator<Item = f32> {
+        use std::collections::BTreeSet;
+        let dists: BTreeSet<OrderedF32> = self
+            .distances
+            .iter()
+            .flat_map(|row| row.iter().filter(|f| **f > 0.0).map(|f| OrderedF32(*f)))
+            .collect();
+
+        dists.into_iter().map(|wrapper| wrapper.0)
     }
 
     /// Get the indices of points in the ball of radius `r` around point `i`.
@@ -38,6 +54,17 @@ impl DistanceMatrix {
     fn disk<'a>(&'a self, i: usize, r: f32) -> impl Iterator<Item = usize> + 'a {
         let n = self.distances.len();
         (0..n).filter(move |j| self.distance(i, *j) <= r)
+    }
+}
+
+#[derive(PartialEq, PartialOrd)]
+struct OrderedF32(f32);
+
+impl Eq for OrderedF32 {}
+
+impl Ord for OrderedF32 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.partial_cmp(&other.0).unwrap()
     }
 }
 
@@ -66,11 +93,34 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
     })
 }
 
-/// Returns a triplet of centers, number of uncovered nodes, and an
-/// iterator of optional assignments.
-fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
+pub fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
     points: &'a [V],
     matroid: M,
+    p: usize,
+) -> (
+    Vec<&'a V>,
+    usize,
+    Box<dyn Iterator<Item = (&'a V, Option<(usize, f32)>)> + 'a>,
+) {
+    let distances = DistanceMatrix::new(points);
+
+    for r in distances.iter_distances().skip_while(|f| *f < 0.1) {
+        println!("Iteration with radius {}", r);
+        match run_robust_matroid_center(points, &matroid, r, p, &distances) {
+            Ok(triplet) => {
+                return triplet;
+            }
+            Err(covered) => println!("covered only {} out of {}", covered, p),
+        }
+    }
+    panic!("should never get here, the last radius we try should cover everything");
+}
+
+/// Returns a triplet of centers, number of uncovered nodes, and an
+/// iterator of optional assignments.
+fn run_robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
+    points: &'a [V],
+    matroid: &M,
     r: f32,
     p: usize,
     distances: &DistanceMatrix,
@@ -93,7 +143,9 @@ fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
     // The following invariant should hold in any iteration
     debug_assert!(n_uncovered == assignment.iter().filter(|a| a.is_none()).count());
 
+    println!("  Build disks");
     while n_uncovered > 0 {
+        println!("    Still {} uncovered nodes", n_uncovered);
         // Get the center covering the most uncovered points
         let c = (0..n)
             .max_by_key(|i| {
@@ -114,12 +166,14 @@ fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
             assignment[j].replace(c);
             n_uncovered -= 1;
         }
-        // Check the invariatn
+        // Check the invariant
         debug_assert!(n_uncovered == assignment.iter().filter(|a| a.is_none()).count());
 
         centers.push((c, expanded_disk));
     }
 
+    println!("  Enforce matroid constraints");
+    println!("    Building vertex disk pairs");
     // Build the candidate center/disk pairs. Disks are references
     // to the original ones, to avoind wasting space by duplicating them
     let vertex_disk_pairs: Vec<(usize, &Vec<usize>)> = (0..n)
@@ -134,7 +188,8 @@ fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
         })
         .collect();
 
-    let m1 = DiskMatroid1::new(&matroid, points);
+    println!("    Compute weighted matroid intersection");
+    let m1 = DiskMatroid1::new(matroid, points);
     let m2 = DiskMatroid2;
     let solution: Vec<&(usize, &Vec<usize>)> =
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();

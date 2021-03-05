@@ -137,7 +137,22 @@ pub fn weighted_matroid_intersection<'a, V: Clone + Weight, M1: Matroid<V>, M2: 
     m2: &M2,
 ) -> impl Iterator<Item = &'a V> + 'a {
     let mut independent_set = vec![false; set.len()];
-    while augment(set, m1, m2, &mut independent_set) {}
+    let mut last = 0;
+    while augment(set, m1, m2, &mut independent_set) {
+        let current_size = independent_set.iter().filter(|included| **included).count();
+        println!(
+            "      Independent set of size {} and weight {}",
+            current_size,
+            independent_set
+                .iter()
+                .enumerate()
+                .filter(|(_, included)| **included)
+                .map(|(i, _)| set[i].weight())
+                .sum::<u32>()
+        );
+        assert!(current_size > last);
+        last = current_size;
+    }
     independent_set
         .into_iter()
         .zip(set.iter())
@@ -163,12 +178,14 @@ fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .map(|p| p.1.clone())
         .collect();
 
-    // define the source and destination sets
+    // define the source and destination sets.
+    // When the input independent set is empty, it makes sense that the sets
+    // x1 and x2 are equal, and corresponding to the full set.
     let x1: Vec<usize> = independent_set
         .iter()
         .enumerate()
         .filter(|(i, included)| {
-            **included || {
+            !**included && {
                 independent_set_elements.push(set[*i].clone());
                 let b = m1.is_independent(&independent_set_elements);
                 independent_set_elements.pop();
@@ -181,9 +198,9 @@ fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .iter()
         .enumerate()
         .filter(|(i, included)| {
-            **included || {
+            !**included && {
                 independent_set_elements.push(set[*i].clone());
-                let b = m1.is_independent(&independent_set_elements);
+                let b = m2.is_independent(&independent_set_elements);
                 independent_set_elements.pop();
                 b
             }
@@ -197,6 +214,7 @@ fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .flat_map(|i| graph.bellman_ford(*i, &x2))
         .min_by_key(|(d, path)| (*d, path.len()))
     {
+        println!("     Augmenting path: {:?}", path);
         for i in path {
             assert!(
                 !independent_set[i],
@@ -265,11 +283,13 @@ impl ExchangeGraph {
     ///
     /// If no path exist, then None is returned
     fn bellman_ford(&self, src: usize, dsts: &[usize]) -> Option<(i32, Vec<usize>)> {
+        // println!("        Invocation of bellman-ford from {}", src);
         let n = self.length.len();
         let mut distance: Vec<Option<i32>> = vec![None; n];
         let mut predecessor: Vec<Option<usize>> = vec![None; n];
 
         distance[src].replace(self.length[src]);
+        // predecessor[src].replace(src);
 
         // compute shortest paths
         for _ in 0..n {
@@ -289,20 +309,32 @@ impl ExchangeGraph {
             }
         }
 
+        // Iterator on the paths reaching `i`
+        let iter_path = |i: usize| {
+            let mut current = Some(i);
+            std::iter::from_fn(move || {
+                if let Some(i) = current {
+                    let toret = current;
+                    current = predecessor[i];
+                    toret
+                } else {
+                    None
+                }
+            })
+        };
+
+        // Check the lengths of the paths
+        for dst in dsts.iter() {
+            if let Some(d) = distance[*dst] {
+                let path: Vec<usize> = iter_path.clone()(*dst).collect();
+                let weights: Vec<i32> = path.iter().map(|v| self.length[*v]).collect();
+                let w = weights.iter().sum::<i32>();
+                assert!(w == d);
+            }
+        }
+
         // using flat map we filter out unreachable destinations
         if let Some(shortest_dist) = dsts.iter().flat_map(|i| distance[*i]).min() {
-            // Iterator on the paths
-            let iter_path = |mut i: usize| {
-                std::iter::from_fn(move || {
-                    if let Some(p) = predecessor[i] {
-                        i = p;
-                        Some(p)
-                    } else {
-                        None
-                    }
-                })
-            };
-
             // Look, among the destinations
             dsts.iter()
                 // for the ones at minimum distance
@@ -310,7 +342,11 @@ impl ExchangeGraph {
                 // and reached with minimum number of steps
                 .min_by_key(|i| iter_path.clone()(**i).count())
                 // for that one, materialize the path
-                .map(|i| (distance[*i].unwrap(), iter_path.clone()(*i).collect()))
+                .map(|i| {
+                    let path: Vec<usize> = iter_path.clone()(*i).collect();
+                    assert!(path.len() > 0);
+                    (distance[*i].unwrap(), path)
+                })
         } else {
             None
         }
