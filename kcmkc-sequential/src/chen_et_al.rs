@@ -195,6 +195,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();
     let covered_nodes: usize = solution.iter().map(|p| p.1.len()).sum();
     if covered_nodes < p {
+        println!("    Covered nodes {} < {}", covered_nodes, p);
         return Err(covered_nodes);
     }
 

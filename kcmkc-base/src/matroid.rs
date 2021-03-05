@@ -293,19 +293,26 @@ impl ExchangeGraph {
 
         // compute shortest paths
         for _ in 0..n {
+            let mut updated = false;
             for &(u, v) in &self.edges {
                 // edge relaxation
                 if let Some(du) = distance[u] {
                     if let Some(dv) = distance[v] {
                         if du + self.length[v] < dv {
+                            updated = true;
                             distance[v].replace(du + self.length[v]);
                             predecessor[v].replace(u);
                         }
                     } else {
+                        updated = true;
                         distance[v].replace(du + self.length[v]);
                         predecessor[v].replace(u);
                     }
                 }
+            }
+            if !updated {
+                // Early break if no nodes are updated: it means we explored all paths.
+                break;
             }
         }
 
@@ -324,7 +331,9 @@ impl ExchangeGraph {
         };
 
         // Check the lengths of the paths
+        #[cfg(debug)]
         for dst in dsts.iter() {
+            panic!();
             if let Some(d) = distance[*dst] {
                 let path: Vec<usize> = iter_path.clone()(*dst).collect();
                 let weights: Vec<i32> = path.iter().map(|v| self.length[*v]).collect();

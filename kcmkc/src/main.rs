@@ -15,8 +15,19 @@ fn main() -> Result<()> {
     let matroid: TransveralMatroid<WikiPage> =
         TransveralMatroid::new((0..100u32).collect::<Vec<u32>>());
 
-    let p = items.len() - 10;
+    let p = items.len() - 900;
     let (centers, uncovered, assignment) = robust_matroid_center(&items, matroid, p);
+    let radius = assignment
+        .flat_map(|(_, assignment)| assignment.into_iter())
+        .map(|(_, d)| d)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+    println!(
+        "Found clustering with {} centers, {} uncovered nodes, and radius {}",
+        centers.len(),
+        uncovered,
+        radius
+    );
     for center in centers {
         println!("{:?}", center.title);
     }
