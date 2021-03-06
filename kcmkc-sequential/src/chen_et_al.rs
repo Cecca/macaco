@@ -37,6 +37,7 @@ impl DistanceMatrix {
         }
     }
 
+    /// Iterates through the distances in the matrix in sorted order.
     fn iter_distances(&self) -> impl Iterator<Item = f32> {
         use std::collections::BTreeSet;
         let dists: BTreeSet<OrderedF32> = self
