@@ -2,7 +2,11 @@
   "outliers": {
     "Fixed": 10
   },
-  "algorithm": "ChenEtAl",
+  "algorithm": {
+    "Random": {
+      "seed": 2145
+    }
+  },
   "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample1000-v1.msgpack.gz",
   "constraint": {
     "transversal": {
