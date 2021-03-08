@@ -36,40 +36,28 @@ impl<T: Distance + Clone + Debug> Algorithm<T> for ChenEtAl {
     }
 }
 
-/// Representation of a symmetric matrix as a _lower_ triangular matrix, to
-/// save space
-struct DistanceMatrix {
-    distances: Vec<Vec<f32>>,
+// Pre-compute all pairwise distances, and then keep the distances from each point in sorted order.
+// This allows the retrieval of disks in time proportional to the size of the disk itself.
+struct DiskBuilder {
+    distances: Vec<Vec<(usize, f32)>>,
 }
 
-impl DistanceMatrix {
+impl DiskBuilder {
     fn new<V: Distance>(points: &[V]) -> Self {
-        let distances: Vec<Vec<f32>> = points
+        println!("Pre-computing distances");
+        let distances: Vec<Vec<(usize, f32)>> = points
             .iter()
-            .enumerate()
-            .map(|(i, a)| {
-                points
+            .map(|a| {
+                let mut dists: Vec<(usize, f32)> = points
                     .iter()
                     .enumerate()
-                    // build a lower triangular matrix
-                    .filter(|(j, _)| i >= *j)
-                    .map(|(_, b)| a.distance(b))
-                    .collect()
+                    .map(|(j, b)| (j, a.distance(b)))
+                    .collect();
+                dists.sort_unstable_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+                dists
             })
             .collect();
-        println!(
-            "Allocated matrix of distances with {} rows",
-            distances.len()
-        );
         Self { distances }
-    }
-
-    fn distance(&self, i: usize, j: usize) -> f32 {
-        if i >= j {
-            self.distances[i][j]
-        } else {
-            self.distances[j][i]
-        }
     }
 
     /// Iterates through the distances in the matrix in sorted order.
@@ -79,18 +67,20 @@ impl DistanceMatrix {
         let dists: BTreeSet<OrderedF32> = self
             .distances
             .iter()
-            .flat_map(|row| row.iter().filter(|f| **f > 0.0).map(|f| OrderedF32(*f)))
+            .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| OrderedF32(f.1)))
             .collect();
 
         dists.into_iter().map(|wrapper| wrapper.0)
     }
 
     /// Get the indices of points in the ball of radius `r` around point `i`.
-    /// The indices are in sorted order, so intersection between disks
-    /// can be computed in linear time
+    /// The indices are not in sorted order, so to compute the intersection between disks
+    /// in linear time we should first sort them!
     fn disk<'a>(&'a self, i: usize, r: f32) -> impl Iterator<Item = usize> + 'a {
-        let n = self.distances.len();
-        (0..n).filter(move |j| self.distance(i, *j) <= r)
+        self.distances[i]
+            .iter()
+            .take_while(move |(_i, d)| *d <= r)
+            .map(|pair| pair.0)
     }
 }
 
@@ -139,7 +129,7 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + Debug>(
     usize,
     Box<dyn Iterator<Item = (&'a V, Option<(usize, f32)>)> + 'a>,
 ) {
-    let distances = DistanceMatrix::new(points);
+    let distances = DiskBuilder::new(points);
 
     let distinct_distances: Vec<f32> = distances.iter_distances().skip(100).collect();
     let mut i = 1;
@@ -165,7 +155,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
     matroid: &Box<dyn Matroid<V>>,
     r: f32,
     p: usize,
-    distances: &DistanceMatrix,
+    distances: &DiskBuilder,
 ) -> Result<
     (
         Vec<&'a V>,
@@ -187,7 +177,6 @@ fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
 
     println!("  Build disks");
     while n_uncovered > 0 {
-        println!("    Uncovered: {}", n_uncovered);
         // Get the center covering the most uncovered points
         let c = (0..n)
             .into_par_iter()
@@ -198,15 +187,17 @@ fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
                     .count()
             })
             .expect("max on an empty iterator");
-        let expanded_disk: Vec<usize> = distances
+        let mut expanded_disk: Vec<usize> = distances
             .disk(c, 3.0 * r)
             .filter(|j| assignment[*j].is_none())
             .collect();
+        // Sort to be able to compute the intersection in linear time, later on.
+        expanded_disk.sort_unstable();
 
         // Mark the nodes as covered
-        for &j in expanded_disk.iter() {
-            debug_assert!(assignment[j].is_none());
-            assignment[j].replace(c);
+        for j in expanded_disk.iter() {
+            debug_assert!(assignment[*j].is_none());
+            assignment[*j].replace(c);
             n_uncovered -= 1;
         }
         // Check the invariant
@@ -250,7 +241,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
     let mut assignments = vec![None; points.len()];
     for (c, cluster) in solution {
         for p in cluster.iter() {
-            let d = distances.distance(*c, *p);
+            let d = points[*c].distance(&points[*p]);
             assignments[*p] = Some((*c, d));
         }
     }
