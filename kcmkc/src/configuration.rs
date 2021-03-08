@@ -4,10 +4,7 @@ use kcmkc_base::{
     types::{Song, WikiPage},
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::VecDeque,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Algorithm {
@@ -76,7 +73,7 @@ impl BuildConstraint for Song {
             Constraint::Partition { categories } => {
                 Box::new(PartitionMatroid::new(categories.clone()))
             }
-            _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
+            _ => panic!("Can only build a partition matroid constraint for Song"),
         }
     }
 }
