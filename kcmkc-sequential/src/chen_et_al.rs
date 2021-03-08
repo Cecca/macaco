@@ -139,18 +139,19 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + Debug>(
 ) {
     let distances = DistanceMatrix::new(points);
 
-    for r in distances
-        .iter_distances()
-        // .skip(2) {
-        .skip_while(|f| *f < 0.0408)
-    {
-        println!("Iteration with radius {}", r);
+    let distinct_distances: Vec<f32> = distances.iter_distances().skip(10).collect();
+    let mut i = 1;
+
+    while i < distinct_distances.len() {
+        let r = distinct_distances[i];
+        println!("Iteration with radius {} [i={}]", r, i);
         match run_robust_matroid_center(points, &matroid, r, p, &distances) {
             Ok(triplet) => {
                 return triplet;
             }
             Err(covered) => println!("covered only {} out of {}", covered, p),
         }
+        i = std::cmp::min(distinct_distances.len() - 1, i * 2);
     }
     panic!("should never get here, the last radius we try should cover everything");
 }
