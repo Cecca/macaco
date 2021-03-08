@@ -3,7 +3,7 @@ mod configuration;
 use anyhow::{Context, Result};
 use configuration::*;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, matroid::Matroid, types::*};
-use kcmkc_sequential::chen_et_al::robust_matroid_center;
+use kcmkc_sequential::{chen_et_al::robust_matroid_center, random::random_matroid_center};
 use serde::Deserialize;
 use std::{fmt::Debug, time::Instant};
 
@@ -22,7 +22,10 @@ where
     let outliers = config.outliers.num_outliers(items.len());
     let p = items.len() - outliers;
     let timer = Instant::now();
-    let (centers, uncovered, assignment) = robust_matroid_center(&items, constraint, p);
+    let (centers, uncovered, assignment) = match config.algorithm {
+        Algorithm::Random { seed } => random_matroid_center(&items, constraint, p, seed),
+        Algorithm::ChenEtAl => robust_matroid_center(&items, constraint, p),
+    };
     let elapsed = timer.elapsed();
 
     let radius = assignment

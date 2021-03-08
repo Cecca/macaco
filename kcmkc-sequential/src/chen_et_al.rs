@@ -147,7 +147,6 @@ fn run_robust_matroid_center<'a, V: Distance + Clone>(
 
     println!("  Build disks");
     while n_uncovered > 0 {
-        println!("    Still {} uncovered nodes", n_uncovered);
         // Get the center covering the most uncovered points
         let c = (0..n)
             .max_by_key(|i| {

@@ -225,10 +225,6 @@ fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     {
         println!("     Augmenting path: {:?}", path);
         for i in path {
-            assert!(
-                !independent_set[i],
-                "nodes in the augmenting path should not be already in the independent set"
-            );
             independent_set[i] = true;
         }
         true

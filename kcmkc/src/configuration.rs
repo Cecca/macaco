@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Algorithm {
+    Random { seed: u64 },
     ChenEtAl,
 }
 
