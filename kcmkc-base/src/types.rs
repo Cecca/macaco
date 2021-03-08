@@ -132,9 +132,8 @@ impl WikiPage {
 }
 
 impl TransveralMatroidElement for WikiPage {
-    fn topics<'a>(&'a self) -> Box<dyn Iterator<Item = u32> + 'a> {
-        let iter = self.topics.iter().copied();
-        Box::new(iter) as Box<dyn Iterator<Item = u32>>
+    fn topics<'a>(&'a self) -> &'a [u32] {
+        &self.topics
     }
 }
 

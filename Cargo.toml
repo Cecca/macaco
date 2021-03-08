@@ -1,2 +1,5 @@
 [workspace]
 members = ["kcmkc", "kcmkc-base", "kcmkc-sequential"]
+
+[profile.release]
+debug = true

@@ -25,7 +25,7 @@ pub trait Matroid<T> {
 
 /// Element of a set on which we can impose a transversal matroid
 pub trait TransveralMatroidElement {
-    fn topics<'a>(&'a self) -> Box<dyn Iterator<Item = u32> + 'a>;
+    fn topics<'a>(&'a self) -> &'a [u32];
 }
 
 pub struct TransveralMatroid<T> {
@@ -73,7 +73,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
         visited: &mut [bool],
     ) -> bool {
         for (topic_idx, topic) in self.topics.iter().enumerate() {
-            if set[idx].topics().find(|t| t == topic).is_some() && !visited[topic_idx] {
+            if set[idx].topics().iter().find(|t| *t == topic).is_some() && !visited[topic_idx] {
                 visited[topic_idx] = true;
                 let can_set = if let Some(displacing_idx) = representatives[topic_idx] {
                     // try to move the representative to another set
