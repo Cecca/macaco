@@ -1,0 +1,11 @@
+{
+  "algorithm": "ChenEtAl",
+  "dataset": ".datasets/mxm/mxm-v1.msgpack.gz",
+  "constraint": {
+    "partition": {
+      "categories": {
+        "Rock": 5
+      }
+    }
+  }
+}

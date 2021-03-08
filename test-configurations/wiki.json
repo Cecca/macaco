@@ -1,0 +1,17 @@
+{
+  "outliers": {
+    "Percentage": 0.1
+  },
+  "algorithm": "ChenEtAl",
+  "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample1000-v1.msgpack.gz",
+  "constraint": {
+    "transversal": {
+      "topics": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  }
+}

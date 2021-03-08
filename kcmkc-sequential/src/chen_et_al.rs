@@ -94,9 +94,9 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
     })
 }
 
-pub fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
+pub fn robust_matroid_center<'a, V: Distance + Clone>(
     points: &'a [V],
-    matroid: M,
+    matroid: Box<dyn Matroid<V>>,
     p: usize,
 ) -> (
     Vec<&'a V>,
@@ -119,9 +119,9 @@ pub fn robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
 /// iterator of optional assignments.
-fn run_robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
+fn run_robust_matroid_center<'a, V: Distance + Clone>(
     points: &'a [V],
-    matroid: &M,
+    matroid: &Box<dyn Matroid<V>>,
     r: f32,
     p: usize,
     distances: &DistanceMatrix,
@@ -190,7 +190,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
         .collect();
 
     println!("    Compute weighted matroid intersection");
-    let m1 = DiskMatroid1::new(matroid, points);
+    let m1 = DiskMatroid1::new(&matroid, points);
     let m2 = DiskMatroid2;
     let solution: Vec<&(usize, &Vec<usize>)> =
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();
@@ -217,18 +217,18 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, M: Matroid<V>>(
     Ok((centers, uncovered_nodes, Box::new(assignments)))
 }
 
-struct DiskMatroid1<'a, T: Clone, M: Matroid<T>> {
-    inner: &'a M,
+struct DiskMatroid1<'a, T: Clone> {
+    inner: &'a Box<dyn Matroid<T>>,
     base_set: &'a [T],
 }
 
-impl<'a, T: Clone, M: Matroid<T>> DiskMatroid1<'a, T, M> {
-    fn new(inner: &'a M, base_set: &'a [T]) -> Self {
+impl<'a, T: Clone> DiskMatroid1<'a, T> {
+    fn new(inner: &'a Box<dyn Matroid<T>>, base_set: &'a [T]) -> Self {
         Self { inner, base_set }
     }
 }
 
-impl<'a, T: Clone, M: Matroid<T>> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T, M> {
+impl<'a, T: Clone> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T> {
     fn is_independent(&self, set: &[(usize, &Vec<usize>)]) -> bool {
         // First, we need to check if the identifiers are all distinct
         let ids: std::collections::BTreeSet<usize> = set.iter().map(|p| p.0).collect();

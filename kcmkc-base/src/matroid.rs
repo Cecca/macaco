@@ -102,8 +102,15 @@ pub trait PartitionMatroidElement: Clone {
 }
 
 pub struct PartitionMatroid<T: PartitionMatroidElement> {
+    // TODO: change type to hashmap between strings and counts
     categories: Vec<usize>,
     _marker: PhantomData<T>,
+}
+
+impl<T: PartitionMatroidElement> PartitionMatroid<T> {
+    pub fn new(categories: Vec<usize>) -> Self {
+        todo!()
+    }
 }
 
 impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {

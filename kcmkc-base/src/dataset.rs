@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
 use rmp_serde::decode::Error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::{collections::HashMap, io::BufReader};
 
@@ -13,12 +13,43 @@ pub enum MetadataValue {
     Float(f64),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub enum Constraint {
     #[serde(rename = "transversal")]
     Transversal { topics: Vec<u32> },
     #[serde(rename = "partition")]
     Partition { categories: HashMap<String, u32> },
+}
+
+impl Constraint {
+    pub fn is_compatible_with(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::Transversal {
+                    topics: topics_self,
+                },
+                Self::Transversal {
+                    topics: topics_other,
+                },
+            ) => topics_self
+                .iter()
+                .all(|t_self| topics_other.contains(t_self)),
+            (
+                Self::Partition {
+                    categories: categories_self,
+                },
+                Self::Partition {
+                    categories: categories_other,
+                },
+            ) => categories_self.iter().all(|(cat, limit)| {
+                categories_other
+                    .get(cat)
+                    .map(|limit_other| limit <= limit_other)
+                    .unwrap_or(false)
+            }),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
