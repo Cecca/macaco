@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::BTreeSet, collections::HashMap, marker::PhantomData};
 
 pub trait Matroid<T> {
     fn is_independent(&self, set: &[&T]) -> bool;
@@ -148,7 +148,19 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
     let mut independent_set = vec![false; set.len()];
     let mut last = 0;
     while augment(set, m1, m2, &mut independent_set) {
+        // All of the statements in this while body are for debug purposes
         let current_size = independent_set.iter().filter(|included| **included).count();
+        #[cfg(debug_assertions)]
+        {
+            let current_items: Vec<&V> = independent_set
+                .iter()
+                .enumerate()
+                .filter(|(_, included)| **included)
+                .map(|(i, _)| &set[i])
+                .collect();
+            debug_assert!(m1.is_independent(&current_items));
+            debug_assert!(m2.is_independent(&current_items));
+        }
         println!(
             "      Independent set of size {} and weight {}",
             current_size,
@@ -177,7 +189,6 @@ fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     m2: &M2,
     independent_set: &mut [bool],
 ) -> bool {
-    let n = set.len();
     let graph = ExchangeGraph::new(set, m1, m2, independent_set);
 
     let mut independent_set_elements: Vec<&V> = independent_set
@@ -186,6 +197,8 @@ fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .filter(|p| *p.0)
         .map(|p| p.1)
         .collect();
+    debug_assert!(m1.is_independent(&independent_set_elements));
+    debug_assert!(m2.is_independent(&independent_set_elements));
 
     // define the source and destination sets.
     // When the input independent set is empty, it makes sense that the sets
@@ -225,7 +238,9 @@ fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     {
         println!("     Augmenting path: {:?}", path);
         for i in path {
-            independent_set[i] = true;
+            // Computing the xor on the flags array is equivalent to computing the
+            // symmetric difference of the path and the independent set
+            independent_set[i] ^= true;
         }
         true
     } else {

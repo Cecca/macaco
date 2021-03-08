@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use kcmkc_base::types::Distance;
 use kcmkc_base::{
     algorithm::Algorithm,
@@ -6,7 +8,7 @@ use kcmkc_base::{
 
 pub struct ChenEtAl;
 
-impl<T: Distance + Clone> Algorithm<T> for ChenEtAl {
+impl<T: Distance + Clone + Debug> Algorithm<T> for ChenEtAl {
     fn version(&self) -> u32 {
         1
     }
@@ -126,7 +128,7 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
     })
 }
 
-pub fn robust_matroid_center<'a, V: Distance + Clone>(
+pub fn robust_matroid_center<'a, V: Distance + Clone + Debug>(
     points: &'a [V],
     matroid: Box<dyn Matroid<V>>,
     p: usize,
@@ -137,8 +139,11 @@ pub fn robust_matroid_center<'a, V: Distance + Clone>(
 ) {
     let distances = DistanceMatrix::new(points);
 
-    for r in distances.iter_distances().skip(2) {
-        //}.skip_while(|f| *f < 0.01) {
+    for r in distances
+        .iter_distances()
+        // .skip(2) {
+        .skip_while(|f| *f < 0.0408)
+    {
         println!("Iteration with radius {}", r);
         match run_robust_matroid_center(points, &matroid, r, p, &distances) {
             Ok(triplet) => {
@@ -152,7 +157,7 @@ pub fn robust_matroid_center<'a, V: Distance + Clone>(
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
 /// iterator of optional assignments.
-fn run_robust_matroid_center<'a, V: Distance + Clone>(
+fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
     points: &'a [V],
     matroid: &Box<dyn Matroid<V>>,
     r: f32,
@@ -226,12 +231,15 @@ fn run_robust_matroid_center<'a, V: Distance + Clone>(
     let m2 = DiskMatroid2;
     let solution: Vec<&(usize, &Vec<usize>)> =
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();
+    assert!(m1.is_independent(&solution));
+    assert!(m2.is_independent(&solution));
     let covered_nodes: usize = solution.iter().map(|p| p.1.len()).sum();
     if covered_nodes < p {
         println!("    Covered nodes {} < {}", covered_nodes, p);
         return Err(covered_nodes);
     }
 
+    assert!(covered_nodes <= points.len());
     let uncovered_nodes = points.len() - covered_nodes;
     let centers: Vec<&V> = solution.iter().map(|p| &points[p.0]).collect();
     let mut assignments = vec![None; points.len()];

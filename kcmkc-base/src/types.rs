@@ -162,3 +162,44 @@ impl PartitionMatroidElement for Song {
         &self.genre
     }
 }
+
+#[test]
+fn test_wiki_matroid() {
+    let set = vec![
+        WikiPage {
+            id: 1,
+            topics: vec![9, 65, 70, 84, 97],
+            title: String::from("a"),
+            vector: Vector::new(vec![1.0]),
+        },
+        WikiPage {
+            id: 2,
+            topics: vec![8, 27, 45],
+            title: String::from("b"),
+            vector: Vector::new(vec![1.0]),
+        },
+        WikiPage {
+            id: 3,
+            topics: vec![1, 44, 97],
+            title: String::from("c"),
+            vector: Vector::new(vec![1.0]),
+        },
+        WikiPage {
+            id: 4,
+            topics: vec![9],
+            title: String::from("d"),
+            vector: Vector::new(vec![1.0]),
+        },
+        WikiPage {
+            id: 5,
+            topics: vec![0, 81],
+            title: String::from("e"),
+            vector: Vector::new(vec![1.0]),
+        },
+    ];
+
+    let matroid: TransveralMatroid<WikiPage> =
+        TransveralMatroid::new(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    // assert!(matroid.is_independent(&set));
+}
