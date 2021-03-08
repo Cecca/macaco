@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::fmt::Debug;
 
 use kcmkc_base::types::Distance;
@@ -74,6 +75,7 @@ impl DistanceMatrix {
     /// Iterates through the distances in the matrix in sorted order.
     fn iter_distances(&self) -> impl Iterator<Item = f32> {
         use std::collections::BTreeSet;
+        println!("Sorting distances to get candidate radii");
         let dists: BTreeSet<OrderedF32> = self
             .distances
             .iter()
@@ -139,7 +141,7 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + Debug>(
 ) {
     let distances = DistanceMatrix::new(points);
 
-    let distinct_distances: Vec<f32> = distances.iter_distances().skip(10).collect();
+    let distinct_distances: Vec<f32> = distances.iter_distances().skip(100).collect();
     let mut i = 1;
 
     while i < distinct_distances.len() {
@@ -185,8 +187,10 @@ fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
 
     println!("  Build disks");
     while n_uncovered > 0 {
+        println!("    Uncovered: {}", n_uncovered);
         // Get the center covering the most uncovered points
         let c = (0..n)
+            .into_par_iter()
             .max_by_key(|i| {
                 distances
                     .disk(*i, r)

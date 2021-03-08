@@ -203,6 +203,7 @@ dependencies = [
  "kcmkc-base",
  "rand",
  "rand_xorshift",
+ "rayon",
 ]
 
 [[package]]
