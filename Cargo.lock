@@ -199,6 +199,7 @@ dependencies = [
 name = "kcmkc-sequential"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "kcmkc-base",
  "rand",
  "rand_xorshift",

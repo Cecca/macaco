@@ -1,5 +1,37 @@
-use kcmkc_base::matroid::{weighted_matroid_intersection, Matroid, Weight};
 use kcmkc_base::types::Distance;
+use kcmkc_base::{
+    algorithm::Algorithm,
+    matroid::{weighted_matroid_intersection, Matroid, Weight},
+};
+
+pub struct ChenEtAl;
+
+impl<T: Distance + Clone> Algorithm<T> for ChenEtAl {
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn name(&self) -> String {
+        String::from("ChenEtAl")
+    }
+
+    fn parameters(&self) -> String {
+        String::new()
+    }
+
+    fn run<'a>(
+        &mut self,
+        dataset: &'a [T],
+        matroid: Box<dyn Matroid<T>>,
+        p: usize,
+    ) -> anyhow::Result<(
+        Vec<&'a T>,
+        usize,
+        Box<dyn Iterator<Item = (&'a T, Option<(usize, f32)>)> + 'a>,
+    )> {
+        Ok(robust_matroid_center(dataset, matroid, p))
+    }
+}
 
 /// Representation of a symmetric matrix as a _lower_ triangular matrix, to
 /// save space
