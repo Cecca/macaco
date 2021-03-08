@@ -156,3 +156,9 @@ impl Distance for Song {
         self.vector.cosine_distance(&other.vector)
     }
 }
+
+impl PartitionMatroidElement for Song {
+    fn category<'a>(&'a self) -> &'a String {
+        &self.genre
+    }
+}

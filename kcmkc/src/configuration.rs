@@ -70,13 +70,13 @@ impl BuildConstraint for WikiPage {
     }
 }
 
-// impl BuildConstraint for Song {
-//     fn build_constaint(conf: &Configuration) -> Box<dyn Matroid<Self>> {
-//         match &conf.constraint {
-//             Constraint::Partition { categories } => {
-//                 Box::new(PartitionMatroid::(categories.clone()))
-//             }
-//             _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
-//         }
-//     }
-// }
+impl BuildConstraint for Song {
+    fn build_constaint(conf: &Configuration) -> Box<dyn Matroid<Self>> {
+        match &conf.constraint {
+            Constraint::Partition { categories } => {
+                Box::new(PartitionMatroid::new(categories.clone()))
+            }
+            _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
+        }
+    }
+}

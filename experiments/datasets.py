@@ -439,11 +439,14 @@ for size in [100000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
     )
+    DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
+        base=DATASETS["MusixMatch"], size=size, seed=12341245
+    )
 
 if __name__ == "__main__":
     from pprint import pprint
 
-    dataset = DATASETS["wiki-d50-c100-s10000"]
+    dataset = DATASETS["MusixMatch-s10000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_path())

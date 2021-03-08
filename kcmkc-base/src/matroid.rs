@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
 
 pub trait Matroid<T>
 where
@@ -98,18 +98,20 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
 
 /// Element of a set on which we can impose a partition matroid
 pub trait PartitionMatroidElement: Clone {
-    fn category<'a>(&'a self) -> usize;
+    fn category<'a>(&'a self) -> &'a String;
 }
 
 pub struct PartitionMatroid<T: PartitionMatroidElement> {
-    // TODO: change type to hashmap between strings and counts
-    categories: Vec<usize>,
+    categories: HashMap<String, u32>,
     _marker: PhantomData<T>,
 }
 
 impl<T: PartitionMatroidElement> PartitionMatroid<T> {
-    pub fn new(categories: Vec<usize>) -> Self {
-        todo!()
+    pub fn new(categories: HashMap<String, u32>) -> Self {
+        Self {
+            categories,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -118,10 +120,13 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
         let mut counts = self.categories.clone();
         for x in set {
             let cat = x.category();
-            if counts[cat] == 0 {
+            // Categories not explicitly mentioned in the matroid
+            // default to a limit of 0. This makes for a less verbose specification
+            // of constraints
+            if counts.get(cat).unwrap_or(&0) == &0 {
                 return false;
             } else {
-                counts[cat] -= 1;
+                counts.get_mut(cat).map(|c| *c -= 1);
             }
         }
         true

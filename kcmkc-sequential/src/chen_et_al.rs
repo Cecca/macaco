@@ -105,7 +105,8 @@ pub fn robust_matroid_center<'a, V: Distance + Clone>(
 ) {
     let distances = DistanceMatrix::new(points);
 
-    for r in distances.iter_distances().skip_while(|f| *f < 0.1) {
+    for r in distances.iter_distances().skip(2) {
+        //}.skip_while(|f| *f < 0.01) {
         println!("Iteration with radius {}", r);
         match run_robust_matroid_center(points, &matroid, r, p, &distances) {
             Ok(triplet) => {

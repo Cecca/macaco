@@ -1,6 +1,9 @@
 {
+  "outliers": {
+    "Percentage": 0.1
+  },
   "algorithm": "ChenEtAl",
-  "dataset": ".datasets/mxm/mxm-v1.msgpack.gz",
+  "dataset": ".datasets/sampled/MusixMatch--sample10000-v1.msgpack.gz",
   "constraint": {
     "partition": {
       "categories": {

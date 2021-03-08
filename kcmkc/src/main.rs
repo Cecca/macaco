@@ -56,9 +56,8 @@ fn main() -> Result<()> {
             run(&config, matroid)
         }
         Datatype::Song => {
-            // let matroid = Song::build_constaint(&config);
-            // run(&config, matroid)
-            todo!()
+            let matroid = Song::build_constaint(&config);
+            run(&config, matroid)
         }
     }?;
 
