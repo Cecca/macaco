@@ -1,10 +1,7 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-pub trait Matroid<T>
-where
-    T: Clone,
-{
-    fn is_independent(&self, set: &[T]) -> bool;
+pub trait Matroid<T> {
+    fn is_independent(&self, set: &[&T]) -> bool;
 
     /// Implementation of the (unweighted) greedy algorithm
     /// for the maximal independent set:
@@ -12,11 +9,11 @@ where
     ///  - start with an empty set
     ///  - while there are elements to add
     ///    - add the next element to the set if this keeps the set independent
-    fn maximal_independent_set(&self, set: &[T]) -> Vec<T> {
+    fn maximal_independent_set<'a>(&self, set: &[&'a T]) -> Vec<&'a T> {
         let mut is = Vec::new();
 
         for x in set {
-            is.push(x.clone());
+            is.push(*x);
             if !self.is_independent(&is) {
                 is.pop();
             }
@@ -27,7 +24,7 @@ where
 }
 
 /// Element of a set on which we can impose a transversal matroid
-pub trait TransveralMatroidElement: Clone {
+pub trait TransveralMatroidElement {
     fn topics<'a>(&'a self) -> Box<dyn Iterator<Item = u32> + 'a>;
 }
 
@@ -37,7 +34,7 @@ pub struct TransveralMatroid<T> {
 }
 
 impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
-    fn is_independent(&self, set: &[T]) -> bool {
+    fn is_independent(&self, set: &[&T]) -> bool {
         set.len() < self.topics.len() && self.maximum_matching(set).count() == set.len()
     }
 }
@@ -52,7 +49,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
 
     // Return the indices of the elements in `set` that form a maximum matching
     // wrt the ground topics
-    fn maximum_matching(&self, set: &[T]) -> impl Iterator<Item = usize> {
+    fn maximum_matching(&self, set: &[&T]) -> impl Iterator<Item = usize> {
         let mut visited = vec![false; self.topics.len()];
         let mut representatives = vec![None; self.topics.len()];
 
@@ -70,7 +67,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
 
     fn find_matching_for(
         &self,
-        set: &[T],
+        set: &[&T],
         idx: usize,
         representatives: &mut [Option<usize>],
         visited: &mut [bool],
@@ -97,7 +94,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
 }
 
 /// Element of a set on which we can impose a partition matroid
-pub trait PartitionMatroidElement: Clone {
+pub trait PartitionMatroidElement {
     fn category<'a>(&'a self) -> &'a String;
 }
 
@@ -116,7 +113,7 @@ impl<T: PartitionMatroidElement> PartitionMatroid<T> {
 }
 
 impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
-    fn is_independent(&self, set: &[T]) -> bool {
+    fn is_independent(&self, set: &[&T]) -> bool {
         let mut counts = self.categories.clone();
         for x in set {
             let cat = x.category();
@@ -143,7 +140,7 @@ impl Weight for (usize, &Vec<usize>) {
     }
 }
 
-pub fn weighted_matroid_intersection<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
+pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     set: &'a [V],
     m1: &M1,
     m2: &M2,
@@ -174,7 +171,7 @@ pub fn weighted_matroid_intersection<'a, V: Clone + Weight, M1: Matroid<V>, M2: 
 
 /// Augment the given independent set in place. If there is no common independent set larger than the given one,
 /// return false, otherwise return true
-fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
+fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     set: &[V],
     m1: &M1,
     m2: &M2,
@@ -183,11 +180,11 @@ fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
     let n = set.len();
     let graph = ExchangeGraph::new(set, m1, m2, independent_set);
 
-    let mut independent_set_elements: Vec<V> = independent_set
+    let mut independent_set_elements: Vec<&V> = independent_set
         .iter()
         .zip(set.iter())
         .filter(|p| *p.0)
-        .map(|p| p.1.clone())
+        .map(|p| p.1)
         .collect();
 
     // define the source and destination sets.
@@ -198,7 +195,7 @@ fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .enumerate()
         .filter(|(i, included)| {
             !**included && {
-                independent_set_elements.push(set[*i].clone());
+                independent_set_elements.push(&set[*i]);
                 let b = m1.is_independent(&independent_set_elements);
                 independent_set_elements.pop();
                 b
@@ -211,7 +208,7 @@ fn augment<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .enumerate()
         .filter(|(i, included)| {
             !**included && {
-                independent_set_elements.push(set[*i].clone());
+                independent_set_elements.push(&set[*i]);
                 let b = m2.is_independent(&independent_set_elements);
                 independent_set_elements.pop();
                 b
@@ -246,7 +243,7 @@ struct ExchangeGraph {
 }
 
 impl ExchangeGraph {
-    fn new<'a, V: Clone + Weight, M1: Matroid<V>, M2: Matroid<V>>(
+    fn new<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         set: &[V],
         m1: &M1,
         m2: &M2,
@@ -269,14 +266,14 @@ impl ExchangeGraph {
         // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without J
-            let mut scratch: Vec<V> = independent_set
+            let mut scratch: Vec<&V> = independent_set
                 .iter()
                 .enumerate()
                 .filter(|p| *p.1 && p.0 != y)
-                .map(|p| set[p.0].clone())
+                .map(|p| &set[p.0])
                 .collect();
             for (x, _) in independent_set.iter().enumerate().filter(|p| !p.1) {
-                scratch.push(set[x].clone());
+                scratch.push(&set[x]);
                 if m1.is_independent(&scratch) {
                     edges.push((y, x));
                 }

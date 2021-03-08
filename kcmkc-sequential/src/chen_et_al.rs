@@ -230,14 +230,14 @@ impl<'a, T: Clone> DiskMatroid1<'a, T> {
 }
 
 impl<'a, T: Clone> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T> {
-    fn is_independent(&self, set: &[(usize, &Vec<usize>)]) -> bool {
+    fn is_independent(&self, set: &[&(usize, &Vec<usize>)]) -> bool {
         // First, we need to check if the identifiers are all distinct
         let ids: std::collections::BTreeSet<usize> = set.iter().map(|p| p.0).collect();
         if ids.len() != set.len() {
             return false;
         }
 
-        let elements_set: Vec<T> = set.iter().map(|p| self.base_set[p.0].clone()).collect();
+        let elements_set: Vec<&T> = set.iter().map(|p| &self.base_set[p.0]).collect();
         self.inner.is_independent(&elements_set)
     }
 }
@@ -245,7 +245,7 @@ impl<'a, T: Clone> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T> {
 struct DiskMatroid2;
 
 impl Matroid<(usize, &Vec<usize>)> for DiskMatroid2 {
-    fn is_independent(&self, set: &[(usize, &Vec<usize>)]) -> bool {
+    fn is_independent(&self, set: &[&(usize, &Vec<usize>)]) -> bool {
         let disks: std::collections::BTreeSet<&Vec<usize>> = set.iter().map(|p| p.1).collect();
         disks.len() == set.len()
     }
