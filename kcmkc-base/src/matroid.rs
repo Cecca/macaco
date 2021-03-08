@@ -189,7 +189,7 @@ fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     m2: &M2,
     independent_set: &mut [bool],
 ) -> bool {
-    let graph = ExchangeGraph::new(set, m1, m2, independent_set);
+    let mut graph = ExchangeGraph::new(set, m1, m2, independent_set);
 
     let mut independent_set_elements: Vec<&V> = independent_set
         .iter()
@@ -251,6 +251,8 @@ fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
 struct ExchangeGraph {
     length: Vec<i32>,
     edges: Vec<(usize, usize)>,
+    distance: Vec<Option<i32>>,
+    predecessor: Vec<Option<usize>>,
 }
 
 impl ExchangeGraph {
@@ -260,6 +262,7 @@ impl ExchangeGraph {
         m2: &M2,
         independent_set: &mut [bool],
     ) -> Self {
+        let n = set.len();
         let length = set
             .iter()
             .zip(independent_set.iter())
@@ -296,7 +299,29 @@ impl ExchangeGraph {
         }
         edges.sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
 
-        Self { length, edges }
+        let distance: Vec<Option<i32>> = vec![None; n];
+        let predecessor: Vec<Option<usize>> = vec![None; n];
+
+        Self {
+            length,
+            edges,
+            distance,
+            predecessor,
+        }
+    }
+
+    /// Iterator on the paths reaching `i`
+    fn iter_path<'a>(&'a self, i: usize) -> impl Iterator<Item = usize> + 'a {
+        let mut current = Some(i);
+        std::iter::from_fn(move || {
+            if let Some(i) = current {
+                let toret = current;
+                current = self.predecessor[i];
+                toret
+            } else {
+                None
+            }
+        })
     }
 
     /// return the shortest of all the shortest paths starting from `src`
@@ -304,29 +329,31 @@ impl ExchangeGraph {
     /// Ties are broken by picking the one with fewest edges.
     ///
     /// If no path exist, then None is returned
-    fn bellman_ford(&self, src: usize, dsts: &[usize]) -> Option<(i32, Vec<usize>)> {
+    fn bellman_ford(&mut self, src: usize, dsts: &[usize]) -> Option<(i32, Vec<usize>)> {
         let n = self.length.len();
-        let mut distance: Vec<Option<i32>> = vec![None; n];
-        let mut predecessor: Vec<Option<usize>> = vec![None; n];
 
-        distance[src].replace(self.length[src]);
+        // reset the support arrays
+        self.distance.fill(None);
+        self.predecessor.fill(None);
+
+        self.distance[src].replace(self.length[src]);
 
         // compute shortest paths
         for _ in 0..n {
             let mut updated = false;
             for &(u, v) in &self.edges {
                 // edge relaxation
-                if let Some(du) = distance[u] {
-                    if let Some(dv) = distance[v] {
+                if let Some(du) = self.distance[u] {
+                    if let Some(dv) = self.distance[v] {
                         if du + self.length[v] < dv {
                             updated = true;
-                            distance[v].replace(du + self.length[v]);
-                            predecessor[v].replace(u);
+                            self.distance[v].replace(du + self.length[v]);
+                            self.predecessor[v].replace(u);
                         }
                     } else {
                         updated = true;
-                        distance[v].replace(du + self.length[v]);
-                        predecessor[v].replace(u);
+                        self.distance[v].replace(du + self.length[v]);
+                        self.predecessor[v].replace(u);
                     }
                 }
             }
@@ -336,25 +363,11 @@ impl ExchangeGraph {
             }
         }
 
-        // Iterator on the paths reaching `i`
-        let iter_path = |i: usize| {
-            let mut current = Some(i);
-            std::iter::from_fn(move || {
-                if let Some(i) = current {
-                    let toret = current;
-                    current = predecessor[i];
-                    toret
-                } else {
-                    None
-                }
-            })
-        };
-
         // Check the lengths of the paths
         #[cfg(debug_assertions)]
         for dst in dsts.iter() {
-            if let Some(d) = distance[*dst] {
-                let path: Vec<usize> = iter_path.clone()(*dst).collect();
+            if let Some(d) = self.distance[*dst] {
+                let path: Vec<usize> = self.iter_path(*dst).collect();
                 let weights: Vec<i32> = path.iter().map(|v| self.length[*v]).collect();
                 let w = weights.iter().sum::<i32>();
                 assert!(w == d);
@@ -362,18 +375,20 @@ impl ExchangeGraph {
         }
 
         // using flat map we filter out unreachable destinations
-        if let Some(shortest_dist) = dsts.iter().flat_map(|i| distance[*i]).min() {
+        if let Some(shortest_dist) = dsts.iter().flat_map(|i| self.distance[*i]).min() {
             // Look, among the destinations
             dsts.iter()
                 // for the ones at minimum distance
-                .filter(|i| distance[**i].is_some() && distance[**i].unwrap() == shortest_dist)
+                .filter(|i| {
+                    self.distance[**i].is_some() && self.distance[**i].unwrap() == shortest_dist
+                })
                 // and reached with minimum number of steps
-                .min_by_key(|i| iter_path.clone()(**i).count())
+                .min_by_key(|i| self.iter_path(**i).count())
                 // for that one, materialize the path
                 .map(|i| {
-                    let path: Vec<usize> = iter_path.clone()(*i).collect();
+                    let path: Vec<usize> = self.iter_path(*i).collect();
                     assert!(path.len() > 0);
-                    (distance[*i].unwrap(), path)
+                    (self.distance[*i].unwrap(), path)
                 })
         } else {
             None
