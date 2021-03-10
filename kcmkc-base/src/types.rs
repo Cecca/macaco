@@ -1,7 +1,6 @@
 use crate::matroid::*;
 use abomonation_derive::Abomonation;
 use serde::Deserialize;
-use std::marker::PhantomData;
 
 /// A vector in a d-dimensional space.
 ///
@@ -115,6 +114,10 @@ pub trait Distance {
     fn distance(&self, other: &Self) -> f32;
 }
 
+fn unit_weight() -> u32 {
+    1
+}
+
 /// A page of wikipedia, represented as a d-dimensional vector,
 /// with a set of topics.
 #[derive(Deserialize, Debug, Abomonation, Clone)]
@@ -123,6 +126,8 @@ pub struct WikiPage {
     pub title: String,
     pub vector: Vector,
     pub topics: Vec<u32>,
+    #[serde(skip, default = "unit_weight")]
+    pub weight: u32,
 }
 
 impl WikiPage {
@@ -137,11 +142,19 @@ impl TransveralMatroidElement for WikiPage {
     }
 }
 
+impl Weight for WikiPage {
+    fn weight(&self) -> u32 {
+        self.weight
+    }
+}
+
 #[derive(Deserialize, Debug, Abomonation, Clone)]
 pub struct Song {
     pub track_id: String,
     pub genre: String,
     pub vector: SparseVector,
+    #[serde(skip, default = "unit_weight")]
+    pub weight: u32,
 }
 
 impl Distance for WikiPage {
@@ -162,43 +175,8 @@ impl PartitionMatroidElement for Song {
     }
 }
 
-#[test]
-fn test_wiki_matroid() {
-    let set = vec![
-        WikiPage {
-            id: 1,
-            topics: vec![9, 65, 70, 84, 97],
-            title: String::from("a"),
-            vector: Vector::new(vec![1.0]),
-        },
-        WikiPage {
-            id: 2,
-            topics: vec![8, 27, 45],
-            title: String::from("b"),
-            vector: Vector::new(vec![1.0]),
-        },
-        WikiPage {
-            id: 3,
-            topics: vec![1, 44, 97],
-            title: String::from("c"),
-            vector: Vector::new(vec![1.0]),
-        },
-        WikiPage {
-            id: 4,
-            topics: vec![9],
-            title: String::from("d"),
-            vector: Vector::new(vec![1.0]),
-        },
-        WikiPage {
-            id: 5,
-            topics: vec![0, 81],
-            title: String::from("e"),
-            vector: Vector::new(vec![1.0]),
-        },
-    ];
-
-    let matroid: TransveralMatroid<WikiPage> =
-        TransveralMatroid::new(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-
-    // assert!(matroid.is_independent(&set));
+impl Weight for Song {
+    fn weight(&self) -> u32 {
+        self.weight
+    }
 }

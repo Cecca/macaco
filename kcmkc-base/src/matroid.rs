@@ -3,6 +3,8 @@ use std::{collections::HashMap, marker::PhantomData};
 pub trait Matroid<T> {
     fn is_independent(&self, set: &[&T]) -> bool;
 
+    fn rank(&self) -> usize;
+
     /// Implementation of the (unweighted) greedy algorithm
     /// for the maximal independent set:
     ///
@@ -34,6 +36,10 @@ pub struct TransveralMatroid<T> {
 }
 
 impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
+    fn rank(&self) -> usize {
+        self.topics.len()
+    }
+
     fn is_independent(&self, set: &[&T]) -> bool {
         set.len() < self.topics.len() && self.maximum_matching(set).count() == set.len()
     }
@@ -113,6 +119,10 @@ impl<T: PartitionMatroidElement> PartitionMatroid<T> {
 }
 
 impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
+    fn rank(&self) -> usize {
+        self.categories.values().sum::<u32>() as usize
+    }
+
     fn is_independent(&self, set: &[&T]) -> bool {
         let mut counts = self.categories.clone();
         for x in set {
@@ -132,6 +142,10 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
 
 pub trait Weight {
     fn weight(&self) -> u32;
+}
+
+pub trait SetWeight {
+    fn set_weight(&mut self, w: u32);
 }
 
 impl Weight for (usize, &Vec<usize>) {

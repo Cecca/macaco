@@ -120,7 +120,7 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
     })
 }
 
-pub fn robust_matroid_center<'a, V: Distance + Clone + Debug>(
+pub fn robust_matroid_center<'a, V: Distance + Clone>(
     points: &'a [V],
     matroid: Box<dyn Matroid<V>>,
     p: usize,
@@ -150,7 +150,7 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + Debug>(
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
 /// iterator of optional assignments.
-fn run_robust_matroid_center<'a, V: Distance + Clone + Debug>(
+fn run_robust_matroid_center<'a, V: Distance + Clone>(
     points: &'a [V],
     matroid: &Box<dyn Matroid<V>>,
     r: f32,
@@ -275,6 +275,10 @@ impl<'a, T: Clone> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T> {
         let elements_set: Vec<&T> = set.iter().map(|p| &self.base_set[p.0]).collect();
         self.inner.is_independent(&elements_set)
     }
+
+    fn rank(&self) -> usize {
+        self.inner.rank()
+    }
 }
 
 struct DiskMatroid2;
@@ -283,5 +287,9 @@ impl Matroid<(usize, &Vec<usize>)> for DiskMatroid2 {
     fn is_independent(&self, set: &[&(usize, &Vec<usize>)]) -> bool {
         let disks: std::collections::BTreeSet<&Vec<usize>> = set.iter().map(|p| p.1).collect();
         disks.len() == set.len()
+    }
+
+    fn rank(&self) -> usize {
+        unimplemented!()
     }
 }

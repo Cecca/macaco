@@ -7,7 +7,7 @@ use kcmkc_base::types::Distance;
 /// item is a reference to the point, the second is the index of the cluster
 /// center (in the centers vector), and the third is the distance
 /// between the point and its center.
-pub fn kcenter<'a, V: Distance + std::fmt::Debug>(
+pub fn kcenter<'a, V: Distance>(
     points: &'a [V],
     k: usize,
 ) -> (
