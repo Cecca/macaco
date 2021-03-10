@@ -74,7 +74,10 @@ impl Configuration {
         let data_meta = Dataset::new(&self.dataset).metadata()?;
         sha.input(format!(
             "{}{}{:?}{:?}",
-            data_meta.name, data_meta.version, data_meta.parameters, data_meta.constraint
+            data_meta.name,
+            data_meta.version,
+            data_meta.parameters_string(),
+            data_meta.constraint
         ));
         sha.input(format!("{:?}", self.constraint.describe()));
         match self.datatype()? {
