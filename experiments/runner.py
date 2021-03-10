@@ -1,6 +1,8 @@
 import json
 import base64
 import subprocess
+import sys
+from datasets import DATASETS
 
 
 EXECUTABLE = "target/release/kcmkc"
@@ -11,11 +13,20 @@ def run(configuration):
     subprocess.run([EXECUTABLE, conf_str])
 
 
-run(
-    {
-        "outliers": {"Fixed": 10},
-        "algorithm": {"Random": {"seed": 2145}},
-        "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
-        "constraint": {"transversal": {"topics": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}},
-    }
-)
+def run_random():
+    for dataset in ["wiki-d50-c100", "wiki-d50-c100-s10000"]:
+        for frac_outlier in [0.01, 0.1]:
+            for seed in [2509867293, 356235, 256, 23561, 14646, 14656, 3562456]:
+                run(
+                    {
+                        "outliers": {"Percentage": frac_outlier},
+                        "algorithm": {"Random": {"seed": seed}},
+                        "dataset": DATASETS[dataset].get_path(),
+                        "constraint": {"transversal": {"topics": list(range(100))}},
+                    }
+                )
+
+
+if __name__ == "__main__":
+    subprocess.run(["cargo", "build", "--release"])
+    run_random()
