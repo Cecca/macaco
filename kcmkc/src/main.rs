@@ -1,11 +1,10 @@
 mod configuration;
+mod reporter;
 
 use anyhow::{Context, Result};
 use configuration::*;
-use kcmkc_base::{
-    self, algorithm::Algorithm, dataset::Dataset, dataset::Datatype, matroid::Matroid, types::*,
-};
-use kcmkc_sequential::{chen_et_al::ChenEtAl, random::RandomClustering};
+use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
+use reporter::Reporter;
 use serde::Deserialize;
 use std::{fmt::Debug, time::Instant};
 
@@ -13,6 +12,12 @@ fn run<V: Distance + Clone + Debug + Configure>(config: &Configuration) -> Resul
 where
     for<'de> V: Deserialize<'de>,
 {
+    let mut reporter = Reporter::from_config(config.clone());
+    if let Some(id) = reporter.already_run()? {
+        println!("Experiment already run ({})", id);
+        return Ok(());
+    }
+
     let matroid = V::configure_constraint(&config);
     let mut algorithm = V::configure_algorithm(&config);
 
@@ -39,6 +44,9 @@ where
         uncovered,
         radius
     );
+
+    reporter.set_outcome(elapsed, radius, centers.len() as u32, uncovered as u32);
+    reporter.save()?;
 
     Ok(())
 }

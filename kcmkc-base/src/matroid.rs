@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, marker::PhantomData};
 
 pub trait Matroid<T> {
     fn is_independent(&self, set: &[&T]) -> bool;

@@ -13,7 +13,17 @@ pub enum MetadataValue {
     Float(f64),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+impl MetadataValue {
+    fn as_string(&self) -> String {
+        match self {
+            Self::String(s) => s.clone(),
+            Self::Integer(i) => format!("{}", i),
+            Self::Float(f) => format!("{}", f),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Constraint {
     #[serde(rename = "transversal")]
     Transversal { topics: Vec<u32> },
@@ -50,6 +60,28 @@ impl Constraint {
             _ => false,
         }
     }
+
+    pub fn describe(&self) -> String {
+        match self {
+            Self::Transversal { topics } => {
+                let mut topics = topics.clone();
+                topics.sort();
+                let topics: Vec<String> = topics.into_iter().map(|x| format!("{}", x)).collect();
+                format!("Transversal({})", topics.join(", "))
+            }
+            Self::Partition { categories } => {
+                let categories: std::collections::BTreeMap<String, String> = categories
+                    .iter()
+                    .map(|(cat, cnt)| (cat.clone(), format!("{}", cnt)))
+                    .collect();
+                let categories: Vec<String> = categories
+                    .iter()
+                    .map(|(cat, cnt)| format!("{}={}", cat, cnt))
+                    .collect();
+                format!("Partition({})", categories.join(", "))
+            }
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -59,6 +91,21 @@ pub struct Metadata {
     pub datatype: Datatype,
     pub constraint: Constraint,
     pub parameters: HashMap<String, MetadataValue>,
+}
+
+impl Metadata {
+    pub fn parameters_string(&self) -> String {
+        let parameters: std::collections::BTreeMap<String, String> = self
+            .parameters
+            .iter()
+            .map(|(k, v)| (k.clone(), v.as_string()))
+            .collect();
+        let parameters: Vec<String> = parameters
+            .iter()
+            .map(|(k, v)| format!("\"{}\": \"{}\"", k, v))
+            .collect();
+        format!("{{ {} }}", parameters.join(", "))
+    }
 }
 
 #[derive(Deserialize, Debug)]
