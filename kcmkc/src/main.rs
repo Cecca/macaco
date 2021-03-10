@@ -52,10 +52,10 @@ where
 }
 
 fn main() -> Result<()> {
-    let config_path = std::env::args()
+    let config_spec = std::env::args()
         .nth(1)
-        .context("provide the path to the configuration file")?;
-    let config = Configuration::load(config_path)?;
+        .context("provide the specification of the configuration, either a file path or a json object encoded as base64")?;
+    let config = Configuration::load(config_spec)?;
 
     match config.datatype()? {
         Datatype::WikiPage => run::<WikiPage>(&config),

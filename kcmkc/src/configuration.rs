@@ -1,3 +1,4 @@
+use base64::decode;
 use kcmkc_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
@@ -45,8 +46,15 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    pub fn load<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let config: Configuration = serde_json::from_reader(std::fs::File::open(path.as_ref())?)?;
+    pub fn load(spec: String) -> anyhow::Result<Self> {
+        let path = PathBuf::from(&spec);
+        let config: Configuration = if path.is_file() {
+            serde_json::from_reader(std::fs::File::open(path)?)?
+        } else {
+            let decoded_str = String::from_utf8(base64::decode(spec)?)?;
+            serde_json::from_str(&decoded_str)?
+        };
+
         // Validate the constraint against the input
         let dataset_meta = Dataset::new(&config.dataset).metadata()?;
         if !config
