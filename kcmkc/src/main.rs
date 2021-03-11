@@ -29,23 +29,18 @@ where
     let outliers = config.outliers.num_outliers(items.len());
     let p = items.len() - outliers;
     let timer = Instant::now();
-    let (centers, uncovered, assignment) = algorithm.run(&items[..], matroid, p)?;
+    let centers = algorithm.run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
-    let radius = assignment
-        .flat_map(|(_, assignment)| assignment.into_iter())
-        .map(|(_, d)| d)
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+    let radius = compute_radius(&items, &centers, p);
     println!(
-        "Found clustering with {} centers in {:?}, with {} uncovered nodes, and radius {}",
+        "Found clustering with {} centers in {:?}, with radius {}",
         centers.len(),
         elapsed,
-        uncovered,
         radius
     );
 
-    reporter.set_outcome(elapsed, radius, centers.len() as u32, uncovered as u32);
+    reporter.set_outcome(elapsed, radius, centers.len() as u32);
     reporter.save()?;
 
     Ok(())
@@ -63,4 +58,8 @@ fn main() -> Result<()> {
     }?;
 
     Ok(())
+}
+
+fn compute_radius<T: Distance>(dataset: &[T], centers: &[T], p: usize) -> f32 {
+    todo!()
 }

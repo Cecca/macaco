@@ -27,12 +27,10 @@ impl<T: Distance + Clone + Debug> Algorithm<T> for ChenEtAl {
         dataset: &'a [T],
         matroid: Box<dyn Matroid<T>>,
         p: usize,
-    ) -> anyhow::Result<(
-        Vec<&'a T>,
-        usize,
-        Box<dyn Iterator<Item = (&'a T, Option<(usize, f32)>)> + 'a>,
-    )> {
-        Ok(robust_matroid_center(dataset, matroid, p))
+    ) -> anyhow::Result<Vec<T>> {
+        let sol = robust_matroid_center(dataset, matroid, p);
+        let sol = sol.0.into_iter().cloned().collect();
+        Ok(sol)
     }
 }
 

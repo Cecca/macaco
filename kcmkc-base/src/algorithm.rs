@@ -9,9 +9,5 @@ pub trait Algorithm<T: Distance + Clone> {
         dataset: &'a [T],
         matroid: Box<dyn Matroid<T>>,
         p: usize,
-    ) -> anyhow::Result<(
-        Vec<&'a T>,
-        usize,
-        Box<dyn Iterator<Item = (&'a T, Option<(usize, f32)>)> + 'a>,
-    )>;
+    ) -> anyhow::Result<Vec<T>>;
 }

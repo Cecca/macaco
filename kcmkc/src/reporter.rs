@@ -14,7 +14,6 @@ struct Outcome {
     pub total_time: Duration,
     pub radius: f32,
     pub num_centers: u32,
-    pub num_outliers: u32,
 }
 
 pub struct Reporter {
@@ -41,18 +40,11 @@ impl Reporter {
         path
     }
 
-    pub fn set_outcome(
-        &mut self,
-        total_time: Duration,
-        radius: f32,
-        num_centers: u32,
-        num_outliers: u32,
-    ) {
+    pub fn set_outcome(&mut self, total_time: Duration, radius: f32, num_centers: u32) {
         self.outcome.replace(Outcome {
             total_time,
             radius,
             num_centers,
-            num_outliers,
         });
     }
 
@@ -105,7 +97,6 @@ impl Reporter {
                     total_time_ms,
                     radius,
                     num_centers,
-                    actual_outliers
                 ) VALUES (
                     :code_version, :date, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -114,7 +105,6 @@ impl Reporter {
                     :total_time_ms,
                     :radius,
                     :num_centers,
-                    :actual_outliers
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
@@ -131,7 +121,6 @@ impl Reporter {
                     ":total_time_ms": outcome.total_time.as_millis() as i64,
                     ":radius": outcome.radius as f64,
                     ":num_centers": outcome.num_centers,
-                    ":actual_outliers": outcome.num_outliers
                 },
             )?;
 

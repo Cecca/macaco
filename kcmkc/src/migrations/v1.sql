@@ -15,8 +15,7 @@ CREATE TABLE result_raw (
     constraint_params TEXT NOT NULL,
     total_time_ms INTEGER NOT NULL,
     radius REAL NOT NULL,
-    num_centers INTEGER NOT NULL,
-    actual_outliers INTEGER NOT NULL
+    num_centers INTEGER NOT NULL
 );
 
 CREATE VIEW recent_algorithm AS
