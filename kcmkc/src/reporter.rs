@@ -96,7 +96,7 @@ impl Reporter {
                     constraint_params,
                     total_time_ms,
                     radius,
-                    num_centers,
+                    num_centers
                 ) VALUES (
                     :code_version, :date, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -104,7 +104,7 @@ impl Reporter {
                     :constraint_params,
                     :total_time_ms,
                     :radius,
-                    :num_centers,
+                    :num_centers
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),

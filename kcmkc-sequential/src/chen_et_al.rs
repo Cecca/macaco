@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use std::fmt::Debug;
 
-use kcmkc_base::types::Distance;
+use kcmkc_base::types::{Distance, OrderedF32};
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
@@ -65,10 +65,10 @@ impl DiskBuilder {
         let dists: BTreeSet<OrderedF32> = self
             .distances
             .iter()
-            .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| OrderedF32(f.1)))
+            .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| f.1.into()))
             .collect();
 
-        dists.into_iter().map(|wrapper| wrapper.0)
+        dists.into_iter().map(|wrapper| wrapper.into())
     }
 
     /// Get the indices of points in the ball of radius `r` around point `i`.
@@ -79,17 +79,6 @@ impl DiskBuilder {
             .iter()
             .take_while(move |(_i, d)| *d <= r)
             .map(|pair| pair.0)
-    }
-}
-
-#[derive(PartialEq, PartialOrd)]
-struct OrderedF32(f32);
-
-impl Eq for OrderedF32 {}
-
-impl Ord for OrderedF32 {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.partial_cmp(&other.0).unwrap()
     }
 }
 

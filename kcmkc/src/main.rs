@@ -6,7 +6,7 @@ use configuration::*;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
 use reporter::Reporter;
 use serde::Deserialize;
-use std::{fmt::Debug, time::Instant};
+use std::{collections::BTreeSet, fmt::Debug, time::Instant};
 
 fn run<V: Distance + Clone + Debug + Configure>(config: &Configuration) -> Result<()>
 where
@@ -61,5 +61,39 @@ fn main() -> Result<()> {
 }
 
 fn compute_radius<T: Distance>(dataset: &[T], centers: &[T], p: usize) -> f32 {
-    todo!()
+    let mut topk = TopK::new(dataset.len() - p);
+    for x in dataset {
+        let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
+        topk.insert(closest);
+    }
+    println!(
+        "The excluded points are at the following distances: {:?}",
+        topk
+    );
+    topk.kth()
+}
+
+#[derive(Debug)]
+struct TopK {
+    k: usize,
+    topk: BTreeSet<OrderedF32>,
+}
+
+impl TopK {
+    fn new(k: usize) -> Self {
+        Self {
+            k,
+            topk: BTreeSet::new(),
+        }
+    }
+    fn insert<I: Into<OrderedF32>>(&mut self, x: I) {
+        self.topk.insert(x.into());
+        if self.topk.len() == self.k {
+            let min = *self.topk.iter().next().unwrap();
+            self.topk.remove(&min);
+        }
+    }
+    fn kth(&self) -> f32 {
+        (*self.topk.iter().next().unwrap()).into()
+    }
 }

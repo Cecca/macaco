@@ -180,3 +180,28 @@ impl Weight for Song {
         self.weight
     }
 }
+
+// Some utility types
+
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
+pub struct OrderedF32(f32);
+
+impl Eq for OrderedF32 {}
+
+impl Ord for OrderedF32 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.partial_cmp(&other.0).unwrap()
+    }
+}
+
+impl Into<OrderedF32> for f32 {
+    fn into(self) -> OrderedF32 {
+        OrderedF32(self)
+    }
+}
+
+impl Into<f32> for OrderedF32 {
+    fn into(self) -> f32 {
+        self.0
+    }
+}
