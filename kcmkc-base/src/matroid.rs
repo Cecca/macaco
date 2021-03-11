@@ -144,10 +144,6 @@ pub trait Weight {
     fn weight(&self) -> u32;
 }
 
-pub trait SetWeight {
-    fn set_weight(&mut self, w: u32);
-}
-
 impl Weight for (usize, &Vec<usize>) {
     fn weight(&self) -> u32 {
         self.1.len() as u32

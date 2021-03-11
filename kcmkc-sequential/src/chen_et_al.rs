@@ -28,9 +28,7 @@ impl<T: Distance + Clone + Debug> Algorithm<T> for ChenEtAl {
         matroid: Box<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
-        let sol = robust_matroid_center(dataset, matroid, p);
-        let sol = sol.0.into_iter().cloned().collect();
-        Ok(sol)
+        Ok(robust_matroid_center(dataset, matroid, p, &UnitWeightMap))
     }
 }
 
@@ -107,15 +105,12 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
     })
 }
 
-pub fn robust_matroid_center<'a, V: Distance + Clone>(
+pub fn robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     points: &'a [V],
     matroid: Box<dyn Matroid<V>>,
     p: usize,
-) -> (
-    Vec<&'a V>,
-    usize,
-    Box<dyn Iterator<Item = (&'a V, Option<(usize, f32)>)> + 'a>,
-) {
+    weight_map: &W,
+) -> Vec<V> {
     let distances = DiskBuilder::new(points);
 
     let distinct_distances: Vec<f32> = distances.iter_distances().skip(100).collect();
@@ -124,9 +119,9 @@ pub fn robust_matroid_center<'a, V: Distance + Clone>(
     while i < distinct_distances.len() {
         let r = distinct_distances[i];
         println!("Iteration with radius {} [i={}]", r, i);
-        match run_robust_matroid_center(points, &matroid, r, p, &distances) {
-            Ok(triplet) => {
-                return triplet;
+        match run_robust_matroid_center(points, &matroid, r, p, &distances, weight_map) {
+            Ok(centers) => {
+                return centers;
             }
             Err(covered) => println!("covered only {} out of {}", covered, p),
         }
@@ -137,20 +132,14 @@ pub fn robust_matroid_center<'a, V: Distance + Clone>(
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
 /// iterator of optional assignments.
-fn run_robust_matroid_center<'a, V: Distance + Clone>(
+fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     points: &'a [V],
     matroid: &Box<dyn Matroid<V>>,
     r: f32,
     p: usize,
     distances: &DiskBuilder,
-) -> Result<
-    (
-        Vec<&'a V>,
-        usize,
-        Box<dyn Iterator<Item = (&'a V, Option<(usize, f32)>)> + 'a>,
-    ),
-    usize,
-> {
+    weight_map: &W,
+) -> Result<Vec<V>, usize> {
     let n = points.len();
     // Mapping between points and the center they are assigned to
     let mut assignment: Vec<Option<usize>> = vec![None; points.len()];
@@ -197,7 +186,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone>(
     println!("    Building vertex disk pairs");
     // Build the candidate center/disk pairs. Disks are references
     // to the original ones, to avoind wasting space by duplicating them
-    let vertex_disk_pairs: Vec<(usize, &Vec<usize>)> = (0..n)
+    let vertex_disk_pairs: Vec<ExpandedDisk<W>> = (0..n)
         .flat_map(|v| {
             let disk: Vec<usize> = distances.disk(v, r).collect();
             centers
@@ -205,39 +194,75 @@ fn run_robust_matroid_center<'a, V: Distance + Clone>(
                 .filter(move |(_, expanded_disk)| {
                     intersection(disk.iter().copied(), expanded_disk.iter().copied()).count() > 0
                 })
-                .map(move |(_, expanded_disk)| (v, expanded_disk))
+                .map(move |(_, expanded_disk)| ExpandedDisk {
+                    center: v,
+                    points: expanded_disk,
+                    weights: weight_map,
+                })
         })
         .collect();
 
     println!("    Compute weighted matroid intersection");
     let m1 = DiskMatroid1::new(&matroid, points);
     let m2 = DiskMatroid2;
-    let solution: Vec<&(usize, &Vec<usize>)> =
+    let solution: Vec<&ExpandedDisk<W>> =
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();
     assert!(m1.is_independent(&solution));
     assert!(m2.is_independent(&solution));
-    let covered_nodes: usize = solution.iter().map(|p| p.1.len()).sum();
+    let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
         println!("    Covered nodes {} < {}", covered_nodes, p);
         return Err(covered_nodes);
     }
 
     assert!(covered_nodes <= points.len());
-    let uncovered_nodes = points.len() - covered_nodes;
-    let centers: Vec<&V> = solution.iter().map(|p| &points[p.0]).collect();
-    let mut assignments = vec![None; points.len()];
-    for (c, cluster) in solution {
-        for p in cluster.iter() {
-            let d = points[*c].distance(&points[*p]);
-            assignments[*p] = Some((*c, d));
-        }
-    }
-    let assignments = assignments
-        .into_iter()
-        .enumerate()
-        .map(move |(i, assignment)| (&points[i], assignment));
+    let centers: Vec<V> = solution
+        .iter()
+        .map(|disk| points[disk.center].clone())
+        .collect();
 
-    Ok((centers, uncovered_nodes, Box::new(assignments)))
+    Ok(centers)
+}
+
+/// Allows to attach arbitrary weights to points of set
+pub trait WeightMap {
+    fn weight_of(&self, i: usize) -> u32;
+}
+
+pub struct UnitWeightMap;
+
+impl WeightMap for UnitWeightMap {
+    fn weight_of(&self, _i: usize) -> u32 {
+        1
+    }
+}
+
+pub struct VecWeightMap {
+    weights: Vec<u32>,
+}
+
+impl WeightMap for VecWeightMap {
+    fn weight_of(&self, i: usize) -> u32 {
+        self.weights[i]
+    }
+}
+
+impl VecWeightMap {
+    pub fn new(weights: Vec<u32>) -> Self {
+        Self { weights }
+    }
+}
+
+struct ExpandedDisk<'a, W: WeightMap> {
+    center: usize,
+    points: &'a Vec<usize>,
+    weights: &'a W,
+}
+
+impl<'a, W: WeightMap> Weight for ExpandedDisk<'a, W> {
+    fn weight(&self) -> u32 {
+        self.points.iter().map(|i| self.weights.weight_of(*i)).sum()
+    }
 }
 
 struct DiskMatroid1<'a, T: Clone> {
@@ -251,15 +276,15 @@ impl<'a, T: Clone> DiskMatroid1<'a, T> {
     }
 }
 
-impl<'a, T: Clone> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T> {
-    fn is_independent(&self, set: &[&(usize, &Vec<usize>)]) -> bool {
+impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'a, T> {
+    fn is_independent(&self, set: &[&ExpandedDisk<W>]) -> bool {
         // First, we need to check if the identifiers are all distinct
-        let ids: std::collections::BTreeSet<usize> = set.iter().map(|p| p.0).collect();
+        let ids: std::collections::BTreeSet<usize> = set.iter().map(|disk| disk.center).collect();
         if ids.len() != set.len() {
             return false;
         }
 
-        let elements_set: Vec<&T> = set.iter().map(|p| &self.base_set[p.0]).collect();
+        let elements_set: Vec<&T> = set.iter().map(|disk| &self.base_set[disk.center]).collect();
         self.inner.is_independent(&elements_set)
     }
 
@@ -270,9 +295,10 @@ impl<'a, T: Clone> Matroid<(usize, &Vec<usize>)> for DiskMatroid1<'a, T> {
 
 struct DiskMatroid2;
 
-impl Matroid<(usize, &Vec<usize>)> for DiskMatroid2 {
-    fn is_independent(&self, set: &[&(usize, &Vec<usize>)]) -> bool {
-        let disks: std::collections::BTreeSet<&Vec<usize>> = set.iter().map(|p| p.1).collect();
+impl<'a, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid2 {
+    fn is_independent(&self, set: &[&ExpandedDisk<W>]) -> bool {
+        let disks: std::collections::BTreeSet<&Vec<usize>> =
+            set.iter().map(|disk| disk.points).collect();
         disks.len() == set.len()
     }
 

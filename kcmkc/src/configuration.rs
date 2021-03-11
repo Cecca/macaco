@@ -5,7 +5,11 @@ use kcmkc_base::{
     matroid::{Matroid, PartitionMatroid, TransveralMatroid},
     types::{Song, WikiPage},
 };
-use kcmkc_sequential::{chen_et_al::ChenEtAl, random::RandomClustering};
+use kcmkc_sequential::{
+    chen_et_al::ChenEtAl,
+    random::RandomClustering,
+    seq_coreset::{self, SeqCoreset},
+};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -13,6 +17,7 @@ use std::path::{Path, PathBuf};
 pub enum AlgorithmConfig {
     Random { seed: u64 },
     ChenEtAl,
+    SeqCoreset { epsilon: f32 },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -129,6 +134,7 @@ impl Configure for WikiPage {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::SeqCoreset { epsilon } => Box::new(SeqCoreset::new(epsilon)),
         }
     }
 }
@@ -146,6 +152,7 @@ impl Configure for Song {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::SeqCoreset { epsilon } => Box::new(SeqCoreset::new(epsilon)),
         }
     }
 }
