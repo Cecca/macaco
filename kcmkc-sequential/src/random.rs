@@ -39,7 +39,7 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
 fn random_matroid_center<'a, V: Distance + Clone>(
     points: &'a [V],
     matroid: Box<dyn Matroid<V>>,
-    p: usize,
+    _p: usize,
     seed: u64,
 ) -> Vec<&'a V> {
     use std::iter::FromIterator;

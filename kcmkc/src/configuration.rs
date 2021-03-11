@@ -1,4 +1,4 @@
-use base64::decode;
+
 use kcmkc_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
@@ -8,10 +8,10 @@ use kcmkc_base::{
 use kcmkc_sequential::{
     chen_et_al::ChenEtAl,
     random::RandomClustering,
-    seq_coreset::{self, SeqCoreset},
+    seq_coreset::{SeqCoreset},
 };
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AlgorithmConfig {

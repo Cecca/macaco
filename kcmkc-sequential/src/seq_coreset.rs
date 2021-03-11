@@ -1,10 +1,10 @@
 use crate::{
-    chen_et_al::{self, robust_matroid_center, VecWeightMap},
+    chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
 };
 use kcmkc_base::{
     algorithm::Algorithm,
-    matroid::{Matroid, PartitionMatroidElement, TransveralMatroidElement, Weight},
+    matroid::{Matroid, Weight},
     types::Distance,
 };
 
