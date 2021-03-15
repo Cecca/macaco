@@ -93,7 +93,8 @@ impl<V: Distance + Clone + Weight> Algorithm<V> for SeqCoreset {
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
         println!("Coreset of size {}", coreset.len());
 
-        let solution = robust_matroid_center(&coreset, matroid, p, &weights);
+        let solution = robust_matroid_center(&coreset, &matroid, p, &weights);
+        assert!(matroid.is_maximal(&solution, &dataset));
 
         Ok(solution)
     }

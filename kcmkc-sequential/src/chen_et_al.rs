@@ -28,7 +28,7 @@ impl<T: Distance + Clone + Debug> Algorithm<T> for ChenEtAl {
         matroid: Box<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
-        Ok(robust_matroid_center(dataset, matroid, p, &UnitWeightMap))
+        Ok(robust_matroid_center(dataset, &matroid, p, &UnitWeightMap))
     }
 }
 
@@ -107,7 +107,7 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
 
 pub fn robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     points: &'a [V],
-    matroid: Box<dyn Matroid<V>>,
+    matroid: &Box<dyn Matroid<V>>,
     p: usize,
     weight_map: &W,
 ) -> Vec<V> {

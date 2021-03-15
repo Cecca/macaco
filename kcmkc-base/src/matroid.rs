@@ -23,6 +23,18 @@ pub trait Matroid<T> {
 
         is
     }
+
+    fn is_maximal(&self, is: &[T], set: &[T]) -> bool {
+        use std::iter::FromIterator;
+        let mut is = Vec::from_iter(is.iter());
+        for x in set {
+            is.push(x);
+            if self.is_independent(&is) {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 /// Element of a set on which we can impose a transversal matroid
