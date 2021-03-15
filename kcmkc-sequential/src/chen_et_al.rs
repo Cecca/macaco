@@ -1,15 +1,18 @@
 use rayon::prelude::*;
 use std::fmt::Debug;
 
-use kcmkc_base::types::{Distance, OrderedF32};
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
 };
+use kcmkc_base::{
+    matroid::augment,
+    types::{Distance, OrderedF32},
+};
 
 pub struct ChenEtAl;
 
-impl<T: Distance + Clone + Debug> Algorithm<T> for ChenEtAl {
+impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn version(&self) -> u32 {
         1
     }
@@ -105,7 +108,7 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
     })
 }
 
-pub fn robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
+pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq, W: WeightMap>(
     points: &'a [V],
     matroid: &Box<dyn Matroid<V>>,
     p: usize,
@@ -121,7 +124,8 @@ pub fn robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         println!("Iteration with radius {} [i={}]", r, i);
         match run_robust_matroid_center(points, &matroid, r, p, &distances, weight_map) {
             Ok(centers) => {
-                return centers;
+                let augmented = augment(matroid, &centers, points);
+                return augmented;
             }
             Err(covered) => println!("covered only {} out of {}", covered, p),
         }

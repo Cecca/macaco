@@ -37,6 +37,25 @@ pub trait Matroid<T> {
     }
 }
 
+pub fn augment<T: Clone + PartialEq>(
+    matroid: &Box<dyn Matroid<T>>,
+    independent_set: &[T],
+    set: &[T],
+) -> Vec<T> {
+    use std::iter::FromIterator;
+    let mut is = Vec::from_iter(independent_set.iter());
+    for x in set {
+        if !is.contains(&x) {
+            is.push(x);
+            if !matroid.is_independent(&is) {
+                is.pop();
+            }
+        }
+    }
+
+    is.into_iter().cloned().collect()
+}
+
 /// Element of a set on which we can impose a transversal matroid
 pub trait TransveralMatroidElement {
     fn topics<'a>(&'a self) -> &'a [u32];
@@ -169,7 +188,7 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
 ) -> impl Iterator<Item = &'a V> + 'a {
     let mut independent_set = vec![false; set.len()];
     let mut last = 0;
-    while augment(set, m1, m2, &mut independent_set) {
+    while augment_intersection(set, m1, m2, &mut independent_set) {
         // All of the statements in this while body are for debug purposes
         let current_size = independent_set.iter().filter(|included| **included).count();
         #[cfg(debug_assertions)]
@@ -205,7 +224,7 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
 
 /// Augment the given independent set in place. If there is no common independent set larger than the given one,
 /// return false, otherwise return true
-fn augment<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
+fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     set: &[V],
     m1: &M1,
     m2: &M2,

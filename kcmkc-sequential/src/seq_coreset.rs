@@ -18,7 +18,7 @@ impl SeqCoreset {
     }
 }
 
-impl<V: Distance + Clone + Weight> Algorithm<V> for SeqCoreset {
+impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset {
     fn version(&self) -> u32 {
         1
     }

@@ -14,7 +14,7 @@ use serde::Deserialize;
 ///  - more efficient SIMD computations, since we can pack more operands
 ///
 /// We manually implement deserialize in order to be able to compute the norm during de-serialization
-#[derive(Debug, Abomonation, Clone)]
+#[derive(Debug, Abomonation, Clone, PartialEq)]
 pub struct Vector {
     data: Vec<f32>,
     norm: f32,
@@ -57,7 +57,7 @@ impl Vector {
     }
 }
 
-#[derive(Debug, Deserialize, Abomonation, Clone)]
+#[derive(Debug, Deserialize, Abomonation, Clone, PartialEq)]
 pub struct SparseVector {
     #[serde(rename = "d")]
     pub dimension: u32,
@@ -120,7 +120,7 @@ fn unit_weight() -> u32 {
 
 /// A page of wikipedia, represented as a d-dimensional vector,
 /// with a set of topics.
-#[derive(Deserialize, Debug, Abomonation, Clone)]
+#[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]
 pub struct WikiPage {
     pub id: u32,
     pub title: String,
@@ -148,7 +148,7 @@ impl Weight for WikiPage {
     }
 }
 
-#[derive(Deserialize, Debug, Abomonation, Clone)]
+#[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]
 pub struct Song {
     pub track_id: String,
     pub genre: String,
