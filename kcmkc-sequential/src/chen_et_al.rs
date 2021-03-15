@@ -215,7 +215,12 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         return Err(covered_nodes);
     }
 
-    assert!(covered_nodes <= points.len());
+    assert!(
+        covered_nodes
+            <= (0..points.len())
+                .map(|i| weight_map.weight_of(i))
+                .sum::<u32>() as usize
+    );
     let centers: Vec<V> = solution
         .iter()
         .map(|disk| points[disk.center].clone())
