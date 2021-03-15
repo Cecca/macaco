@@ -45,7 +45,6 @@ pub fn kcenter<'a, V: Distance>(
                 farthest = j;
             }
         }
-        println!("Farthest point {} at {}", farthest, farthest_dist);
 
         if i < k - 1 {
             // Set up the center for the next iteration

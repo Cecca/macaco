@@ -59,13 +59,24 @@ impl<V: Distance + Clone + Weight> Algorithm<V> for SeqCoreset {
         let coreset: Vec<(V, u32)> = disks
             .iter()
             .flat_map(|disk| {
+                assert!(disk.len() > 0);
                 let is = matroid.maximal_independent_set(&disk);
-                let mut weights = vec![0u32; is.len()];
+                // There might be no independent set in this disk
+                // In this case, no point in the disk can be part of the solution, but they do
+                // still count towards the radius.
+                //
+                // In such case, we add an arbitrary point as a proxy for the
+                // entire disk, just to be able to take into account all the
+                // proxied points in the final solution computation.
+                let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
+
+                let mut weights = vec![0u32; proxies.len()];
 
                 // Fill-in weights by counting the assignments to proxies
                 disk.iter()
                     .map(|p| {
-                        is.iter()
+                        proxies
+                            .iter()
                             .enumerate()
                             .map(|(i, c)| (i, p.distance(c)))
                             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
@@ -74,12 +85,13 @@ impl<V: Distance + Clone + Weight> Algorithm<V> for SeqCoreset {
                     })
                     .for_each(|i| weights[i] += 1);
 
-                is.into_iter().cloned().zip(weights.into_iter())
+                proxies.into_iter().cloned().zip(weights.into_iter())
             })
             .collect();
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
+        println!("Coreset of size {}", coreset.len());
 
         let solution = robust_matroid_center(&coreset, matroid, p, &weights);
 
