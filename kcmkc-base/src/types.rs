@@ -192,7 +192,7 @@ impl Weight for Song {
 // Some utility types
 
 #[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
-pub struct OrderedF32(f32);
+pub struct OrderedF32(pub f32);
 
 impl Eq for OrderedF32 {}
 

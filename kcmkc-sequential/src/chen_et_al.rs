@@ -73,6 +73,55 @@ impl DiskBuilder {
         dists.into_iter().map(|wrapper| wrapper.into())
     }
 
+    /// Invoke the provided function on a sequence of distances. If the functino
+    /// returns `Error(uncovered)`, the radius is too small and we look for a larger one.
+    /// Otherwise it may be too large, so we look for a smaller one.
+    /// The search stops when the distance between radii is 0.1% of the
+    /// maximum distance in the dataset.
+    fn bynary_search_distances<O, F: FnMut(f32) -> Result<O, usize>>(&self, mut f: F) -> O {
+        use std::collections::BTreeSet;
+        println!("Sorting distances to get candidate radii");
+        let dists: BTreeSet<OrderedF32> = self
+            .distances
+            .iter()
+            .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| f.1.into()))
+            .collect();
+        let dists: Vec<OrderedF32> = dists.into_iter().collect();
+        assert!(dists.len() > 0);
+        let max_distance = dists.last().unwrap().0;
+        let min_difference = 0.001 * max_distance;
+        println!(
+            "Max distance {}, min difference {}",
+            max_distance, min_difference
+        );
+
+        // Binary search code adaptded from Rust's standard library
+        let mut size = dists.len();
+        let mut last_valid_solution: Option<O> = None;
+        let mut last_distance = max_distance;
+        let mut base = 0usize;
+        while size > 1 {
+            let half = size / 2;
+            let mid = base + half;
+            if (dists[mid].0 - last_distance).abs() <= min_difference {
+                println!("Early stop");
+                break;
+            }
+            println!("Looking at distance {}", dists[mid].0);
+            last_distance = dists[mid].0;
+            let res = f(dists[mid].into());
+            base = match res {
+                Ok(res) => {
+                    last_valid_solution.replace(res);
+                    base
+                }
+                Err(_) => mid,
+            };
+            size -= half;
+        }
+        last_valid_solution.unwrap()
+    }
+
     /// Get the indices of points in the ball of radius `r` around point `i`.
     /// The indices are not in sorted order, so to compute the intersection between disks
     /// in linear time we should first sort them!
@@ -117,28 +166,17 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq, W: WeightMap>(
 ) -> Vec<V> {
     let distances = DiskBuilder::new(points);
 
-    let distinct_distances: Vec<f32> = distances.iter_distances().skip(100).collect();
-    let mut i = 1;
+    let centers = distances.bynary_search_distances(|d| {
+        run_robust_matroid_center(points, &matroid, d, p, &distances, weight_map)
+    });
 
-    while i < distinct_distances.len() {
-        let r = distinct_distances[i];
-        println!("Iteration with radius {} [i={}]", r, i);
-        match run_robust_matroid_center(points, &matroid, r, p, &distances, weight_map) {
-            Ok(centers) => {
-                let mut points = Vec::from_iter(points.iter());
-                // Sort points by decreasing distance from the centers.
-                // By doing this, the greedy algorithm that augments the independent set
-                // will include first the points farthest from the current centers.
-                // Of course this is just a heuristic.
-                points.sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
-                let augmented = augment(matroid, &centers, &points);
-                return augmented;
-            }
-            Err(covered) => println!("covered only {} out of {}", covered, p),
-        }
-        i = std::cmp::min(distinct_distances.len() - 1, i * 2);
-    }
-    panic!("should never get here, the last radius we try should cover everything");
+    // Sort points by decreasing distance from the centers.
+    // By doing this, the greedy algorithm that augments the independent set
+    // will include first the points farthest from the current centers.
+    // Of course this is just a heuristic.
+    let mut points = Vec::from_iter(points.iter());
+    points.sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
+    augment(matroid, &centers, &points)
 }
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
@@ -193,8 +231,8 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         centers.push((c, expanded_disk));
     }
 
-    println!("  Enforce matroid constraints");
-    println!("    Building vertex disk pairs");
+    // println!("  Enforce matroid constraints");
+    // println!("    Building vertex disk pairs");
     // Build the candidate center/disk pairs. Disks are references
     // to the original ones, to avoind wasting space by duplicating them
     let vertex_disk_pairs: Vec<ExpandedDisk<W>> = (0..n)
@@ -213,7 +251,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         })
         .collect();
 
-    println!("    Compute weighted matroid intersection");
+    // println!("    Compute weighted matroid intersection");
     let m1 = DiskMatroid1::new(&matroid, points);
     let m2 = DiskMatroid2;
     let solution: Vec<&ExpandedDisk<W>> =

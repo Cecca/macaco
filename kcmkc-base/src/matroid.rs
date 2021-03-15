@@ -202,16 +202,16 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
             debug_assert!(m1.is_independent(&current_items));
             debug_assert!(m2.is_independent(&current_items));
         }
-        println!(
-            "      Independent set of size {} and weight {}",
-            current_size,
-            independent_set
-                .iter()
-                .enumerate()
-                .filter(|(_, included)| **included)
-                .map(|(i, _)| set[i].weight())
-                .sum::<u32>()
-        );
+        // println!(
+        //     "      Independent set of size {} and weight {}",
+        //     current_size,
+        //     independent_set
+        //         .iter()
+        //         .enumerate()
+        //         .filter(|(_, included)| **included)
+        //         .map(|(i, _)| set[i].weight())
+        //         .sum::<u32>()
+        // );
         assert!(current_size > last);
         last = current_size;
     }
@@ -277,7 +277,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .flat_map(|i| graph.bellman_ford(*i, &x2))
         .min_by_key(|(d, path)| (*d, path.len()))
     {
-        println!("     Augmenting path: {:?}", path);
+        // println!("     Augmenting path: {:?}", path);
         for i in path {
             // Computing the xor on the flags array is equivalent to computing the
             // symmetric difference of the path and the independent set
