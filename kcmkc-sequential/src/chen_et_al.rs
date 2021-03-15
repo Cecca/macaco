@@ -1,5 +1,6 @@
 use rayon::prelude::*;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 
 use kcmkc_base::{
     algorithm::Algorithm,
@@ -124,7 +125,13 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq, W: WeightMap>(
         println!("Iteration with radius {} [i={}]", r, i);
         match run_robust_matroid_center(points, &matroid, r, p, &distances, weight_map) {
             Ok(centers) => {
-                let augmented = augment(matroid, &centers, points);
+                let mut points = Vec::from_iter(points.iter());
+                // Sort points by decreasing distance from the centers.
+                // By doing this, the greedy algorithm that augments the independent set
+                // will include first the points farthest from the current centers.
+                // Of course this is just a heuristic.
+                points.sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
+                let augmented = augment(matroid, &centers, &points);
                 return augmented;
             }
             Err(covered) => println!("covered only {} out of {}", covered, p),

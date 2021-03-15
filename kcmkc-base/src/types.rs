@@ -112,6 +112,14 @@ impl SparseVector {
 
 pub trait Distance {
     fn distance(&self, other: &Self) -> f32;
+
+    fn set_distance<'a, I: IntoIterator<Item = &'a Self>>(&'a self, set: I) -> (usize, OrderedF32) {
+        set.into_iter()
+            .enumerate()
+            .map(|(i, other)| (i, OrderedF32(self.distance(other))))
+            .min_by_key(|pair| pair.1)
+            .unwrap()
+    }
 }
 
 fn unit_weight() -> u32 {
