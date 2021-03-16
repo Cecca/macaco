@@ -7,12 +7,12 @@ use kcmkc_base::{
 };
 
 pub struct StreamingCoreset {
-    coreset_size: usize,
+    tau: usize,
 }
 
 impl StreamingCoreset {
-    pub fn new(coreset_size: usize) -> Self {
-        Self { coreset_size }
+    pub fn new(tau: usize) -> Self {
+        Self { tau }
     }
 }
 
@@ -22,11 +22,11 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
     }
 
     fn name(&self) -> String {
-        String::from("Streaming")
+        String::from("StreamingCoreset")
     }
 
     fn parameters(&self) -> String {
-        format!("{{\"coreset_size\": {}}}", self.coreset_size)
+        format!("{{\"tau\": {}}}", self.tau)
     }
 
     fn run<'a>(
@@ -35,7 +35,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
         matroid: Box<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
-        let mut state = StreamingState::new(self.coreset_size, &matroid);
+        let mut state = StreamingState::new(self.tau, &matroid);
         for x in dataset {
             state.update(x);
         }

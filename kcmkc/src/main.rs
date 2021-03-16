@@ -66,10 +66,6 @@ fn compute_radius<T: Distance>(dataset: &[T], centers: &[T], p: usize) -> f32 {
         let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
         topk.insert(closest);
     }
-    println!(
-        "The excluded points are at the following distances: {:?}",
-        topk
-    );
     topk.kth()
 }
 

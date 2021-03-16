@@ -200,7 +200,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     // The following invariant should hold in any iteration
     debug_assert!(n_uncovered == assignment.iter().filter(|a| a.is_none()).count());
 
-    println!("  Build disks");
+    // println!("  Build disks");
     while n_uncovered > 0 {
         // Get the center covering the most uncovered points
         let c = (0..n)

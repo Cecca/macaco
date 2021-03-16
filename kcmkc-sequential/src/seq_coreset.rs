@@ -9,12 +9,12 @@ use kcmkc_base::{
 };
 
 pub struct SeqCoreset {
-    epsilon: f32,
+    tau: usize,
 }
 
 impl SeqCoreset {
-    pub fn new(epsilon: f32) -> Self {
-        Self { epsilon }
+    pub fn new(tau: usize) -> Self {
+        Self { tau }
     }
 }
 
@@ -28,7 +28,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset {
     }
 
     fn parameters(&self) -> String {
-        format!("{{\"epsilon\": {}}}", self.epsilon)
+        format!("{{\"tau\": {}}}", self.tau)
     }
 
     fn run<'a>(
@@ -43,16 +43,15 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset {
         let z = dataset.len() - p;
         let k = matroid.rank();
 
-        // First find a clustering of z + k centers minimizing the radius, with no
-        // matroid constraints, and get its radius
-        let (_centers, assignments) = kcenter(dataset, k + z);
-        let radius = assignments
-            .map(|triplet| triplet.2)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+        // First find a clustering of tau centers minimizing the radius, with no
+        // matroid constraints
+        let (centers, assignments) = kcenter(dataset, self.tau);
 
-        // Now cover the dataset with small-radius disks
-        let disks = disk_cover(dataset, radius * self.epsilon / (2.0 * beta));
+        // Build disks by assigning each center to the closest point
+        let mut disks = vec![Vec::new(); centers.len()];
+        for (v, i, _) in assignments {
+            disks[i].push(v);
+        }
 
         // Then, get a maximal independent set from each disk,
         // and make each of its points a proxy

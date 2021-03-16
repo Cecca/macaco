@@ -15,8 +15,8 @@ use std::path::PathBuf;
 pub enum AlgorithmConfig {
     Random { seed: u64 },
     ChenEtAl,
-    SeqCoreset { epsilon: f32 },
-    StreamingCoreset { coreset_size: usize },
+    SeqCoreset { tau: usize },
+    StreamingCoreset { tau: usize },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -133,10 +133,8 @@ impl Configure for WikiPage {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
-            AlgorithmConfig::SeqCoreset { epsilon } => Box::new(SeqCoreset::new(epsilon)),
-            AlgorithmConfig::StreamingCoreset { coreset_size } => {
-                Box::new(StreamingCoreset::new(coreset_size))
-            }
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
         }
     }
 }
@@ -154,10 +152,8 @@ impl Configure for Song {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
-            AlgorithmConfig::SeqCoreset { epsilon } => Box::new(SeqCoreset::new(epsilon)),
-            AlgorithmConfig::StreamingCoreset { coreset_size } => {
-                Box::new(StreamingCoreset::new(coreset_size))
-            }
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
         }
     }
 }
