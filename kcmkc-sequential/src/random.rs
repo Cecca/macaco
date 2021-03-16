@@ -16,12 +16,7 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
     }
 
     fn parameters(&self) -> String {
-        format!(
-            r#"{{
-                "seed": {}
-            }}"#,
-            self.seed
-        )
+        format!(r#"{{ "seed": {} }}"#, self.seed)
     }
 
     fn run<'a>(
