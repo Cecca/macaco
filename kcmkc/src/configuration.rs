@@ -1,4 +1,3 @@
-
 use kcmkc_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
@@ -6,18 +5,18 @@ use kcmkc_base::{
     types::{Song, WikiPage},
 };
 use kcmkc_sequential::{
-    chen_et_al::ChenEtAl,
-    random::RandomClustering,
-    seq_coreset::{SeqCoreset},
+    chen_et_al::ChenEtAl, random::RandomClustering, seq_coreset::SeqCoreset,
+    streaming_coreset::StreamingCoreset,
 };
 use serde::{Deserialize, Serialize};
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AlgorithmConfig {
     Random { seed: u64 },
     ChenEtAl,
     SeqCoreset { epsilon: f32 },
+    StreamingCoreset { coreset_size: usize },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -135,6 +134,9 @@ impl Configure for WikiPage {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
             AlgorithmConfig::SeqCoreset { epsilon } => Box::new(SeqCoreset::new(epsilon)),
+            AlgorithmConfig::StreamingCoreset { coreset_size } => {
+                Box::new(StreamingCoreset::new(coreset_size))
+            }
         }
     }
 }
@@ -153,6 +155,9 @@ impl Configure for Song {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
             AlgorithmConfig::SeqCoreset { epsilon } => Box::new(SeqCoreset::new(epsilon)),
+            AlgorithmConfig::StreamingCoreset { coreset_size } => {
+                Box::new(StreamingCoreset::new(coreset_size))
+            }
         }
     }
 }

@@ -1,7 +1,8 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 pub trait Matroid<T> {
-    fn is_independent(&self, set: &[&T]) -> bool;
+    fn is_independent(&self, set: &[T]) -> bool;
+    fn is_independent_ref(&self, set: &[&T]) -> bool;
 
     fn rank(&self) -> usize;
 
@@ -16,7 +17,7 @@ pub trait Matroid<T> {
 
         for x in set {
             is.push(*x);
-            if !self.is_independent(&is) {
+            if !self.is_independent_ref(&is) {
                 is.pop();
             }
         }
@@ -29,7 +30,7 @@ pub trait Matroid<T> {
         let mut is = Vec::from_iter(is.iter());
         for x in set {
             is.push(x);
-            if self.is_independent(&is) {
+            if self.is_independent_ref(&is) {
                 return false;
             }
         }
@@ -47,7 +48,7 @@ pub fn augment<T: Clone + PartialEq>(
     for x in set {
         if !is.contains(&x) {
             is.push(x);
-            if !matroid.is_independent(&is) {
+            if !matroid.is_independent_ref(&is) {
                 is.pop();
             }
         }
@@ -71,7 +72,13 @@ impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
         self.topics.len()
     }
 
-    fn is_independent(&self, set: &[&T]) -> bool {
+    fn is_independent(&self, set: &[T]) -> bool {
+        // FIXME: find a way to remove this allocation, if it is a bottleneck
+        let set: Vec<&T> = set.iter().collect();
+        set.len() < self.topics.len() && self.maximum_matching(&set).count() == set.len()
+    }
+
+    fn is_independent_ref(&self, set: &[&T]) -> bool {
         set.len() < self.topics.len() && self.maximum_matching(set).count() == set.len()
     }
 }
@@ -154,7 +161,23 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
         self.categories.values().sum::<u32>() as usize
     }
 
-    fn is_independent(&self, set: &[&T]) -> bool {
+    fn is_independent(&self, set: &[T]) -> bool {
+        let mut counts = self.categories.clone();
+        for x in set {
+            let cat = x.category();
+            // Categories not explicitly mentioned in the matroid
+            // default to a limit of 0. This makes for a less verbose specification
+            // of constraints
+            if counts.get(cat).unwrap_or(&0) == &0 {
+                return false;
+            } else {
+                counts.get_mut(cat).map(|c| *c -= 1);
+            }
+        }
+        true
+    }
+
+    fn is_independent_ref(&self, set: &[&T]) -> bool {
         let mut counts = self.categories.clone();
         for x in set {
             let cat = x.category();
@@ -199,8 +222,8 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
                 .filter(|(_, included)| **included)
                 .map(|(i, _)| &set[i])
                 .collect();
-            debug_assert!(m1.is_independent(&current_items));
-            debug_assert!(m2.is_independent(&current_items));
+            debug_assert!(m1.is_independent_ref(&current_items));
+            debug_assert!(m2.is_independent_ref(&current_items));
         }
         // println!(
         //     "      Independent set of size {} and weight {}",
@@ -238,8 +261,8 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .filter(|p| *p.0)
         .map(|p| p.1)
         .collect();
-    debug_assert!(m1.is_independent(&independent_set_elements));
-    debug_assert!(m2.is_independent(&independent_set_elements));
+    debug_assert!(m1.is_independent_ref(&independent_set_elements));
+    debug_assert!(m2.is_independent_ref(&independent_set_elements));
 
     // define the source and destination sets.
     // When the input independent set is empty, it makes sense that the sets
@@ -250,7 +273,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .filter(|(i, included)| {
             !**included && {
                 independent_set_elements.push(&set[*i]);
-                let b = m1.is_independent(&independent_set_elements);
+                let b = m1.is_independent_ref(&independent_set_elements);
                 independent_set_elements.pop();
                 b
             }
@@ -263,7 +286,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .filter(|(i, included)| {
             !**included && {
                 independent_set_elements.push(&set[*i]);
-                let b = m2.is_independent(&independent_set_elements);
+                let b = m2.is_independent_ref(&independent_set_elements);
                 independent_set_elements.pop();
                 b
             }
@@ -329,10 +352,10 @@ impl ExchangeGraph {
                 .collect();
             for (x, _) in independent_set.iter().enumerate().filter(|p| !p.1) {
                 scratch.push(&set[x]);
-                if m1.is_independent(&scratch) {
+                if m1.is_independent_ref(&scratch) {
                     edges.push((y, x));
                 }
-                if m2.is_independent(&scratch) {
+                if m2.is_independent_ref(&scratch) {
                     edges.push((x, y));
                 }
                 scratch.pop();

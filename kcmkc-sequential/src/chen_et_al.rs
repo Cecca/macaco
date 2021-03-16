@@ -256,8 +256,8 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     let m2 = DiskMatroid2;
     let solution: Vec<&ExpandedDisk<W>> =
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();
-    assert!(m1.is_independent(&solution));
-    assert!(m2.is_independent(&solution));
+    assert!(m1.is_independent_ref(&solution));
+    assert!(m2.is_independent_ref(&solution));
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
         println!("    Covered nodes {} < {}", covered_nodes, p);
@@ -331,7 +331,11 @@ impl<'a, T: Clone> DiskMatroid1<'a, T> {
 }
 
 impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'a, T> {
-    fn is_independent(&self, set: &[&ExpandedDisk<W>]) -> bool {
+    fn is_independent(&self, set: &[ExpandedDisk<W>]) -> bool {
+        todo!()
+    }
+
+    fn is_independent_ref(&self, set: &[&ExpandedDisk<W>]) -> bool {
         // First, we need to check if the identifiers are all distinct
         let ids: std::collections::BTreeSet<usize> = set.iter().map(|disk| disk.center).collect();
         if ids.len() != set.len() {
@@ -339,7 +343,7 @@ impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'
         }
 
         let elements_set: Vec<&T> = set.iter().map(|disk| &self.base_set[disk.center]).collect();
-        self.inner.is_independent(&elements_set)
+        self.inner.is_independent_ref(&elements_set)
     }
 
     fn rank(&self) -> usize {
@@ -350,7 +354,11 @@ impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'
 struct DiskMatroid2;
 
 impl<'a, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid2 {
-    fn is_independent(&self, set: &[&ExpandedDisk<W>]) -> bool {
+    fn is_independent(&self, set: &[ExpandedDisk<W>]) -> bool {
+        todo!()
+    }
+
+    fn is_independent_ref(&self, set: &[&ExpandedDisk<W>]) -> bool {
         let disks: std::collections::BTreeSet<&Vec<usize>> =
             set.iter().map(|disk| disk.points).collect();
         disks.len() == set.len()
