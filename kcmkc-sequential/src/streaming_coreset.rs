@@ -114,6 +114,9 @@ impl<'a, T: Clone + Distance> StreamingState<'a, T> {
                     *weights.iter_mut().min().unwrap() += 1;
                 }
             }
+            if self.clusters.len() == self.k + 1 {
+                self.merge();
+            }
         } else {
             self.clusters.push((x.clone(), vec![x.clone()], vec![1]));
             if self.clusters.len() == self.k + 1 {
@@ -146,11 +149,11 @@ impl<'a, T: Clone + Distance> StreamingState<'a, T> {
                 .replace(self.distance_bound.unwrap() * 2.0);
             let mut i = 0;
             while i < self.clusters.len() {
-                let mut j = i;
+                let mut j = i + 1;
                 let mut n = self.clusters.len();
                 // We don't use `self.clusters.len()` in the condition of
                 // the loop because of borrowing rules
-                while j < n {
+                while j < n && i < n {
                     if self.clusters[i].0.distance(&self.clusters[j].0)
                         <= self.distance_bound.unwrap()
                     {
