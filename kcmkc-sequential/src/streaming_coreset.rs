@@ -1,4 +1,7 @@
-use crate::chen_et_al::{robust_matroid_center, VecWeightMap};
+use crate::{
+    chen_et_al::{robust_matroid_center, VecWeightMap},
+    SequentialAlgorithm,
+};
 
 use kcmkc_base::{
     algorithm::Algorithm,
@@ -28,8 +31,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
     fn parameters(&self) -> String {
         format!("{{\"tau\": {}}}", self.tau)
     }
+}
 
-    fn run<'a>(
+impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for StreamingCoreset {
+    fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],
         matroid: Box<dyn Matroid<V>>,

@@ -6,7 +6,7 @@ use kcmkc_base::{
 };
 use kcmkc_sequential::{
     chen_et_al::ChenEtAl, random::RandomClustering, seq_coreset::SeqCoreset,
-    streaming_coreset::StreamingCoreset,
+    streaming_coreset::StreamingCoreset, SequentialAlgorithm,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -94,7 +94,7 @@ impl Configuration {
         sha.input(format!("{:?}", self.constraint.describe()));
         match self.datatype()? {
             Datatype::WikiPage => {
-                let algorithm = WikiPage::configure_algorithm(&self);
+                let algorithm = WikiPage::configure_sequential_algorithm(&self);
                 sha.input(format!(
                     "{}{}{}",
                     algorithm.name(),
@@ -103,7 +103,7 @@ impl Configuration {
                 ));
             }
             Datatype::Song => {
-                let algorithm = Song::configure_algorithm(&self);
+                let algorithm = Song::configure_sequential_algorithm(&self);
                 sha.input(format!(
                     "{}{}{}",
                     algorithm.name(),
@@ -119,7 +119,7 @@ impl Configuration {
 
 pub trait Configure {
     fn configure_constraint(conf: &Configuration) -> Box<dyn Matroid<Self>>;
-    fn configure_algorithm(conf: &Configuration) -> Box<dyn Algorithm<Self>>;
+    fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>>;
 }
 
 impl Configure for WikiPage {
@@ -129,7 +129,7 @@ impl Configure for WikiPage {
             _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
         }
     }
-    fn configure_algorithm(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
+    fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
@@ -148,7 +148,7 @@ impl Configure for Song {
             _ => panic!("Can only build a partition matroid constraint for Song"),
         }
     }
-    fn configure_algorithm(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
+    fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),

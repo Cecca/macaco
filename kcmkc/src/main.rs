@@ -4,6 +4,7 @@ mod reporter;
 use anyhow::{Context, Result};
 use configuration::*;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
+use kcmkc_sequential::SequentialAlgorithm;
 use reporter::Reporter;
 use serde::Deserialize;
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
@@ -19,7 +20,7 @@ where
     }
 
     let matroid = V::configure_constraint(&config);
-    let mut algorithm = V::configure_algorithm(&config);
+    let mut algorithm = V::configure_sequential_algorithm(&config);
 
     let dataset = Dataset::new(&config.dataset);
     let start = Instant::now();
@@ -29,7 +30,7 @@ where
     let outliers = config.outliers.num_outliers(items.len());
     let p = items.len() - outliers;
     let timer = Instant::now();
-    let centers = algorithm.run(&items[..], matroid, p)?;
+    let centers = algorithm.sequential_run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
     let radius = compute_radius(&items, &centers, p);

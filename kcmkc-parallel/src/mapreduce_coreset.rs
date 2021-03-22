@@ -13,7 +13,7 @@ use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
 
 fn mapreduce_coreset<T: ExchangeData + Hash + Distance, A: Allocate>(
-    mut worker: Worker<A>,
+    worker: &mut Worker<A>,
     dataset: &[T],
     matroid: &'static Box<dyn Matroid<T> + 'static>,
     tau: usize,

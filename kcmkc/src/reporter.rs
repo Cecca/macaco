@@ -72,11 +72,11 @@ impl Reporter {
         let mut conn = self.get_conn()?;
         let (algorithm, algorithm_version, algorithm_params) = match self.config.datatype()? {
             Datatype::WikiPage => {
-                let algo = WikiPage::configure_algorithm(&self.config);
+                let algo = WikiPage::configure_sequential_algorithm(&self.config);
                 (algo.name(), algo.version(), algo.parameters())
             }
             Datatype::Song => {
-                let algo = Song::configure_algorithm(&self.config);
+                let algo = Song::configure_sequential_algorithm(&self.config);
                 (algo.name(), algo.version(), algo.parameters())
             }
         };

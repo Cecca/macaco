@@ -11,6 +11,8 @@ use kcmkc_base::{
     types::{Distance, OrderedF32},
 };
 
+use crate::SequentialAlgorithm;
+
 pub struct ChenEtAl;
 
 impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
@@ -25,8 +27,10 @@ impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn parameters(&self) -> String {
         String::new()
     }
+}
 
-    fn run<'a>(
+impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtAl {
+    fn sequential_run<'a>(
         &mut self,
         dataset: &'a [T],
         matroid: Box<dyn Matroid<T>>,

@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 timely = "0.12"
+abomonation = "0.7"
 kcmkc-base = {path = "../kcmkc-base"}
 kcmkc-sequential = {path = "../kcmkc-sequential"}

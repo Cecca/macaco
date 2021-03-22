@@ -443,6 +443,7 @@ dependencies = [
 name = "kcmkc-parallel"
 version = "0.1.0"
 dependencies = [
+ "abomonation",
  "kcmkc-base",
  "kcmkc-sequential",
  "timely",

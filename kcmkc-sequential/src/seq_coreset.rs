@@ -1,6 +1,7 @@
 use crate::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
+    SequentialAlgorithm,
 };
 use kcmkc_base::{
     algorithm::Algorithm,
@@ -30,8 +31,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset {
     fn parameters(&self) -> String {
         format!("{{\"tau\": {}}}", self.tau)
     }
+}
 
-    fn run<'a>(
+impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCoreset {
+    fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],
         matroid: Box<dyn Matroid<V>>,
