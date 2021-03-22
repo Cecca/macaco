@@ -1,5 +1,13 @@
-use kcmkc_base::{matroid::Matroid, types::Distance};
-use kcmkc_sequential::kcenter::kcenter;
+use abomonation::Abomonation;
+use kcmkc_base::{
+    algorithm::Algorithm,
+    matroid::{Matroid, Weight},
+    types::Distance,
+};
+use kcmkc_sequential::{
+    chen_et_al::{robust_matroid_center, VecWeightMap},
+    kcenter::kcenter,
+};
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::rc::Rc;
@@ -12,10 +20,59 @@ use timely::dataflow::{InputHandle, ProbeHandle};
 use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
 
-fn mapreduce_coreset<T: ExchangeData + Hash + Distance, A: Allocate>(
+use crate::ParallelAlgorithm;
+
+pub struct MapReduceCoreset {
+    tau: usize,
+}
+
+impl MapReduceCoreset {
+    pub fn new(tau: usize) -> Self {
+        Self { tau }
+    }
+}
+
+impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset {
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn name(&self) -> String {
+        String::from("MRCoreset")
+    }
+
+    fn parameters(&self) -> String {
+        format!("{{ \"tau\": {} }}", self.tau)
+    }
+}
+
+impl<T: Distance + Clone + Weight + PartialEq + Hash + Abomonation + ExchangeData>
+    ParallelAlgorithm<T> for MapReduceCoreset
+{
+    fn parallel_run<A: Allocate>(
+        &mut self,
+        worker: &mut Worker<A>,
+        dataset: &[T],
+        matroid: Rc<dyn Matroid<T>>,
+        p: usize,
+    ) -> anyhow::Result<Vec<T>> {
+        let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau);
+
+        let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
+        let coreset: Vec<T> = coreset.into_iter().map(|p| p.0).collect();
+        println!("Coreset of size {}", coreset.len());
+
+        let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
+        assert!(matroid.is_maximal(&solution, &dataset));
+
+        Ok(solution)
+    }
+}
+
+fn mapreduce_coreset<'a, T: ExchangeData + Hash + Distance, A: Allocate>(
     worker: &mut Worker<A>,
     dataset: &[T],
-    matroid: &'static Box<dyn Matroid<T> + 'static>,
+    matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
 ) -> Vec<(T, u32)> {
     let mut input: InputHandle<(), T> = InputHandle::new();

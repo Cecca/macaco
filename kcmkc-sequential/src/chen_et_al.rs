@@ -1,7 +1,3 @@
-use rayon::prelude::*;
-use std::fmt::Debug;
-use std::iter::FromIterator;
-
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
@@ -10,6 +6,10 @@ use kcmkc_base::{
     matroid::augment,
     types::{Distance, OrderedF32},
 };
+use rayon::prelude::*;
+use std::fmt::Debug;
+use std::iter::FromIterator;
+use std::rc::Rc;
 
 use crate::SequentialAlgorithm;
 
@@ -33,10 +33,10 @@ impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtA
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [T],
-        matroid: Box<dyn Matroid<T>>,
+        matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
-        Ok(robust_matroid_center(dataset, &matroid, p, &UnitWeightMap))
+        Ok(robust_matroid_center(dataset, matroid, p, &UnitWeightMap))
     }
 }
 
@@ -164,14 +164,14 @@ fn intersection<I1: Iterator<Item = usize>, I2: Iterator<Item = usize>>(
 
 pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq, W: WeightMap>(
     points: &'a [V],
-    matroid: &Box<dyn Matroid<V>>,
+    matroid: Rc<dyn Matroid<V>>,
     p: usize,
     weight_map: &W,
 ) -> Vec<V> {
     let distances = DiskBuilder::new(points);
 
     let centers = distances.bynary_search_distances(|d| {
-        run_robust_matroid_center(points, &matroid, d, p, &distances, weight_map)
+        run_robust_matroid_center(points, Rc::clone(&matroid), d, p, &distances, weight_map)
     });
 
     // Sort points by decreasing distance from the centers.
@@ -180,14 +180,14 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq, W: WeightMap>(
     // Of course this is just a heuristic.
     let mut points = Vec::from_iter(points.iter());
     points.sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
-    augment(matroid, &centers, &points)
+    augment(Rc::clone(&matroid), &centers, &points)
 }
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
 /// iterator of optional assignments.
 fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     points: &'a [V],
-    matroid: &Box<dyn Matroid<V>>,
+    matroid: Rc<dyn Matroid<V>>,
     r: f32,
     p: usize,
     distances: &DiskBuilder,
@@ -256,7 +256,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         .collect();
 
     // println!("    Compute weighted matroid intersection");
-    let m1 = DiskMatroid1::new(&matroid, points);
+    let m1 = DiskMatroid1::new(Rc::clone(&matroid), points);
     let m2 = DiskMatroid2;
     let solution: Vec<&ExpandedDisk<W>> =
         weighted_matroid_intersection(&vertex_disk_pairs, &m1, &m2).collect();
@@ -324,12 +324,12 @@ impl<'a, W: WeightMap> Weight for ExpandedDisk<'a, W> {
 }
 
 struct DiskMatroid1<'a, T: Clone> {
-    inner: &'a Box<dyn Matroid<T>>,
+    inner: Rc<dyn Matroid<T>>,
     base_set: &'a [T],
 }
 
 impl<'a, T: Clone> DiskMatroid1<'a, T> {
-    fn new(inner: &'a Box<dyn Matroid<T>>, base_set: &'a [T]) -> Self {
+    fn new(inner: Rc<dyn Matroid<T>>, base_set: &'a [T]) -> Self {
         Self { inner, base_set }
     }
 }

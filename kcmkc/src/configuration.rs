@@ -9,7 +9,7 @@ use kcmkc_sequential::{
     streaming_coreset::StreamingCoreset, SequentialAlgorithm,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, rc::Rc};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AlgorithmConfig {
@@ -118,14 +118,14 @@ impl Configuration {
 }
 
 pub trait Configure {
-    fn configure_constraint(conf: &Configuration) -> Box<dyn Matroid<Self>>;
+    fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>>;
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>>;
 }
 
 impl Configure for WikiPage {
-    fn configure_constraint(conf: &Configuration) -> Box<dyn Matroid<Self>> {
+    fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
-            Constraint::Transversal { topics } => Box::new(TransveralMatroid::new(topics.clone())),
+            Constraint::Transversal { topics } => Rc::new(TransveralMatroid::new(topics.clone())),
             _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
         }
     }
@@ -140,10 +140,10 @@ impl Configure for WikiPage {
 }
 
 impl Configure for Song {
-    fn configure_constraint(conf: &Configuration) -> Box<dyn Matroid<Self>> {
+    fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
             Constraint::Partition { categories } => {
-                Box::new(PartitionMatroid::new(categories.clone()))
+                Rc::new(PartitionMatroid::new(categories.clone()))
             }
             _ => panic!("Can only build a partition matroid constraint for Song"),
         }

@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::{collections::HashMap, marker::PhantomData};
 
 pub trait Matroid<T> {
@@ -39,7 +40,7 @@ pub trait Matroid<T> {
 }
 
 pub fn augment<T: Clone + PartialEq>(
-    matroid: &Box<dyn Matroid<T>>,
+    matroid: Rc<dyn Matroid<T>>,
     independent_set: &[T],
     set: &[&T],
 ) -> Vec<T> {

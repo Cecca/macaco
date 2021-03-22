@@ -8,6 +8,7 @@ use kcmkc_base::{
     matroid::{Matroid, Weight},
     types::Distance,
 };
+use std::rc::Rc;
 
 pub struct SeqCoreset {
     tau: usize,
@@ -37,7 +38,7 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],
-        matroid: Box<dyn Matroid<V>>,
+        matroid: Rc<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
         // The approximation factor of the algorithm that extracts the solution from the coreset
@@ -95,7 +96,7 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
         println!("Coreset of size {}", coreset.len());
 
-        let solution = robust_matroid_center(&coreset, &matroid, p, &weights);
+        let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
         assert!(matroid.is_maximal(&solution, &dataset));
 
         Ok(solution)

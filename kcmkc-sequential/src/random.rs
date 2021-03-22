@@ -1,7 +1,7 @@
 use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, types::Distance};
-
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
+use std::rc::Rc;
 
 use crate::SequentialAlgorithm;
 pub struct RandomClustering {
@@ -26,7 +26,7 @@ impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [T],
-        matroid: Box<dyn Matroid<T>>,
+        matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
         let sol = random_matroid_center(dataset, matroid, p, self.seed);
@@ -37,7 +37,7 @@ impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {
 
 fn random_matroid_center<'a, V: Distance + Clone>(
     points: &'a [V],
-    matroid: Box<dyn Matroid<V>>,
+    matroid: Rc<dyn Matroid<V>>,
     _p: usize,
     seed: u64,
 ) -> Vec<&'a V> {

@@ -444,6 +444,7 @@ name = "kcmkc-parallel"
 version = "0.1.0"
 dependencies = [
  "abomonation",
+ "anyhow",
  "kcmkc-base",
  "kcmkc-sequential",
  "timely",

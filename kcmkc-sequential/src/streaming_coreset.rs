@@ -2,12 +2,12 @@ use crate::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     SequentialAlgorithm,
 };
-
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
     types::{Distance, OrderedF32},
 };
+use std::rc::Rc;
 
 pub struct StreamingCoreset {
     tau: usize,
@@ -37,10 +37,10 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for Stream
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],
-        matroid: Box<dyn Matroid<V>>,
+        matroid: Rc<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
-        let mut state = StreamingState::new(self.tau, &matroid);
+        let mut state = StreamingState::new(self.tau, Rc::clone(&matroid));
         for x in dataset {
             state.update(x);
         }
@@ -50,14 +50,14 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for Stream
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
         println!("Coreset of size {}", coreset.len());
 
-        let solution = robust_matroid_center(&coreset, &matroid, p, &weights);
+        let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
         assert!(matroid.is_maximal(&solution, &dataset));
 
         Ok(solution)
     }
 }
 
-struct StreamingState<'a, T: Distance> {
+struct StreamingState<T: Distance> {
     k: usize,
     /// upper bound to the distance of any node to the
     /// closest cluster center. It is `None` until the
@@ -67,11 +67,11 @@ struct StreamingState<'a, T: Distance> {
     /// The first element of each pair is the center, then we have an
     /// independent set and the corresponding weights
     clusters: Vec<(T, Vec<T>, Vec<u32>)>,
-    matroid: &'a Box<dyn Matroid<T>>,
+    matroid: Rc<dyn Matroid<T>>,
 }
 
-impl<'a, T: Clone + Distance> StreamingState<'a, T> {
-    fn new(k: usize, matroid: &'a Box<dyn Matroid<T>>) -> Self {
+impl<T: Clone + Distance> StreamingState<T> {
+    fn new(k: usize, matroid: Rc<dyn Matroid<T>>) -> Self {
         Self {
             k,
             distance_bound: None,
