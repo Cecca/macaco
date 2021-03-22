@@ -24,6 +24,19 @@ impl DiskBuilder {
         Self { distances }
     }
 
+    /// Iterates through the distances in the matrix in sorted order.
+    pub fn iter_distances_decr(&self) -> impl Iterator<Item = f32> {
+        use std::collections::BTreeSet;
+        println!("Sorting distances to get candidate radii");
+        let dists: BTreeSet<OrderedF32> = self
+            .distances
+            .iter()
+            .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| f.1.into()))
+            .collect();
+
+        dists.into_iter().map(|wrapper| wrapper.into()).rev()
+    }
+
     /// Invoke the provided function on a sequence of distances. If the functino
     /// returns `Error(uncovered)`, the radius is too small and we look for a larger one.
     /// Otherwise it may be too large, so we look for a smaller one.
@@ -81,6 +94,10 @@ impl DiskBuilder {
             .iter()
             .take_while(move |(_i, d)| *d <= r)
             .map(|pair| pair.0)
+    }
+
+    pub fn eccentricity(&self, i: usize) -> f32 {
+        self.distances[i].last().unwrap().1.into()
     }
 }
 
