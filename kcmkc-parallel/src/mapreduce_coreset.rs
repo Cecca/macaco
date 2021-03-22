@@ -8,27 +8,30 @@ use kcmkc_sequential::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
 };
+use rand::{RngCore, SeedableRng};
+use rand_xorshift::XorShiftRng;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
+use std::ops::Deref;
 use std::rc::Rc;
-use std::{
-    hash::{Hash, Hasher},
-    ops::Deref,
-};
-use timely::dataflow::{channels::pact::Exchange, operators::*};
 use timely::dataflow::{InputHandle, ProbeHandle};
 use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
+use timely::{
+    communication::Allocator,
+    dataflow::{channels::pact::Exchange, operators::*},
+};
 
 use crate::ParallelAlgorithm;
 
 pub struct MapReduceCoreset {
     tau: usize,
+    seed: u64,
 }
 
 impl MapReduceCoreset {
-    pub fn new(tau: usize) -> Self {
-        Self { tau }
+    pub fn new(tau: usize, seed: u64) -> Self {
+        Self { tau, seed }
     }
 }
 
@@ -42,40 +45,46 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset
     }
 
     fn parameters(&self) -> String {
-        format!("{{ \"tau\": {} }}", self.tau)
+        format!("{{ \"tau\": {}, \"seed\": {} }}", self.tau, self.seed)
     }
 }
 
-impl<T: Distance + Clone + Weight + PartialEq + Hash + Abomonation + ExchangeData>
-    ParallelAlgorithm<T> for MapReduceCoreset
+impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> ParallelAlgorithm<T>
+    for MapReduceCoreset
 {
-    fn parallel_run<A: Allocate>(
+    fn parallel_run(
         &mut self,
-        worker: &mut Worker<A>,
+        worker: &mut Worker<Allocator>,
         dataset: &[T],
         matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
-        let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau);
+        let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau, self.seed);
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<T> = coreset.into_iter().map(|p| p.0).collect();
         println!("Coreset of size {}", coreset.len());
 
-        let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
-        assert!(matroid.is_maximal(&solution, &dataset));
+        let solution = if worker.index() == 0 {
+            let s = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
+            assert!(matroid.is_maximal(&s, &dataset));
+            s
+        } else {
+            Vec::new()
+        };
 
         Ok(solution)
     }
 }
 
-fn mapreduce_coreset<'a, T: ExchangeData + Hash + Distance, A: Allocate>(
+fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     worker: &mut Worker<A>,
     dataset: &[T],
     matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
+    seed: u64,
 ) -> Vec<(T, u32)> {
-    let mut input: InputHandle<(), T> = InputHandle::new();
+    let mut input: InputHandle<(), (u64, T)> = InputHandle::new();
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
@@ -88,17 +97,13 @@ fn mapreduce_coreset<'a, T: ExchangeData + Hash + Distance, A: Allocate>(
             .input_from(&mut input)
             // Exchange the vectors randomly, and then build the coreset in each partition
             .unary_notify(
-                Exchange::new(|x: &T| {
-                    let mut h = DefaultHasher::new();
-                    x.hash(&mut h);
-                    h.finish()
-                }),
+                Exchange::new(|x: &(u64, T)| x.0),
                 "coreset_builder",
                 None,
                 move |input, output, notificator| {
                     // stash the input as it streams in
                     input.for_each(|t, data| {
-                        stash.extend(data.replace(Vec::new()));
+                        stash.extend(data.replace(Vec::new()).into_iter().map(|pair| pair.1));
                         notificator.notify_at(t.retain());
                     });
 
@@ -152,15 +157,19 @@ fn mapreduce_coreset<'a, T: ExchangeData + Hash + Distance, A: Allocate>(
             .probe_with(&mut probe);
     });
 
-    // Populate the input
-    let mut cnt = 0;
-    for x in dataset {
-        input.send(x.clone());
-        if cnt % 10000 == 0 {
-            // Do some work in order not to exhaust the buffers
-            worker.step();
+    // Populate the input, only with worker 0 that will
+    // distribute all the input to the other workers
+    if worker.index() == 0 {
+        let mut rng = XorShiftRng::seed_from_u64(seed);
+        let mut cnt = 0;
+        for x in dataset {
+            input.send((rng.next_u64(), x.clone()));
+            if cnt % 10000 == 0 {
+                // Do some work in order not to exhaust the buffers
+                worker.step();
+            }
+            cnt += 1;
         }
-        cnt += 1;
     }
     input.close();
     // do all the work in the dataflow

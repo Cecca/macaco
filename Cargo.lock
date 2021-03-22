@@ -423,11 +423,13 @@ dependencies = [
 name = "kcmkc"
 version = "0.1.0"
 dependencies = [
+ "abomonation",
  "anyhow",
  "base64",
  "bincode",
  "chrono",
  "kcmkc-base",
+ "kcmkc-parallel",
  "kcmkc-sequential",
  "progress-logger",
  "rusqlite",
@@ -459,6 +461,8 @@ dependencies = [
  "anyhow",
  "kcmkc-base",
  "kcmkc-sequential",
+ "rand",
+ "rand_xorshift",
  "timely",
 ]
 

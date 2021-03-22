@@ -2,14 +2,14 @@ use abomonation::Abomonation;
 use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, types::Distance};
 use std::hash::Hash;
 use std::rc::Rc;
-use timely::{communication::Allocate, worker::Worker};
+use timely::{communication::Allocator, worker::Worker};
 
 pub mod mapreduce_coreset;
 
-pub trait ParallelAlgorithm<T: Distance + Clone + Hash + Abomonation>: Algorithm<T> {
-    fn parallel_run<A: Allocate>(
+pub trait ParallelAlgorithm<T: Distance + Clone + Abomonation>: Algorithm<T> {
+    fn parallel_run(
         &mut self,
-        worker: &mut Worker<A>,
+        worker: &mut Worker<Allocator>,
         dataset: &[T],
         matroid: Rc<dyn Matroid<T>>,
         p: usize,

@@ -1,9 +1,12 @@
 use anyhow::{Context, Result};
 use kcmkc_base::{
+    algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
     matroid::{Matroid, PartitionMatroid, TransveralMatroid},
     types::{Song, WikiPage},
 };
+use kcmkc_parallel::mapreduce_coreset::MapReduceCoreset;
+use kcmkc_parallel::ParallelAlgorithm;
 use kcmkc_sequential::{
     chen_et_al::ChenEtAl, random::RandomClustering, seq_coreset::SeqCoreset,
     streaming_coreset::StreamingCoreset, SequentialAlgorithm,
@@ -21,6 +24,16 @@ pub enum AlgorithmConfig {
     ChenEtAl,
     SeqCoreset { tau: usize },
     StreamingCoreset { tau: usize },
+    MapReduceCoreset { tau: usize, seed: u64 },
+}
+
+impl AlgorithmConfig {
+    pub fn is_sequential(&self) -> bool {
+        match self {
+            Self::MapReduceCoreset { .. } => false,
+            _ => true,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -109,7 +122,7 @@ impl Configuration {
         sha.input(format!("{:?}", self.constraint.describe()));
         match self.datatype()? {
             Datatype::WikiPage => {
-                let algorithm = WikiPage::configure_sequential_algorithm(&self);
+                let algorithm = WikiPage::configure_algorithm_info(&self);
                 sha.input(format!(
                     "{}{}{}",
                     algorithm.name(),
@@ -118,7 +131,7 @@ impl Configuration {
                 ));
             }
             Datatype::Song => {
-                let algorithm = Song::configure_sequential_algorithm(&self);
+                let algorithm = Song::configure_algorithm_info(&self);
                 sha.input(format!(
                     "{}{}{}",
                     algorithm.name(),
@@ -159,7 +172,7 @@ impl Configuration {
             .parallel
             .as_ref()
             .context("missing parallel configuration")?;
-        if parallel_conf.process_id.is_none() {
+        if parallel_conf.hosts.is_some() && parallel_conf.process_id.is_none() {
             let exec = std::env::args().nth(0).unwrap();
             println!("spawning executable {:?}", exec);
             // This is the top level invocation, which should spawn the processes with ssh
@@ -228,7 +241,9 @@ impl ToStrings for Vec<Host> {
 
 pub trait Configure {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>>;
+    fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>>;
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>>;
+    fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>>;
 }
 
 impl Configure for WikiPage {
@@ -238,12 +253,32 @@ impl Configure for WikiPage {
             _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
         }
     }
+    fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
+                Box::new(MapReduceCoreset::new(tau, seed))
+            }
+        }
+    }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+        }
+    }
+    fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
+                Box::new(MapReduceCoreset::new(tau, seed))
+            }
+            _ => panic!("Cannot run algorithm in parallel"),
         }
     }
 }
@@ -257,18 +292,37 @@ impl Configure for Song {
             _ => panic!("Can only build a partition matroid constraint for Song"),
         }
     }
+    fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
+                Box::new(MapReduceCoreset::new(tau, seed))
+            }
+        }
+    }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+        }
+    }
+    fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
+                Box::new(MapReduceCoreset::new(tau, seed))
+            }
+            _ => panic!("Cannot run algorithm in parallel"),
         }
     }
 }
 
 pub fn get_hostname() -> String {
-    use std::process::Command;
     let output = Command::new("hostname")
         .output()
         .expect("Failed to run the hostname command");
