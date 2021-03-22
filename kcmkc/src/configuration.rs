@@ -1,5 +1,5 @@
+use anyhow::{Context, Result};
 use kcmkc_base::{
-    algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
     matroid::{Matroid, PartitionMatroid, TransveralMatroid},
     types::{Song, WikiPage},
@@ -9,7 +9,11 @@ use kcmkc_sequential::{
     streaming_coreset::StreamingCoreset, SequentialAlgorithm,
 };
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, rc::Rc};
+use std::{convert::TryFrom, path::PathBuf, process::Command, rc::Rc};
+use timely::communication::Config as TimelyConfig;
+use timely::communication::{Allocator, WorkerGuards};
+use timely::worker::Config as WorkerConfig;
+use timely::worker::Worker;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AlgorithmConfig {
@@ -42,11 +46,22 @@ impl OutliersSpec {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ParallelConfiguration {
+    /// don't set this manually, used to provide info to the child process
+    pub process_id: Option<usize>,
+    /// number of threads to use
+    pub threads: usize,
+    /// the hosts to run on
+    pub hosts: Option<Vec<Host>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Configuration {
     pub outliers: OutliersSpec,
     pub algorithm: AlgorithmConfig,
     pub dataset: PathBuf,
     pub constraint: Constraint,
+    pub parallel: Option<ParallelConfiguration>,
 }
 
 impl Configuration {
@@ -115,6 +130,100 @@ impl Configuration {
 
         Ok(format!("{:x}", sha.result()))
     }
+
+    fn with_process_id(&self, process_id: usize) -> Result<Self> {
+        let parallel_conf = self
+            .parallel
+            .as_ref()
+            .context("missing parallel configuration")?;
+        let parallel_conf = ParallelConfiguration {
+            process_id: Some(process_id),
+            ..parallel_conf.clone()
+        };
+        Ok(Self {
+            parallel: Some(parallel_conf),
+            ..self.clone()
+        })
+    }
+
+    fn encode(&self) -> Result<String> {
+        Ok(base64::encode(&serde_json::to_string(&self)?))
+    }
+
+    pub fn execute<T, F>(&self, func: F) -> Result<Option<WorkerGuards<T>>>
+    where
+        T: Send + 'static,
+        F: Fn(&mut Worker<timely::communication::Allocator>) -> T + Send + Sync + 'static,
+    {
+        let parallel_conf = self
+            .parallel
+            .as_ref()
+            .context("missing parallel configuration")?;
+        if parallel_conf.process_id.is_none() {
+            let exec = std::env::args().nth(0).unwrap();
+            println!("spawning executable {:?}", exec);
+            // This is the top level invocation, which should spawn the processes with ssh
+            let handles: Vec<std::process::Child> = parallel_conf
+                .hosts
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+                .map(|(pid, host)| {
+                    let encoded_config = self.with_process_id(pid).unwrap().encode().unwrap();
+                    Command::new("ssh")
+                        .arg(&host.name)
+                        .arg(&exec)
+                        .arg(encoded_config)
+                        .spawn()
+                        .context("problem spawning the ssh process")
+                        .unwrap()
+                })
+                .collect();
+
+            for mut h in handles {
+                h.wait().expect("problem waiting for the ssh process");
+            }
+
+            Ok(None)
+        } else {
+            let worker_config = WorkerConfig::default();
+            let communication_config = match &parallel_conf.hosts {
+                None => {
+                    if parallel_conf.threads == 1 {
+                        TimelyConfig::Thread
+                    } else {
+                        TimelyConfig::Process(parallel_conf.threads)
+                    }
+                }
+                Some(hosts) => TimelyConfig::Cluster {
+                    threads: parallel_conf.threads,
+                    process: parallel_conf.process_id.expect("missing process id"),
+                    addresses: hosts.to_strings(),
+                    report: false,
+                    log_fn: Box::new(|_| None),
+                },
+            };
+            let config = timely::execute::Config {
+                communication: communication_config,
+                worker: worker_config,
+            };
+            let guards = timely::execute(config, func)
+                .map_err(|e| anyhow::anyhow!(e))
+                .context("timely execute")?;
+            Ok(Some(guards))
+        }
+    }
+}
+
+pub trait ToStrings {
+    fn to_strings(&self) -> Vec<String>;
+}
+
+impl ToStrings for Vec<Host> {
+    fn to_strings(&self) -> Vec<String> {
+        self.iter().map(|h| h.to_string()).collect()
+    }
 }
 
 pub trait Configure {
@@ -155,5 +264,36 @@ impl Configure for Song {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
         }
+    }
+}
+
+pub fn get_hostname() -> String {
+    use std::process::Command;
+    let output = Command::new("hostname")
+        .output()
+        .expect("Failed to run the hostname command");
+    String::from_utf8_lossy(&output.stdout).trim().to_owned()
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Host {
+    name: String,
+    port: String,
+}
+
+impl Host {
+    fn to_string(&self) -> String {
+        format!("{}:{}", self.name, self.port)
+    }
+}
+
+impl TryFrom<&str> for Host {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut tokens = value.split(":");
+        let name = tokens.next().ok_or("missing host part")?.to_owned();
+        let port = tokens.next().ok_or("missing port part")?.to_owned();
+        Ok(Self { name, port })
     }
 }
