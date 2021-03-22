@@ -184,6 +184,38 @@ impl Configuration {
             .context("missing parallel configuration")?;
         if parallel_conf.hosts.is_some() && parallel_conf.process_id.is_none() {
             let exec = std::env::args().nth(0).unwrap();
+            // first, we copy the executable to a known location, so that then we can run it
+            let remote_exec = PathBuf::from("/tmp").join(
+                PathBuf::from(&exec)
+                    .file_name()
+                    .with_context(|| format!("cannot get file name for {}", exec))?,
+            );
+            println!("Copying the executable to minions");
+            let handles: Vec<std::process::Child> = parallel_conf
+                .hosts
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|host| {
+                    let dest = format!(
+                        "{}:{}",
+                        host.name,
+                        remote_exec.to_str().expect("cannot convert path to string")
+                    );
+                    Command::new("rsync")
+                        .arg("--progress")
+                        .arg(&exec)
+                        .arg(dest)
+                        .spawn()
+                        .context("problem spawning the rsync process")
+                        .unwrap()
+                })
+                .collect();
+
+            for mut h in handles {
+                h.wait().expect("problem waiting for the rsync process");
+            }
+
             println!("spawning executable {:?}", exec);
             // This is the top level invocation, which should spawn the processes with ssh
             let handles: Vec<std::process::Child> = parallel_conf
@@ -196,7 +228,7 @@ impl Configuration {
                     let encoded_config = self.with_process_id(pid).unwrap().encode().unwrap();
                     Command::new("ssh")
                         .arg(&host.name)
-                        .arg(&exec)
+                        .arg(&remote_exec)
                         .arg(encoded_config)
                         .spawn()
                         .context("problem spawning the ssh process")
@@ -346,7 +378,7 @@ pub struct Host {
 }
 
 impl Host {
-    fn to_string(&self) -> String {
+    pub fn to_string(&self) -> String {
         format!("{}:{}", self.name, self.port)
     }
 }

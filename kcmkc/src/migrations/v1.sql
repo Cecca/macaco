@@ -4,6 +4,8 @@ CREATE TABLE result_raw (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code_version TEXT NOT NULL,
     date TEXT NOT NULL,
+    hosts TEXT,
+    threads INTEGER,
     params_sha TEXT NOT NULL,
     outliers_spec TEXT NOT NULL,
     algorithm TEXT NOT NULL,

@@ -87,10 +87,25 @@ impl Reporter {
         let dataset_params = metadata.parameters_string();
 
         if let Some(outcome) = self.outcome {
+            let (hosts, threads) = if let Some(parallel) = self.config.parallel.as_ref() {
+                let hosts = if let Some(hosts) = parallel.hosts.as_ref() {
+                    let mut hosts = hosts.clone();
+                    hosts.sort();
+                    let hosts: Vec<String> = hosts.into_iter().map(|h| h.to_string()).collect();
+                    Some(hosts.join(" "))
+                } else {
+                    None
+                };
+                let threads = parallel.threads as u32;
+                (hosts, Some(threads))
+            } else {
+                (None, None)
+            };
+
             let tx = conn.transaction()?;
             tx.execute_named(
                 "INSERT INTO result_raw (
-                    code_version, date, params_sha, outliers_spec,
+                    code_version, date, hosts, threads, params_sha, outliers_spec,
                     algorithm, algorithm_params, algorithm_version,
                     dataset, dataset_params, dataset_version,
                     constraint_params,
@@ -98,7 +113,7 @@ impl Reporter {
                     radius,
                     num_centers
                 ) VALUES (
-                    :code_version, :date, :params_sha, :outliers_spec,
+                    :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
                     :dataset, :dataset_params, :dataset_version,
                     :constraint_params,
@@ -109,6 +124,8 @@ impl Reporter {
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
                     ":date": self.date.to_rfc3339(),
+                    ":hosts": hosts,
+                    ":threads": threads,
                     ":params_sha": self.config.sha()?,
                     ":outliers_spec": self.config.outliers.describe(),
                     ":algorithm": algorithm,
