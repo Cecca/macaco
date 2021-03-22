@@ -1,6 +1,12 @@
 {
     "parallel": {
-        "threads": 2
+        "threads": 2,
+        "hosts": [
+            {
+                "name": "ironmaiden",
+                "port": "2001"
+            }
+        ]
     },
     "outliers": {
         "Fixed": 10

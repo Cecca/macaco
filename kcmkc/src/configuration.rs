@@ -119,6 +119,16 @@ impl Configuration {
             data_meta.parameters_string(),
             data_meta.constraint
         ));
+        if let Some(parallel) = self.parallel.as_ref() {
+            sha.input(format!("{}", parallel.threads));
+            if let Some(hosts) = parallel.hosts.as_ref() {
+                let mut hosts = hosts.clone();
+                hosts.sort();
+                for h in hosts {
+                    sha.input(format!("{}:{}", h.name, h.port));
+                }
+            }
+        }
         sha.input(format!("{:?}", self.constraint.describe()));
         match self.datatype()? {
             Datatype::WikiPage => {
@@ -329,7 +339,7 @@ pub fn get_hostname() -> String {
     String::from_utf8_lossy(&output.stdout).trim().to_owned()
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Host {
     name: String,
     port: String,
