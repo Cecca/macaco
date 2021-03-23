@@ -62,7 +62,7 @@ where
             })
             .flat_map(move |stash| {
                 let mut pl = progress_logger::ProgressLogger::builder()
-                    .with_items_name("points")
+                    .with_items_name("rows")
                     .with_expected_updates((stash.len() / peers) as u64)
                     .start();
                 let mut res = Vec::new();
@@ -87,24 +87,35 @@ where
                 stash.extend(data.replace(Vec::new()))
             })
             .flat_map(move |dists| {
+                info!("building disk builder");
                 let disk_builder = DiskBuilder::from_distances(dists);
-                (0..n).filter(move |u| *u % peers == wid).map(move |u| {
-                    let ecc = disk_builder.eccentricity(u);
-                    let mut doubling_dimension = 0u32;
-                    for &r in &[ecc, ecc / 2.0, ecc / 4.0] {
-                        let mut disk: BTreeSet<usize> = disk_builder.disk(u, r).collect();
-                        let mut cnt = 0;
-                        while let Some(c) = disk.iter().next() {
-                            for v in disk_builder.disk(*c, r / 2.0) {
-                                disk.remove(&v);
+                let mut bitmap = roaring::RoaringBitmap::new();
+                info!("...done building disk builder");
+                (0..n)
+                    .into_iter()
+                    .filter(move |u| *u % peers == wid)
+                    .map(move |u| {
+                        let ecc = disk_builder.eccentricity(u);
+                        let mut doubling_dimension = 0u32;
+                        for &r in &[ecc, ecc / 2.0, ecc / 4.0] {
+                            bitmap.clear();
+                            bitmap.insert(u as u32);
+                            for x in disk_builder.disk(u, r) {
+                                bitmap.insert(x as u32);
                             }
-                            cnt += 1;
+                            let mut cnt = 0;
+                            while let Some(c) = bitmap.iter().next() {
+                                bitmap.remove(c);
+                                for v in disk_builder.disk(c as usize, r / 2.0) {
+                                    bitmap.remove(v as u32);
+                                }
+                                cnt += 1;
+                            }
+                            assert!(bitmap.is_empty());
+                            doubling_dimension = std::cmp::max(doubling_dimension, cnt);
                         }
-                        assert!(disk.is_empty());
-                        doubling_dimension = std::cmp::max(doubling_dimension, cnt);
-                    }
-                    (u, doubling_dimension)
-                })
+                        (u, doubling_dimension)
+                    })
             })
             // Direct everything to the first worker, which will write the output to file
             .unary_notify(
@@ -121,7 +132,9 @@ where
                     });
 
                     notificator.for_each(|t, _, _| {
+                        info!("flushing the output writer");
                         outfile.flush().unwrap();
+                        info!("...done");
                         output.session(&t).give(());
                         pl.take().unwrap().stop();
                     });
@@ -138,6 +151,7 @@ where
     }
     input.close();
     worker.step_while(|| !probe.done());
+    info!("completed dataflow");
     return Ok(());
 }
 

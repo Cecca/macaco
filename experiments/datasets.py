@@ -1,3 +1,4 @@
+import subprocess
 import msgpack
 import gzip
 import numpy as np
@@ -11,6 +12,7 @@ from tqdm import tqdm
 import os
 import logging
 import random
+import csv
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -47,6 +49,39 @@ class Dataset(object):
 
     def get_path(self):
         raise NotImplementedError()
+
+    def get_doubling_dimension(self):
+        """
+        Get an estimate of the doubling dimension for each vector in the
+        dataset.
+
+        returns: a list of pairs, with the first item being the vector name
+        """
+        import base64
+        import json
+        import sys
+        import pprint
+
+        outpath = self.get_path() + ".dd.csv"
+
+        if not os.path.isfile(outpath):
+            subprocess.run(["cargo", "build", "--release"])
+            configuration = {
+                "dataset": self.get_path(),
+                "output": outpath,
+                "parallel": {"threads": 4},
+            }
+            conf_str = base64.b64encode(json.dumps(configuration).encode("utf-8"))
+            sp = subprocess.run(["target/release/doubling_dimension", conf_str])
+            if sp.returncode != 0:
+                print("Error in invocation with the following configuration")
+                pprint.pprint(configuration)
+                sys.exit(1)
+        with open(outpath, "r") as fp:
+            reader = csv.reader(fp)
+            dims = [(int(idx), int(dim)) for idx, dim in reader]
+        dims.sort(key=lambda pair: pair[1])
+        return dims
 
     def metadata(self):
         current_metadata = self.build_metadata()
@@ -89,7 +124,7 @@ class Dataset(object):
     def __iter__(self):
         with gzip.open(self.get_path(), "rb") as fp:
             unpacker = msgpack.Unpacker(fp, raw=False)
-            # Skipt the metadata
+            # Skip the metadata
             next(unpacker)
             # Iterate through the elements
             for doc in unpacker:
@@ -200,6 +235,9 @@ class Wikipedia(Dataset):
             ),
         )
 
+    def get_cache_dir(self):
+        return self.cache_dir
+
     def get_path(self):
         return self.out_fname
 
@@ -295,6 +333,9 @@ class SampledDataset(Dataset):
             ),
         )
 
+    def get_cache_dir(self):
+        return self.cache_dir
+
     def get_path(self):
         return self.path
 
@@ -353,6 +394,9 @@ class MusixMatch(Dataset):
         self.test_file = os.path.join(self.cache, "test.zip")
         self.train_file = os.path.join(self.cache, "train.zip")
         self.genres_file = os.path.join(self.cache, "genres.zip")
+
+    def get_cache_dir(self):
+        return self.cache
 
     def get_path(self):
         return self.file_name
@@ -429,6 +473,67 @@ class MusixMatch(Dataset):
                     msgpack.pack(song, fp)
 
 
+class BoundedDifficultyDataset(Dataset):
+    version = 1
+
+    def __init__(self, base, size):
+        self.base = base
+        self.size = size
+        self.cache_dir = os.path.join(".datasets/bounded-difficulty")
+        if not os.path.isdir(self.cache_dir):
+            os.makedirs(self.cache_dir)
+        params_list = list(base.metadata()["parameters"].items())
+        params_list.sort()
+        params_str = "-".join(["{}-{}".format(k, v) for k, v in params_list])
+        self.path = os.path.join(
+            self.cache_dir,
+            "{}-{}-bd{}-v{}.msgpack.gz".format(
+                base.metadata()["name"],
+                params_str,
+                size,
+                BoundedDifficultyDataset.version,
+            ),
+        )
+
+    def get_path(self):
+        return self.path
+
+    def build_metadata(self):
+        parameters = self.base.metadata()["parameters"]
+        parameters.update(
+            {
+                "size": self.size,
+                "seed": self.seed,
+                "base_version": self.base.metadata()["version"],
+            }
+        )
+        return {
+            "name": "{}-sample-{}".format(self.base.metadata()["name"], self.size),
+            "constraint": self.base.metadata()["constraint"],
+            "datatype": self.base.metadata()["datatype"],
+            "parameters": parameters,
+            "version": SampledDataset.version,
+        }
+
+    def preprocess(self):
+        if not os.path.isfile(self.path):
+            self.base.try_download_preprocessed()
+            self.base.preprocess()
+            doubling_dims = self.get_doubling_dimension()
+            allowed_ids = set((pair[0] for pair in doubling_dims[: self.size]))
+
+            n = self.base.num_elements()
+
+            progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
+            with gzip.open(self.path, "wb") as out_fp:
+                self.write_metadata(out_fp)
+                for idx, doc in self.base.enumerate():
+                    progress_bar.update(1)
+                    if idx in allowed_ids:
+                        out_fp.write(msgpack.packb(doc))
+            progress_bar.close()
+
+
 DATASETS = {
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
     "MusixMatch": MusixMatch(),
@@ -443,11 +548,15 @@ for size in [100000, 10000, 1000]:
         base=DATASETS["MusixMatch"], size=size, seed=12341245
     )
 
+DATASETS["MusixMatch-easy-1000"] = BoundedDifficultyDataset(
+    DATASETS["MusixMatch-s10000"], 1000
+)
+
 if __name__ == "__main__":
     from pprint import pprint
 
-    dataset = DATASETS["MusixMatch-s10000"]
+    dataset = DATASETS["MusixMatch-easy-1000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
+    print(dataset.get_doubling_dimension())
     print(dataset.get_path())
-    pprint(dataset.metadata())
