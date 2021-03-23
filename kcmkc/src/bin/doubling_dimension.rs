@@ -1,5 +1,8 @@
 // Utilities to estimate the doubling dimension of a dataset
 
+#[macro_use]
+extern crate log;
+
 use anyhow::{Context, Result};
 use kcmkc_base::{
     dataset::{Dataset, Datatype},
@@ -8,7 +11,8 @@ use kcmkc_base::{
 use kcmkc_sequential::disks::*;
 use serde::Deserialize;
 use serde::Serialize;
-use std::{collections::BTreeSet, path::PathBuf};
+use std::io::prelude::*;
+use std::{collections::BTreeSet, fs::File, path::PathBuf};
 
 fn estimate_doubling_dimension<T: Distance>(
     config: Config,
@@ -18,14 +22,14 @@ where
 {
     let dataset: Vec<T> = Dataset::new(&config.dataset).to_vec()?;
 
-    println!("Computing pairwise distances");
+    info!("Computing pairwise distances...");
     let disk_builder = DiskBuilder::new(&dataset);
+    info!("...done");
 
     let estimates = (0..dataset.len()).map(move |u| {
         let ecc = disk_builder.eccentricity(u);
-        let mut r = ecc;
         let mut doubling_dimension = 0u32;
-        while r > 0.01 * ecc {
+        for &r in &[ecc, ecc / 2.0, ecc / 4.0] {
             let mut disk: BTreeSet<usize> = disk_builder.disk(u, r).collect();
             let mut cnt = 0;
             while let Some(c) = disk.iter().next() {
@@ -36,7 +40,6 @@ where
             }
             assert!(disk.is_empty());
             doubling_dimension = std::cmp::max(doubling_dimension, cnt);
-            r /= 2.0;
         }
         doubling_dimension
     });
@@ -47,6 +50,7 @@ where
 #[derive(Deserialize, Serialize, Clone)]
 struct Config {
     dataset: PathBuf,
+    output: PathBuf,
 }
 
 impl Config {
@@ -67,16 +71,25 @@ impl Config {
 }
 
 fn main() -> Result<()> {
+    use flate2::write::GzEncoder;
+    use flate2::Compression;
+
+    pretty_env_logger::init();
+
     let config = Config::load(std::env::args().nth(1).context("missing argument")?)?;
 
     let res = match config.datatype()? {
-        Datatype::WikiPage => estimate_doubling_dimension::<WikiPage>(config),
-        Datatype::Song => estimate_doubling_dimension::<Song>(config),
+        Datatype::WikiPage => estimate_doubling_dimension::<WikiPage>(config.clone()),
+        Datatype::Song => estimate_doubling_dimension::<Song>(config.clone()),
     }?;
 
+    let mut pl = progress_logger::ProgressLogger::builder().start();
+    let mut out = GzEncoder::new(File::create(&config.output)?, Compression::best());
     for (i, dd) in res {
-        println!("{}, {}", i, dd);
+        writeln!(out, "{}, {}", i, dd)?;
+        pl.update_light(1u64);
     }
+    pl.stop();
 
     Ok(())
 }
