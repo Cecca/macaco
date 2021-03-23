@@ -17,7 +17,9 @@ CREATE TABLE result_raw (
     constraint_params TEXT NOT NULL,
     total_time_ms INTEGER NOT NULL,
     radius REAL NOT NULL,
-    num_centers INTEGER NOT NULL
+    num_centers INTEGER NOT NULL,
+    coreset_size INTEGER,
+    proxy_radius REAL
 );
 
 CREATE VIEW recent_algorithm AS

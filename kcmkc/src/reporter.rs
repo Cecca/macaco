@@ -16,11 +16,17 @@ struct Outcome {
     pub num_centers: u32,
 }
 
+struct CoresetInfo {
+    pub size: usize,
+    pub proxy_radius: f32,
+}
+
 pub struct Reporter {
     db_path: PathBuf,
     date: DateTime<Utc>,
     config: Configuration,
     outcome: Option<Outcome>,
+    coreset_info: Option<CoresetInfo>,
 }
 
 impl Reporter {
@@ -30,6 +36,7 @@ impl Reporter {
             date: Utc::now(),
             config,
             outcome: None,
+            coreset_info: None,
         }
     }
 
@@ -46,6 +53,11 @@ impl Reporter {
             radius,
             num_centers,
         });
+    }
+
+    pub fn set_coreset_info(&mut self, size: usize, proxy_radius: f32) {
+        self.coreset_info
+            .replace(CoresetInfo { size, proxy_radius });
     }
 
     fn get_conn(&self) -> Result<Connection> {
@@ -111,7 +123,9 @@ impl Reporter {
                     constraint_params,
                     total_time_ms,
                     radius,
-                    num_centers
+                    num_centers,
+                    coreset_size,
+                    proxy_radius
                 ) VALUES (
                     :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -119,7 +133,9 @@ impl Reporter {
                     :constraint_params,
                     :total_time_ms,
                     :radius,
-                    :num_centers
+                    :num_centers,
+                    :coreset_size,
+                    :proxy_radius
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
@@ -138,6 +154,8 @@ impl Reporter {
                     ":total_time_ms": outcome.total_time.as_millis() as i64,
                     ":radius": outcome.radius as f64,
                     ":num_centers": outcome.num_centers,
+                    ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),
+                    ":proxy_radius": self.coreset_info.as_ref().map(|ci| ci.proxy_radius as f64),
                 },
             )?;
 
