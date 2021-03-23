@@ -473,6 +473,9 @@ class MusixMatch(Dataset):
                     msgpack.pack(song, fp)
 
 
+# The idea is to take a subset of a dataset based on the doubling dimension
+# of the points it contains. Obviously this does not work, since subsampling
+# changes the number of balls needed to cover any given ball, by definition.
 class BoundedDifficultyDataset(Dataset):
     version = 1
 
@@ -503,7 +506,6 @@ class BoundedDifficultyDataset(Dataset):
         parameters.update(
             {
                 "size": self.size,
-                "seed": self.seed,
                 "base_version": self.base.metadata()["version"],
             }
         )
@@ -519,7 +521,7 @@ class BoundedDifficultyDataset(Dataset):
         if not os.path.isfile(self.path):
             self.base.try_download_preprocessed()
             self.base.preprocess()
-            doubling_dims = self.get_doubling_dimension()
+            doubling_dims = self.base.get_doubling_dimension()
             allowed_ids = set((pair[0] for pair in doubling_dims[: self.size]))
 
             n = self.base.num_elements()
@@ -527,10 +529,12 @@ class BoundedDifficultyDataset(Dataset):
             progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
             with gzip.open(self.path, "wb") as out_fp:
                 self.write_metadata(out_fp)
-                for idx, doc in self.base.enumerate():
+                idx = 0
+                for doc in self.base:
                     progress_bar.update(1)
                     if idx in allowed_ids:
                         out_fp.write(msgpack.packb(doc))
+                    idx += 1
             progress_bar.close()
 
 
@@ -548,14 +552,12 @@ for size in [100000, 10000, 1000]:
         base=DATASETS["MusixMatch"], size=size, seed=12341245
     )
 
-DATASETS["MusixMatch-easy-1000"] = BoundedDifficultyDataset(
-    DATASETS["MusixMatch-s10000"], 1000
+DATASETS["MusixMatch-easy-7000"] = BoundedDifficultyDataset(
+    DATASETS["MusixMatch-s10000"], 7000
 )
 
 if __name__ == "__main__":
-    from pprint import pprint
-
-    dataset = DATASETS["MusixMatch-easy-1000"]
+    dataset = DATASETS["MusixMatch-easy-7000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.get_doubling_dimension())
