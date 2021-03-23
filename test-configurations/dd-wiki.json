@@ -1,4 +1,7 @@
 {
     "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
-    "output": "/tmp/dd.csv.gz"
+    "output": "/tmp/dd.csv",
+    "parallel": {
+        "threads": 4
+    }
 }

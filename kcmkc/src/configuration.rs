@@ -58,6 +58,14 @@ impl OutliersSpec {
     }
 }
 
+pub trait WithProcessId {
+    fn with_process_id(&self, pid: usize) -> Self;
+}
+
+pub trait ConfEncode {
+    fn conf_encode(&self) -> String;
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParallelConfiguration {
     /// don't set this manually, used to provide info to the child process
@@ -68,6 +76,105 @@ pub struct ParallelConfiguration {
     pub hosts: Option<Vec<Host>>,
 }
 
+impl ParallelConfiguration {
+    pub fn execute<C: WithProcessId + ConfEncode, T, F>(
+        &self,
+        func: F,
+        configuration: C,
+    ) -> Result<Option<WorkerGuards<T>>>
+    where
+        T: Send + 'static,
+        F: Fn(&mut Worker<timely::communication::Allocator>) -> T + Send + Sync + 'static,
+    {
+        if self.hosts.is_some() && self.process_id.is_none() {
+            let exec = std::env::args().nth(0).unwrap();
+            // first, we copy the executable to a known location, so that then we can run it
+            let remote_exec = PathBuf::from("/tmp").join(
+                PathBuf::from(&exec)
+                    .file_name()
+                    .with_context(|| format!("cannot get file name for {}", exec))?,
+            );
+            println!("Copying the executable to minions");
+            let handles: Vec<std::process::Child> = self
+                .hosts
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|host| {
+                    let dest = format!(
+                        "{}:{}",
+                        host.name,
+                        remote_exec.to_str().expect("cannot convert path to string")
+                    );
+                    Command::new("rsync")
+                        .arg("--progress")
+                        .arg(&exec)
+                        .arg(dest)
+                        .spawn()
+                        .context("problem spawning the rsync process")
+                        .unwrap()
+                })
+                .collect();
+
+            for mut h in handles {
+                h.wait().expect("problem waiting for the rsync process");
+            }
+
+            println!("spawning executable {:?}", exec);
+            // This is the top level invocation, which should spawn the processes with ssh
+            let handles: Vec<std::process::Child> = self
+                .hosts
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+                .map(|(pid, host)| {
+                    let encoded_config = configuration.with_process_id(pid).conf_encode();
+                    Command::new("ssh")
+                        .arg(&host.name)
+                        .arg(&remote_exec)
+                        .arg(encoded_config)
+                        .spawn()
+                        .context("problem spawning the ssh process")
+                        .unwrap()
+                })
+                .collect();
+
+            for mut h in handles {
+                h.wait().expect("problem waiting for the ssh process");
+            }
+
+            Ok(None)
+        } else {
+            let worker_config = WorkerConfig::default();
+            let communication_config = match &self.hosts {
+                None => {
+                    if self.threads == 1 {
+                        TimelyConfig::Thread
+                    } else {
+                        TimelyConfig::Process(self.threads)
+                    }
+                }
+                Some(hosts) => TimelyConfig::Cluster {
+                    threads: self.threads,
+                    process: self.process_id.expect("missing process id"),
+                    addresses: hosts.to_strings(),
+                    report: false,
+                    log_fn: Box::new(|_| None),
+                },
+            };
+            let config = timely::execute::Config {
+                communication: communication_config,
+                worker: worker_config,
+            };
+            let guards = timely::execute(config, func)
+                .map_err(|e| anyhow::anyhow!(e))
+                .context("timely execute")?;
+            Ok(Some(guards))
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Configuration {
     pub outliers: OutliersSpec,
@@ -75,6 +182,29 @@ pub struct Configuration {
     pub dataset: PathBuf,
     pub constraint: Constraint,
     pub parallel: Option<ParallelConfiguration>,
+}
+
+impl WithProcessId for Configuration {
+    fn with_process_id(&self, process_id: usize) -> Self {
+        let parallel_conf = self
+            .parallel
+            .as_ref()
+            .expect("missing parallel configuration");
+        let parallel_conf = ParallelConfiguration {
+            process_id: Some(process_id),
+            ..parallel_conf.clone()
+        };
+        Self {
+            parallel: Some(parallel_conf),
+            ..self.clone()
+        }
+    }
+}
+
+impl ConfEncode for Configuration {
+    fn conf_encode(&self) -> String {
+        base64::encode(&serde_json::to_string(&self).unwrap())
+    }
 }
 
 impl Configuration {
@@ -154,25 +284,6 @@ impl Configuration {
         Ok(format!("{:x}", sha.result()))
     }
 
-    fn with_process_id(&self, process_id: usize) -> Result<Self> {
-        let parallel_conf = self
-            .parallel
-            .as_ref()
-            .context("missing parallel configuration")?;
-        let parallel_conf = ParallelConfiguration {
-            process_id: Some(process_id),
-            ..parallel_conf.clone()
-        };
-        Ok(Self {
-            parallel: Some(parallel_conf),
-            ..self.clone()
-        })
-    }
-
-    fn encode(&self) -> Result<String> {
-        Ok(base64::encode(&serde_json::to_string(&self)?))
-    }
-
     pub fn execute<T, F>(&self, func: F) -> Result<Option<WorkerGuards<T>>>
     where
         T: Send + 'static,
@@ -182,92 +293,7 @@ impl Configuration {
             .parallel
             .as_ref()
             .context("missing parallel configuration")?;
-        if parallel_conf.hosts.is_some() && parallel_conf.process_id.is_none() {
-            let exec = std::env::args().nth(0).unwrap();
-            // first, we copy the executable to a known location, so that then we can run it
-            let remote_exec = PathBuf::from("/tmp").join(
-                PathBuf::from(&exec)
-                    .file_name()
-                    .with_context(|| format!("cannot get file name for {}", exec))?,
-            );
-            println!("Copying the executable to minions");
-            let handles: Vec<std::process::Child> = parallel_conf
-                .hosts
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|host| {
-                    let dest = format!(
-                        "{}:{}",
-                        host.name,
-                        remote_exec.to_str().expect("cannot convert path to string")
-                    );
-                    Command::new("rsync")
-                        .arg("--progress")
-                        .arg(&exec)
-                        .arg(dest)
-                        .spawn()
-                        .context("problem spawning the rsync process")
-                        .unwrap()
-                })
-                .collect();
-
-            for mut h in handles {
-                h.wait().expect("problem waiting for the rsync process");
-            }
-
-            println!("spawning executable {:?}", exec);
-            // This is the top level invocation, which should spawn the processes with ssh
-            let handles: Vec<std::process::Child> = parallel_conf
-                .hosts
-                .as_ref()
-                .unwrap()
-                .iter()
-                .enumerate()
-                .map(|(pid, host)| {
-                    let encoded_config = self.with_process_id(pid).unwrap().encode().unwrap();
-                    Command::new("ssh")
-                        .arg(&host.name)
-                        .arg(&remote_exec)
-                        .arg(encoded_config)
-                        .spawn()
-                        .context("problem spawning the ssh process")
-                        .unwrap()
-                })
-                .collect();
-
-            for mut h in handles {
-                h.wait().expect("problem waiting for the ssh process");
-            }
-
-            Ok(None)
-        } else {
-            let worker_config = WorkerConfig::default();
-            let communication_config = match &parallel_conf.hosts {
-                None => {
-                    if parallel_conf.threads == 1 {
-                        TimelyConfig::Thread
-                    } else {
-                        TimelyConfig::Process(parallel_conf.threads)
-                    }
-                }
-                Some(hosts) => TimelyConfig::Cluster {
-                    threads: parallel_conf.threads,
-                    process: parallel_conf.process_id.expect("missing process id"),
-                    addresses: hosts.to_strings(),
-                    report: false,
-                    log_fn: Box::new(|_| None),
-                },
-            };
-            let config = timely::execute::Config {
-                communication: communication_config,
-                worker: worker_config,
-            };
-            let guards = timely::execute(config, func)
-                .map_err(|e| anyhow::anyhow!(e))
-                .context("timely execute")?;
-            Ok(Some(guards))
-        }
+        parallel_conf.execute(func, self.clone())
     }
 }
 

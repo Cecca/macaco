@@ -1,11 +1,8 @@
-mod configuration;
-mod reporter;
-
 use abomonation::Abomonation;
 use anyhow::{Context, Result};
-use configuration::*;
+use kcmkc::configuration::*;
+use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
-use reporter::Reporter;
 use serde::Deserialize;
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};

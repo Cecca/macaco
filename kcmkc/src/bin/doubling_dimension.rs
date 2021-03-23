@@ -4,53 +4,148 @@
 extern crate log;
 
 use anyhow::{Context, Result};
+use flate2::{write::GzEncoder, Compression};
+use kcmkc::configuration::*;
 use kcmkc_base::{
     dataset::{Dataset, Datatype},
-    types::{Distance, Song, WikiPage},
+    types::{Distance, OrderedF32, Song, WikiPage},
 };
 use kcmkc_sequential::disks::*;
 use serde::Deserialize;
 use serde::Serialize;
-use std::io::prelude::*;
+use std::{borrow::BorrowMut, cell::RefCell, io::BufWriter};
 use std::{collections::BTreeSet, fs::File, path::PathBuf};
+use std::{io::prelude::*, time::Duration};
+use std::{ops::Deref, rc::Rc};
+use timely::{
+    communication::{Allocator, WorkerGuards},
+    dataflow::channels::pact::{Exchange, Pipeline},
+    worker::Worker,
+};
+use timely::{
+    dataflow::operators::*,
+    dataflow::{InputHandle, ProbeHandle},
+    ExchangeData,
+};
 
-fn estimate_doubling_dimension<T: Distance>(
+fn estimate_doubling_dimension<T: Distance + ExchangeData>(
     config: Config,
-) -> Result<Box<dyn Iterator<Item = (usize, u32)>>>
+    worker: &mut Worker<Allocator>,
+) -> Result<()>
 where
     for<'de> T: Deserialize<'de>,
 {
-    let dataset: Vec<T> = Dataset::new(&config.dataset).to_vec()?;
+    let dataset = Dataset::new(&config.dataset);
+    let n = dataset.size::<T>()?;
+    info!("Dataset of size {}", n);
 
-    info!("Computing pairwise distances...");
-    let disk_builder = DiskBuilder::new(&dataset);
-    info!("...done");
+    let mut outfile = BufWriter::new(File::create(config.output)?);
+    let mut pl = Some(
+        progress_logger::ProgressLogger::builder()
+            .with_expected_updates(n as u64)
+            .with_items_name("points")
+            .with_frequency(Duration::from_secs(1))
+            .start(),
+    );
+    let mut input: InputHandle<(), (usize, T)> = InputHandle::new();
+    let mut probe: ProbeHandle<()> = ProbeHandle::new();
+    let wid = worker.index();
+    let peers = worker.peers();
 
-    let estimates = (0..dataset.len()).map(move |u| {
-        let ecc = disk_builder.eccentricity(u);
-        let mut doubling_dimension = 0u32;
-        for &r in &[ecc, ecc / 2.0, ecc / 4.0] {
-            let mut disk: BTreeSet<usize> = disk_builder.disk(u, r).collect();
-            let mut cnt = 0;
-            while let Some(c) = disk.iter().next() {
-                for v in disk_builder.disk(*c, r / 2.0) {
-                    disk.remove(&v);
+    worker.dataflow(|scope| {
+        scope
+            .input_from(&mut input)
+            // broadcast the input to all workers
+            .broadcast()
+            .accumulate(Vec::new(), |stash, data| {
+                stash.extend(data.replace(Vec::new()))
+            })
+            .flat_map(move |stash| {
+                let mut pl = progress_logger::ProgressLogger::builder()
+                    .with_items_name("points")
+                    .with_expected_updates((stash.len() / peers) as u64)
+                    .start();
+                let mut res = Vec::new();
+                for (i, x) in stash.iter() {
+                    if i % peers == wid {
+                        let mut dists: Vec<(usize, OrderedF32)> = stash
+                            .iter()
+                            .map(|(j, y)| (*j, x.distance(y).into()))
+                            .collect();
+                        dists.sort_unstable_by_key(|pair| pair.1);
+                        let dists: Vec<(usize, f32)> =
+                            dists.into_iter().map(|(i, d)| (i, d.into())).collect();
+                        res.push((*i, dists));
+                        pl.update(1u64);
+                    }
                 }
-                cnt += 1;
-            }
-            assert!(disk.is_empty());
-            doubling_dimension = std::cmp::max(doubling_dimension, cnt);
-        }
-        doubling_dimension
+                pl.stop();
+                res.into_iter()
+            })
+            .broadcast()
+            .accumulate(Vec::new(), |stash, data| {
+                stash.extend(data.replace(Vec::new()))
+            })
+            .flat_map(move |dists| {
+                let disk_builder = DiskBuilder::from_distances(dists);
+                (0..n).filter(move |u| *u % peers == wid).map(move |u| {
+                    let ecc = disk_builder.eccentricity(u);
+                    let mut doubling_dimension = 0u32;
+                    for &r in &[ecc, ecc / 2.0, ecc / 4.0] {
+                        let mut disk: BTreeSet<usize> = disk_builder.disk(u, r).collect();
+                        let mut cnt = 0;
+                        while let Some(c) = disk.iter().next() {
+                            for v in disk_builder.disk(*c, r / 2.0) {
+                                disk.remove(&v);
+                            }
+                            cnt += 1;
+                        }
+                        assert!(disk.is_empty());
+                        doubling_dimension = std::cmp::max(doubling_dimension, cnt);
+                    }
+                    (u, doubling_dimension)
+                })
+            })
+            // Direct everything to the first worker, which will write the output to file
+            .unary_notify(
+                Exchange::new(|_| 0),
+                "file_writer",
+                None,
+                move |input, output, notificator| {
+                    input.for_each(|t, data| {
+                        pl.as_mut().unwrap().update(data.len() as u64);
+                        for (i, dd) in data.replace(Vec::new()) {
+                            writeln!(outfile, "{}, {}", i, dd).expect("error writing to file");
+                        }
+                        notificator.notify_at(t.retain());
+                    });
+
+                    notificator.for_each(|t, _, _| {
+                        outfile.flush().unwrap();
+                        output.session(&t).give(());
+                        pl.take().unwrap().stop();
+                    });
+                },
+            )
+            .probe_with(&mut probe);
     });
 
-    Ok(Box::new(estimates.enumerate()))
+    if worker.index() == 0 {
+        let dataset: Vec<T> = dataset.to_vec()?;
+        for (i, x) in dataset.into_iter().enumerate() {
+            input.send((i, x));
+        }
+    }
+    input.close();
+    worker.step_while(|| !probe.done());
+    return Ok(());
 }
 
 #[derive(Deserialize, Serialize, Clone)]
 struct Config {
     dataset: PathBuf,
     output: PathBuf,
+    parallel: ParallelConfiguration,
 }
 
 impl Config {
@@ -59,7 +154,8 @@ impl Config {
         let config: Config = if path.is_file() {
             serde_json::from_reader(std::fs::File::open(path)?)?
         } else {
-            anyhow::bail!("Only config load from file is supported");
+            let decoded_str = String::from_utf8(base64::decode(spec)?)?;
+            serde_json::from_str(&decoded_str)?
         };
 
         Ok(config)
@@ -68,28 +164,49 @@ impl Config {
     fn datatype(&self) -> anyhow::Result<Datatype> {
         Ok(Dataset::new(&self.dataset).metadata()?.datatype)
     }
+
+    fn execute<T, F>(&self, func: F) -> Result<Option<WorkerGuards<T>>>
+    where
+        T: Send + 'static,
+        F: Fn(&mut Worker<timely::communication::Allocator>) -> T + Send + Sync + 'static,
+    {
+        self.parallel.execute(func, self.clone())
+    }
+}
+
+impl WithProcessId for Config {
+    fn with_process_id(&self, process_id: usize) -> Self {
+        let parallel = ParallelConfiguration {
+            process_id: Some(process_id),
+            ..self.parallel.clone()
+        };
+        Self {
+            parallel,
+            ..self.clone()
+        }
+    }
+}
+
+impl ConfEncode for Config {
+    fn conf_encode(&self) -> String {
+        base64::encode(&serde_json::to_string(&self).unwrap())
+    }
 }
 
 fn main() -> Result<()> {
-    use flate2::write::GzEncoder;
-    use flate2::Compression;
-
-    pretty_env_logger::init();
+    let _ = env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
 
     let config = Config::load(std::env::args().nth(1).context("missing argument")?)?;
 
-    let res = match config.datatype()? {
-        Datatype::WikiPage => estimate_doubling_dimension::<WikiPage>(config.clone()),
-        Datatype::Song => estimate_doubling_dimension::<Song>(config.clone()),
-    }?;
-
-    let mut pl = progress_logger::ProgressLogger::builder().start();
-    let mut out = GzEncoder::new(File::create(&config.output)?, Compression::best());
-    for (i, dd) in res {
-        writeln!(out, "{}, {}", i, dd)?;
-        pl.update_light(1u64);
-    }
-    pl.stop();
+    config.clone().execute(move |worker| {
+        match config.datatype().unwrap() {
+            Datatype::WikiPage => estimate_doubling_dimension::<WikiPage>(config.clone(), worker),
+            Datatype::Song => estimate_doubling_dimension::<Song>(config.clone(), worker),
+        }
+        .unwrap();
+    })?;
 
     Ok(())
 }

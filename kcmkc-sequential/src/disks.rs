@@ -24,6 +24,17 @@ impl DiskBuilder {
         Self { distances }
     }
 
+    pub fn from_distances(mut dists: Vec<(usize, Vec<(usize, f32)>)>) -> Self {
+        dists.sort_unstable_by_key(|pair| pair.0);
+        // Check that we have all the IDs, in order
+        for (i, pair) in (0..dists.len()).zip(dists.iter()) {
+            assert!(i == pair.0);
+        }
+        let distances = dists.into_iter().map(|pair| pair.1).collect();
+
+        Self { distances }
+    }
+
     /// Iterates through the distances in the matrix in sorted order.
     pub fn iter_distances_decr(&self) -> impl Iterator<Item = f32> {
         use std::collections::BTreeSet;

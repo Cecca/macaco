@@ -151,6 +151,15 @@ impl Dataset {
         }
     }
 
+    pub fn size<T>(&self) -> Result<usize>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        let mut cnt = 0;
+        self.for_each(|_, _: T| cnt += 1)?;
+        Ok(cnt)
+    }
+
     pub fn to_vec<T>(&self) -> Result<Vec<T>>
     where
         for<'de> T: Deserialize<'de>,
