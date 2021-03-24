@@ -13,4 +13,6 @@ pub trait Algorithm<T: Distance + Clone> {
     /// and to run the approximation algorithm on the coreset
     /// (second element)
     fn time_profile(&self) -> (Duration, Duration);
+
+    fn counters(&self) -> (u64, u64);
 }

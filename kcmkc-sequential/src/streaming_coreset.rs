@@ -5,6 +5,7 @@ use crate::{
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
+    perf_counters,
     types::{Distance, OrderedF32},
 };
 use std::{
@@ -16,6 +17,7 @@ pub struct StreamingCoreset<T> {
     tau: usize,
     coreset: Option<Vec<T>>,
     profile: Option<(Duration, Duration)>,
+    counters: Option<(u64, u64)>,
 }
 
 impl<V> StreamingCoreset<V> {
@@ -24,6 +26,7 @@ impl<V> StreamingCoreset<V> {
             tau,
             coreset: None,
             profile: None,
+            counters: None,
         }
     }
 }
@@ -47,6 +50,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
 
     fn time_profile(&self) -> (Duration, Duration) {
         self.profile.clone().unwrap()
+    }
+
+    fn counters(&self) -> (u64, u64) {
+        self.counters.clone().unwrap()
     }
 }
 
@@ -76,6 +83,10 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for Stream
 
         self.coreset.replace(coreset);
         self.profile.replace((elapsed_coreset, elapsed_solution));
+        self.counters.replace((
+            perf_counters::distance_count(),
+            perf_counters::matroid_oracle_count(),
+        ));
 
         Ok(solution)
     }

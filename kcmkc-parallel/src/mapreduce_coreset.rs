@@ -2,6 +2,7 @@ use abomonation::Abomonation;
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
+    perf_counters,
     types::Distance,
 };
 use kcmkc_sequential::{
@@ -10,16 +11,18 @@ use kcmkc_sequential::{
 };
 use rand::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{cell::RefCell, time::Instant};
 use std::{collections::hash_map::DefaultHasher, time::Duration};
+use std::{ops::Deref, sync::atomic::AtomicU64};
+use timely::dataflow::operators::{aggregation::Aggregate, Exchange};
 use timely::dataflow::{InputHandle, ProbeHandle};
 use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
 use timely::{
     communication::Allocator,
-    dataflow::{channels::pact::Exchange, operators::*},
+    dataflow::{channels::pact::Exchange as ExchangePact, operators::*},
 };
 
 use crate::ParallelAlgorithm;
@@ -29,6 +32,7 @@ pub struct MapReduceCoreset<V> {
     seed: u64,
     coreset: Option<Vec<V>>,
     profile: Option<(Duration, Duration)>,
+    counters: Option<(u64, u64)>,
 }
 
 impl<V> MapReduceCoreset<V> {
@@ -38,6 +42,7 @@ impl<V> MapReduceCoreset<V> {
             seed,
             coreset: None,
             profile: None,
+            counters: None,
         }
     }
 }
@@ -61,6 +66,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset
 
     fn time_profile(&self) -> (Duration, Duration) {
         self.profile.clone().unwrap()
+    }
+
+    fn counters(&self) -> (u64, u64) {
+        self.counters.clone().unwrap()
     }
 }
 
@@ -94,9 +103,51 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
 
         self.coreset.replace(coreset);
         self.profile.replace((elapsed_coreset, elapsed_solution));
+        self.counters.replace(collect_counters(worker));
 
         Ok(solution)
     }
+}
+
+// Set up and run a small dataflow to collect performance counters from all workers
+fn collect_counters(worker: &mut Worker<Allocator>) -> (u64, u64) {
+    let distance_counter = Arc::new(AtomicU64::new(0));
+    let distance_counter2 = Arc::clone(&distance_counter);
+    let oracle_counter = Arc::new(AtomicU64::new(0));
+    let oracle_counter2 = Arc::clone(&oracle_counter);
+
+    // Collect the counters from all the workers into the first worker
+    let (mut input, probe) = worker.dataflow::<(), _, _>(move |scope| {
+        let (input, stream) = scope.new_input::<(u8, u64)>();
+        let probe = stream
+            .aggregate(
+                |_key, val, agg| {
+                    *agg += val;
+                },
+                |key, agg: u64| (key, agg),
+                |key| *key as u64,
+            )
+            .exchange(|_| 0)
+            .map(move |(typ, cnt)| {
+                if typ == 0 {
+                    distance_counter.fetch_add(cnt, std::sync::atomic::Ordering::SeqCst);
+                } else {
+                    oracle_counter.fetch_add(cnt, std::sync::atomic::Ordering::SeqCst);
+                }
+                ()
+            })
+            .probe();
+        (input, probe)
+    });
+    input.send((0, perf_counters::distance_count()));
+    input.send((1, perf_counters::matroid_oracle_count()));
+    input.close();
+    worker.step_while(|| !probe.done());
+
+    (
+        distance_counter2.load(std::sync::atomic::Ordering::SeqCst),
+        oracle_counter2.load(std::sync::atomic::Ordering::SeqCst),
+    )
 }
 
 fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
@@ -119,7 +170,7 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
             .input_from(&mut input)
             // Exchange the vectors randomly, and then build the coreset in each partition
             .unary_notify(
-                Exchange::new(|x: &(u64, T)| x.0),
+                ExchangePact::new(|x: &(u64, T)| x.0),
                 "coreset_builder",
                 None,
                 move |input, output, notificator| {
@@ -165,7 +216,7 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                 },
             )
             // Collect all the data into the first worker and stash it into the output
-            .unary(Exchange::new(|_| 0), "output_collector", |_, _| {
+            .unary(ExchangePact::new(|_| 0), "output_collector", |_, _| {
                 move |input, output| {
                     input.for_each(|t, data| {
                         result1

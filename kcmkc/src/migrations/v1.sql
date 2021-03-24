@@ -18,6 +18,8 @@ CREATE TABLE result_raw (
     total_time_ms INTEGER NOT NULL,
     coreset_time_ms INTEGER NOT NULL,
     solution_time_ms INTEGER NOT NULL,
+    distance_cnt INTEGER NOT NULL,
+    oracle_cnt INTEGER NOT NULL,
     radius REAL NOT NULL,
     num_centers INTEGER NOT NULL,
     coreset_size INTEGER,

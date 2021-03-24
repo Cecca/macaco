@@ -6,6 +6,7 @@ use crate::{
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
+    perf_counters,
     types::Distance,
 };
 use std::{
@@ -17,6 +18,7 @@ pub struct SeqCoreset<V> {
     tau: usize,
     coreset: Option<Vec<V>>,
     profile: Option<(Duration, Duration)>,
+    counters: Option<(u64, u64)>,
 }
 
 impl<V> SeqCoreset<V> {
@@ -25,6 +27,7 @@ impl<V> SeqCoreset<V> {
             tau,
             coreset: None,
             profile: None,
+            counters: None,
         }
     }
 }
@@ -48,6 +51,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
 
     fn time_profile(&self) -> (Duration, Duration) {
         self.profile.clone().unwrap()
+    }
+
+    fn counters(&self) -> (u64, u64) {
+        self.counters.clone().unwrap()
     }
 }
 
@@ -119,6 +126,10 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
 
         self.coreset.replace(coreset);
         self.profile.replace((elapsed_coreset, elapsed_solution));
+        self.counters.replace((
+            perf_counters::distance_count(),
+            perf_counters::matroid_oracle_count(),
+        ));
 
         Ok(solution)
     }

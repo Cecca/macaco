@@ -1,6 +1,8 @@
 use std::rc::Rc;
 use std::{collections::HashMap, marker::PhantomData};
 
+use crate::perf_counters;
+
 pub trait Matroid<T> {
     fn is_independent(&self, set: &[T]) -> bool;
     fn is_independent_ref(&self, set: &[&T]) -> bool;
@@ -74,12 +76,14 @@ impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
     }
 
     fn is_independent(&self, set: &[T]) -> bool {
+        perf_counters::inc_matroid_oracle_count();
         // FIXME: find a way to remove this allocation, if it is a bottleneck
         let set: Vec<&T> = set.iter().collect();
         set.len() < self.topics.len() && self.maximum_matching(&set).count() == set.len()
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
+        perf_counters::inc_matroid_oracle_count();
         set.len() < self.topics.len() && self.maximum_matching(set).count() == set.len()
     }
 }
@@ -163,6 +167,7 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
     }
 
     fn is_independent(&self, set: &[T]) -> bool {
+        perf_counters::inc_matroid_oracle_count();
         let mut counts = self.categories.clone();
         for x in set {
             let cat = x.category();
@@ -179,6 +184,7 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
+        perf_counters::inc_matroid_oracle_count();
         let mut counts = self.categories.clone();
         for x in set {
             let cat = x.category();

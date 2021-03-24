@@ -507,6 +507,7 @@ name = "kcmkc-parallel"
 version = "0.1.0"
 dependencies = [
  "abomonation",
+ "abomonation_derive",
  "anyhow",
  "kcmkc-base",
  "kcmkc-sequential",

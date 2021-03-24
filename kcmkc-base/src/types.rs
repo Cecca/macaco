@@ -1,4 +1,4 @@
-use crate::matroid::*;
+use crate::{matroid::*, perf_counters};
 use abomonation_derive::Abomonation;
 use serde::Deserialize;
 
@@ -167,12 +167,14 @@ pub struct Song {
 
 impl Distance for WikiPage {
     fn distance(&self, other: &Self) -> f32 {
+        perf_counters::inc_distance_count();
         self.vector.cosine_distance(&other.vector)
     }
 }
 
 impl Distance for Song {
     fn distance(&self, other: &Self) -> f32 {
+        perf_counters::inc_distance_count();
         self.vector.cosine_distance(&other.vector)
     }
 }

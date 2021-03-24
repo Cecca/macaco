@@ -1,6 +1,7 @@
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
+    perf_counters,
 };
 use kcmkc_base::{
     matroid::augment,
@@ -19,6 +20,7 @@ use crate::{disks::*, SequentialAlgorithm};
 #[derive(Default)]
 pub struct ChenEtAl {
     profile: Option<(Duration, Duration)>,
+    counters: Option<(u64, u64)>,
 }
 
 impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
@@ -41,6 +43,10 @@ impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn time_profile(&self) -> (Duration, Duration) {
         self.profile.clone().unwrap()
     }
+
+    fn counters(&self) -> (u64, u64) {
+        self.counters.clone().unwrap()
+    }
 }
 
 impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtAl {
@@ -54,6 +60,10 @@ impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtA
         let solution = robust_matroid_center(dataset, matroid, p, &UnitWeightMap);
         let elapsed = start.elapsed();
         self.profile.replace((Duration::from_secs(0), elapsed));
+        self.counters.replace((
+            perf_counters::distance_count(),
+            perf_counters::matroid_oracle_count(),
+        ));
         Ok(solution)
     }
 }

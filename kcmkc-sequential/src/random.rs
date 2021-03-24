@@ -1,4 +1,4 @@
-use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, types::Distance};
+use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, perf_counters, types::Distance};
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 use std::{
@@ -10,6 +10,7 @@ use crate::SequentialAlgorithm;
 pub struct RandomClustering {
     pub seed: u64,
     profile: Option<(Duration, Duration)>,
+    counters: Option<(u64, u64)>,
 }
 
 impl RandomClustering {
@@ -17,6 +18,7 @@ impl RandomClustering {
         Self {
             seed,
             profile: None,
+            counters: None,
         }
     }
 }
@@ -41,6 +43,10 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
     fn time_profile(&self) -> (Duration, Duration) {
         self.profile.clone().unwrap()
     }
+
+    fn counters(&self) -> (u64, u64) {
+        self.counters.clone().unwrap()
+    }
 }
 
 impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {
@@ -55,6 +61,10 @@ impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {
         let sol = sol.into_iter().cloned().collect();
         let elapsed = start.elapsed();
         self.profile.replace((Duration::from_secs(0), elapsed));
+        self.counters.replace((
+            perf_counters::distance_count(),
+            perf_counters::matroid_oracle_count(),
+        ));
         Ok(sol)
     }
 }

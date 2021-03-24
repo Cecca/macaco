@@ -7,6 +7,7 @@ use kcmkc_base::{
 use rusqlite::*;
 use std::path::PathBuf;
 use std::time::Duration;
+use timely::dataflow::channels::pullers::Counter;
 
 use crate::configuration::Configuration;
 
@@ -21,12 +22,18 @@ struct CoresetInfo {
     pub proxy_radius: f32,
 }
 
+struct Counters {
+    pub distance: u64,
+    pub oracle: u64,
+}
+
 pub struct Reporter {
     db_path: PathBuf,
     date: DateTime<Utc>,
     config: Configuration,
     outcome: Option<Outcome>,
     coreset_info: Option<CoresetInfo>,
+    counters: Option<Counters>,
     profile: Option<(Duration, Duration)>,
 }
 
@@ -39,6 +46,7 @@ impl Reporter {
             outcome: None,
             coreset_info: None,
             profile: None,
+            counters: None,
         }
     }
 
@@ -55,6 +63,10 @@ impl Reporter {
             radius,
             num_centers,
         });
+    }
+
+    pub fn set_counters(&mut self, (distance, oracle): (u64, u64)) {
+        self.counters.replace(Counters { distance, oracle });
     }
 
     pub fn set_profile(&mut self, profile: (Duration, Duration)) {
@@ -105,6 +117,7 @@ impl Reporter {
         let dataset_params = metadata.parameters_string();
 
         if let Some(outcome) = self.outcome {
+            let counters = self.counters.context("missing counters")?;
             let (hosts, threads) = if let Some(parallel) = self.config.parallel.as_ref() {
                 let hosts = if let Some(hosts) = parallel.hosts.as_ref() {
                     let mut hosts = hosts.clone();
@@ -130,6 +143,8 @@ impl Reporter {
                     total_time_ms,
                     coreset_time_ms,
                     solution_time_ms,
+                    distance_cnt,
+                    oracle_cnt,
                     radius,
                     num_centers,
                     coreset_size,
@@ -142,6 +157,8 @@ impl Reporter {
                     :total_time_ms,
                     :coreset_time_ms,
                     :solution_time_ms,
+                    :distance_cnt,
+                    :oracle_cnt,
                     :radius,
                     :num_centers,
                     :coreset_size,
@@ -164,6 +181,8 @@ impl Reporter {
                     ":total_time_ms": outcome.total_time.as_millis() as i64,
                     ":coreset_time_ms": self.profile.as_ref().unwrap().0.as_millis() as i64,
                     ":solution_time_ms": self.profile.as_ref().unwrap().1.as_millis() as i64,
+                    ":distance_cnt": counters.distance as i64,
+                    ":oracle_cnt": counters.oracle as i64,
                     ":radius": outcome.radius as f64,
                     ":num_centers": outcome.num_centers,
                     ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),
