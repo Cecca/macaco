@@ -20,6 +20,10 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
     fn parameters(&self) -> String {
         format!(r#"{{ "seed": {} }}"#, self.seed)
     }
+
+    fn coreset(&self) -> Option<Vec<T>> {
+        None
+    }
 }
 
 impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {

@@ -10,17 +10,18 @@ use kcmkc_base::{
 };
 use std::rc::Rc;
 
-pub struct SeqCoreset {
+pub struct SeqCoreset<V> {
     tau: usize,
+    coreset: Option<Vec<V>>,
 }
 
-impl SeqCoreset {
+impl<V> SeqCoreset<V> {
     pub fn new(tau: usize) -> Self {
-        Self { tau }
+        Self { tau, coreset: None }
     }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset {
+impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
     fn version(&self) -> u32 {
         1
     }
@@ -32,9 +33,13 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset {
     fn parameters(&self) -> String {
         format!("{{\"tau\": {}}}", self.tau)
     }
+
+    fn coreset(&self) -> Option<Vec<V>> {
+        self.coreset.clone()
+    }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCoreset {
+impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCoreset<V> {
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],
@@ -98,6 +103,8 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
 
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
         assert!(matroid.is_maximal(&solution, &dataset));
+
+        self.coreset.replace(coreset);
 
         Ok(solution)
     }

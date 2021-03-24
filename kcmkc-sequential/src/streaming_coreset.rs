@@ -9,17 +9,18 @@ use kcmkc_base::{
 };
 use std::rc::Rc;
 
-pub struct StreamingCoreset {
+pub struct StreamingCoreset<T> {
     tau: usize,
+    coreset: Option<Vec<T>>,
 }
 
-impl StreamingCoreset {
+impl<V> StreamingCoreset<V> {
     pub fn new(tau: usize) -> Self {
-        Self { tau }
+        Self { tau, coreset: None }
     }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset {
+impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset<V> {
     fn version(&self) -> u32 {
         1
     }
@@ -31,9 +32,13 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
     fn parameters(&self) -> String {
         format!("{{\"tau\": {}}}", self.tau)
     }
+
+    fn coreset(&self) -> Option<Vec<V>> {
+        self.coreset.clone()
+    }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for StreamingCoreset {
+impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for StreamingCoreset<V> {
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],
@@ -52,6 +57,8 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for Stream
 
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
         assert!(matroid.is_maximal(&solution, &dataset));
+
+        self.coreset.replace(coreset);
 
         Ok(solution)
     }

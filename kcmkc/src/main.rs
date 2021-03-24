@@ -26,13 +26,17 @@ where
     let centers = algorithm.sequential_run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
-    let radius = compute_radius(&dataset.to_vec()?, &centers, outliers);
+    let radius = compute_radius_outliers(&dataset.to_vec()?, &centers, outliers);
     println!(
         "Found clustering with {} centers in {:?}, with radius {}",
         centers.len(),
         elapsed,
         radius
     );
+
+    if let Some(coreset) = algorithm.coreset() {
+        reporter.set_coreset_info(coreset.len(), compute_radius(&dataset.to_vec()?, &coreset))
+    }
 
     reporter.set_outcome(elapsed, radius, centers.len() as u32);
     reporter.save()?;
@@ -63,13 +67,17 @@ where
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
-        let radius = compute_radius(&dataset.to_vec()?, &centers, outliers);
+        let radius = compute_radius_outliers(&dataset.to_vec()?, &centers, outliers);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
             centers.len(),
             elapsed,
             radius
         );
+
+        if let Some(coreset) = algorithm.coreset() {
+            reporter.set_coreset_info(coreset.len(), compute_radius(&dataset.to_vec()?, &coreset))
+        }
 
         reporter.set_outcome(elapsed, radius, centers.len() as u32);
         reporter.save()?;
@@ -107,13 +115,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn compute_radius<T: Distance>(dataset: &[T], centers: &[T], outliers: usize) -> f32 {
+fn compute_radius_outliers<T: Distance>(dataset: &[T], centers: &[T], outliers: usize) -> f32 {
     let mut topk = TopK::new(outliers);
     for x in dataset {
         let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
         topk.insert(closest);
     }
     topk.kth()
+}
+
+fn compute_radius<T: Distance>(dataset: &[T], centers: &[T]) -> f32 {
+    let mut maxdist = OrderedF32(0.0);
+    for x in dataset {
+        let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
+        maxdist = maxdist.max(closest);
+    }
+    maxdist.into()
 }
 
 #[derive(Debug)]

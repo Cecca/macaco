@@ -24,18 +24,23 @@ use timely::{
 
 use crate::ParallelAlgorithm;
 
-pub struct MapReduceCoreset {
+pub struct MapReduceCoreset<V> {
     tau: usize,
     seed: u64,
+    coreset: Option<Vec<V>>,
 }
 
-impl MapReduceCoreset {
+impl<V> MapReduceCoreset<V> {
     pub fn new(tau: usize, seed: u64) -> Self {
-        Self { tau, seed }
+        Self {
+            tau,
+            seed,
+            coreset: None,
+        }
     }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset {
+impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset<V> {
     fn version(&self) -> u32 {
         1
     }
@@ -47,10 +52,14 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset
     fn parameters(&self) -> String {
         format!("{{ \"tau\": {}, \"seed\": {} }}", self.tau, self.seed)
     }
+
+    fn coreset(&self) -> Option<Vec<V>> {
+        self.coreset.clone()
+    }
 }
 
 impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> ParallelAlgorithm<T>
-    for MapReduceCoreset
+    for MapReduceCoreset<T>
 {
     fn parallel_run(
         &mut self,
@@ -72,6 +81,8 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         } else {
             Vec::new()
         };
+
+        self.coreset.replace(coreset);
 
         Ok(solution)
     }

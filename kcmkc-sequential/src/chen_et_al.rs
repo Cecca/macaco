@@ -27,6 +27,10 @@ impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn parameters(&self) -> String {
         String::new()
     }
+
+    fn coreset(&self) -> Option<Vec<T>> {
+        None
+    }
 }
 
 impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtAl {
