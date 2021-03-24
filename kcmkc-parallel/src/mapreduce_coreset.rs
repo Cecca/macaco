@@ -10,10 +10,10 @@ use kcmkc_sequential::{
 };
 use rand::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::cell::RefCell;
-use std::collections::hash_map::DefaultHasher;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::{cell::RefCell, time::Instant};
+use std::{collections::hash_map::DefaultHasher, time::Duration};
 use timely::dataflow::{InputHandle, ProbeHandle};
 use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
@@ -28,6 +28,7 @@ pub struct MapReduceCoreset<V> {
     tau: usize,
     seed: u64,
     coreset: Option<Vec<V>>,
+    profile: Option<(Duration, Duration)>,
 }
 
 impl<V> MapReduceCoreset<V> {
@@ -36,6 +37,7 @@ impl<V> MapReduceCoreset<V> {
             tau,
             seed,
             coreset: None,
+            profile: None,
         }
     }
 }
@@ -56,6 +58,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset
     fn coreset(&self) -> Option<Vec<V>> {
         self.coreset.clone()
     }
+
+    fn time_profile(&self) -> (Duration, Duration) {
+        self.profile.clone().unwrap()
+    }
 }
 
 impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> ParallelAlgorithm<T>
@@ -68,12 +74,15 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
+        let start = Instant::now();
         let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau, self.seed);
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<T> = coreset.into_iter().map(|p| p.0).collect();
-        println!("Coreset of size {}", coreset.len());
+        let elapsed_coreset = start.elapsed();
+        println!("Coreset of size {} ({:?})", coreset.len(), elapsed_coreset);
 
+        let start = Instant::now();
         let solution = if worker.index() == 0 {
             let s = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
             assert!(matroid.is_maximal(&s, &dataset));
@@ -81,8 +90,10 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         } else {
             Vec::new()
         };
+        let elapsed_solution = start.elapsed();
 
         self.coreset.replace(coreset);
+        self.profile.replace((elapsed_coreset, elapsed_solution));
 
         Ok(solution)
     }

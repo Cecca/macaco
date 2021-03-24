@@ -27,6 +27,7 @@ pub struct Reporter {
     config: Configuration,
     outcome: Option<Outcome>,
     coreset_info: Option<CoresetInfo>,
+    profile: Option<(Duration, Duration)>,
 }
 
 impl Reporter {
@@ -37,6 +38,7 @@ impl Reporter {
             config,
             outcome: None,
             coreset_info: None,
+            profile: None,
         }
     }
 
@@ -53,6 +55,10 @@ impl Reporter {
             radius,
             num_centers,
         });
+    }
+
+    pub fn set_profile(&mut self, profile: (Duration, Duration)) {
+        self.profile.replace(profile);
     }
 
     pub fn set_coreset_info(&mut self, size: usize, proxy_radius: f32) {
@@ -122,6 +128,8 @@ impl Reporter {
                     dataset, dataset_params, dataset_version,
                     constraint_params,
                     total_time_ms,
+                    coreset_time_ms,
+                    solution_time_ms,
                     radius,
                     num_centers,
                     coreset_size,
@@ -132,6 +140,8 @@ impl Reporter {
                     :dataset, :dataset_params, :dataset_version,
                     :constraint_params,
                     :total_time_ms,
+                    :coreset_time_ms,
+                    :solution_time_ms,
                     :radius,
                     :num_centers,
                     :coreset_size,
@@ -152,6 +162,8 @@ impl Reporter {
                     ":dataset_version": dataset_version,
                     ":constraint_params": serde_json::to_string(&self.config.constraint)?,
                     ":total_time_ms": outcome.total_time.as_millis() as i64,
+                    ":coreset_time_ms": self.profile.as_ref().unwrap().0.as_millis() as i64,
+                    ":solution_time_ms": self.profile.as_ref().unwrap().1.as_millis() as i64,
                     ":radius": outcome.radius as f64,
                     ":num_centers": outcome.num_centers,
                     ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),

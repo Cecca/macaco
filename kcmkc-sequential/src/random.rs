@@ -1,11 +1,24 @@
 use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, types::Distance};
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
-use std::rc::Rc;
+use std::{
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use crate::SequentialAlgorithm;
 pub struct RandomClustering {
     pub seed: u64,
+    profile: Option<(Duration, Duration)>,
+}
+
+impl RandomClustering {
+    pub fn new(seed: u64) -> Self {
+        Self {
+            seed,
+            profile: None,
+        }
+    }
 }
 
 impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
@@ -24,6 +37,10 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
     fn coreset(&self) -> Option<Vec<T>> {
         None
     }
+
+    fn time_profile(&self) -> (Duration, Duration) {
+        self.profile.clone().unwrap()
+    }
 }
 
 impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {
@@ -33,8 +50,11 @@ impl<T: Distance + Clone> SequentialAlgorithm<T> for RandomClustering {
         matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
+        let start = Instant::now();
         let sol = random_matroid_center(dataset, matroid, p, self.seed);
         let sol = sol.into_iter().cloned().collect();
+        let elapsed = start.elapsed();
+        self.profile.replace((Duration::from_secs(0), elapsed));
         Ok(sol)
     }
 }

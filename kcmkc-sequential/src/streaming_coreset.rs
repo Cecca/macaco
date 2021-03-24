@@ -7,16 +7,24 @@ use kcmkc_base::{
     matroid::{Matroid, Weight},
     types::{Distance, OrderedF32},
 };
-use std::rc::Rc;
+use std::{
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 pub struct StreamingCoreset<T> {
     tau: usize,
     coreset: Option<Vec<T>>,
+    profile: Option<(Duration, Duration)>,
 }
 
 impl<V> StreamingCoreset<V> {
     pub fn new(tau: usize) -> Self {
-        Self { tau, coreset: None }
+        Self {
+            tau,
+            coreset: None,
+            profile: None,
+        }
     }
 }
 
@@ -36,6 +44,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
     fn coreset(&self) -> Option<Vec<V>> {
         self.coreset.clone()
     }
+
+    fn time_profile(&self) -> (Duration, Duration) {
+        self.profile.clone().unwrap()
+    }
 }
 
 impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for StreamingCoreset<V> {
@@ -45,6 +57,7 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for Stream
         matroid: Rc<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
+        let start = Instant::now();
         let mut state = StreamingState::new(self.tau, Rc::clone(&matroid));
         for x in dataset {
             state.update(x);
@@ -53,12 +66,16 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for Stream
         let coreset = state.coreset();
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
+        let elapsed_coreset = start.elapsed();
         println!("Coreset of size {}", coreset.len());
 
+        let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
+        let elapsed_solution = start.elapsed();
         assert!(matroid.is_maximal(&solution, &dataset));
 
         self.coreset.replace(coreset);
+        self.profile.replace((elapsed_coreset, elapsed_solution));
 
         Ok(solution)
     }

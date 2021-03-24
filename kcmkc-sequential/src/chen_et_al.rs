@@ -7,13 +7,19 @@ use kcmkc_base::{
     types::{Distance, OrderedF32},
 };
 use rayon::prelude::*;
-use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::rc::Rc;
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 use crate::{disks::*, SequentialAlgorithm};
 
-pub struct ChenEtAl;
+#[derive(Default)]
+pub struct ChenEtAl {
+    profile: Option<(Duration, Duration)>,
+}
 
 impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn version(&self) -> u32 {
@@ -31,6 +37,10 @@ impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn coreset(&self) -> Option<Vec<T>> {
         None
     }
+
+    fn time_profile(&self) -> (Duration, Duration) {
+        self.profile.clone().unwrap()
+    }
 }
 
 impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtAl {
@@ -40,7 +50,11 @@ impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtA
         matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
-        Ok(robust_matroid_center(dataset, matroid, p, &UnitWeightMap))
+        let start = Instant::now();
+        let solution = robust_matroid_center(dataset, matroid, p, &UnitWeightMap);
+        let elapsed = start.elapsed();
+        self.profile.replace((Duration::from_secs(0), elapsed));
+        Ok(solution)
     }
 }
 

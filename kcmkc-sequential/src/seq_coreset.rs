@@ -8,16 +8,24 @@ use kcmkc_base::{
     matroid::{Matroid, Weight},
     types::Distance,
 };
-use std::rc::Rc;
+use std::{
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 pub struct SeqCoreset<V> {
     tau: usize,
     coreset: Option<Vec<V>>,
+    profile: Option<(Duration, Duration)>,
 }
 
 impl<V> SeqCoreset<V> {
     pub fn new(tau: usize) -> Self {
-        Self { tau, coreset: None }
+        Self {
+            tau,
+            coreset: None,
+            profile: None,
+        }
     }
 }
 
@@ -37,6 +45,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
     fn coreset(&self) -> Option<Vec<V>> {
         self.coreset.clone()
     }
+
+    fn time_profile(&self) -> (Duration, Duration) {
+        self.profile.clone().unwrap()
+    }
 }
 
 impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCoreset<V> {
@@ -46,12 +58,10 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
         matroid: Rc<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
-        // The approximation factor of the algorithm that extracts the solution from the coreset
-        let beta = 3.0;
-
         let z = dataset.len() - p;
         let k = matroid.rank();
 
+        let start = Instant::now();
         // First find a clustering of tau centers minimizing the radius, with no
         // matroid constraints
         let (centers, assignments) = kcenter(dataset, self.tau);
@@ -99,12 +109,16 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
+        let elapsed_coreset = start.elapsed();
         println!("Coreset of size {}", coreset.len());
 
+        let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
+        let elapsed_solution = start.elapsed();
         assert!(matroid.is_maximal(&solution, &dataset));
 
         self.coreset.replace(coreset);
+        self.profile.replace((elapsed_coreset, elapsed_solution));
 
         Ok(solution)
     }

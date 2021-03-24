@@ -16,6 +16,8 @@ CREATE TABLE result_raw (
     dataset_version TEXT NOT NULL,
     constraint_params TEXT NOT NULL,
     total_time_ms INTEGER NOT NULL,
+    coreset_time_ms INTEGER NOT NULL,
+    solution_time_ms INTEGER NOT NULL,
     radius REAL NOT NULL,
     num_centers INTEGER NOT NULL,
     coreset_size INTEGER,

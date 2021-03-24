@@ -39,6 +39,7 @@ where
     }
 
     reporter.set_outcome(elapsed, radius, centers.len() as u32);
+    reporter.set_profile(algorithm.time_profile());
     reporter.save()?;
 
     Ok(())
@@ -80,6 +81,7 @@ where
         }
 
         reporter.set_outcome(elapsed, radius, centers.len() as u32);
+        reporter.set_profile(algorithm.time_profile());
         reporter.save()?;
     }
     Ok(())

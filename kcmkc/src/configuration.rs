@@ -323,8 +323,8 @@ impl Configure for WikiPage {
     }
     fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
         match conf.algorithm {
-            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
-            AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau, seed } => {
@@ -334,8 +334,8 @@ impl Configure for WikiPage {
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
-            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
-            AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
@@ -362,8 +362,8 @@ impl Configure for Song {
     }
     fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
         match conf.algorithm {
-            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
-            AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau, seed } => {
@@ -373,8 +373,8 @@ impl Configure for Song {
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
-            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl),
-            AlgorithmConfig::Random { seed } => Box::new(RandomClustering { seed }),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
