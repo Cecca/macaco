@@ -1,4 +1,5 @@
 {
+    "shuffle_seed": 345345,
     "outliers": {
         "Fixed": 10
     },
