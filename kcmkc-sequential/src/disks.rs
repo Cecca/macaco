@@ -36,17 +36,26 @@ impl DiskBuilder {
         Self { distances }
     }
 
-    /// Iterates through the distances in the matrix in sorted order.
-    pub fn iter_distances_decr(&self) -> impl Iterator<Item = f32> {
-        use std::collections::BTreeSet;
+    fn distinct_distances(&self) -> Vec<OrderedF32> {
         println!("Sorting distances to get candidate radii");
-        let dists: BTreeSet<OrderedF32> = self
+        let mut dists: Vec<OrderedF32> = self
             .distances
             .iter()
             .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| f.1.into()))
             .collect();
 
-        dists.into_iter().map(|wrapper| wrapper.into()).rev()
+        dists.par_sort_unstable();
+        dists.dedup();
+
+        dists
+    }
+
+    /// Iterates through the distances in the matrix in sorted order.
+    pub fn iter_distances_decr(&self) -> impl Iterator<Item = f32> {
+        self.distinct_distances()
+            .into_iter()
+            .map(|wrapper| wrapper.into())
+            .rev()
     }
 
     /// Invoke the provided function on a sequence of distances. If the functino
@@ -55,14 +64,7 @@ impl DiskBuilder {
     /// The search stops when the distance between radii is 0.1% of the
     /// maximum distance in the dataset.
     pub fn bynary_search_distances<O, F: FnMut(f32) -> Result<O, usize>>(&self, mut f: F) -> O {
-        use std::collections::BTreeSet;
-        println!("Sorting distances to get candidate radii");
-        let dists: BTreeSet<OrderedF32> = self
-            .distances
-            .iter()
-            .flat_map(|row| row.iter().filter(|f| f.1 > 0.0).map(|f| f.1.into()))
-            .collect();
-        let dists: Vec<OrderedF32> = dists.into_iter().collect();
+        let dists: Vec<OrderedF32> = self.distinct_distances();
         assert!(dists.len() > 0);
         let max_distance = dists.last().unwrap().0;
         let min_difference = 0.001 * max_distance;
