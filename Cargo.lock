@@ -498,6 +498,8 @@ dependencies = [
  "abomonation_derive",
  "anyhow",
  "flate2",
+ "rand",
+ "rand_xorshift",
  "rmp-serde",
  "serde",
 ]

@@ -1,5 +1,7 @@
 use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
+use rand::{prelude::SliceRandom, SeedableRng};
+use rand_xorshift::XorShiftRng;
 use rmp_serde::decode::Error;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -160,7 +162,7 @@ impl Dataset {
         Ok(cnt)
     }
 
-    pub fn to_vec<T>(&self) -> Result<Vec<T>>
+    pub fn to_vec<T>(&self, shuffle_seed: Option<u64>) -> Result<Vec<T>>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -168,6 +170,11 @@ impl Dataset {
         self.for_each(|_, item| {
             result.push(item);
         })?;
+        if let Some(seed) = shuffle_seed {
+            let mut rng = XorShiftRng::seed_from_u64(seed);
+            result.shuffle(&mut rng);
+        }
+
         Ok(result)
     }
 }

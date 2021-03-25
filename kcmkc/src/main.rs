@@ -16,7 +16,7 @@ where
 
     let start = Instant::now();
     let dataset = Dataset::new(&config.dataset);
-    let items: Vec<V> = dataset.to_vec()?;
+    let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
     println!("loaded {} items in {:?}", items.len(), start.elapsed());
     let outliers = config.outliers.num_outliers(items.len());
     let p = items.len() - outliers;
@@ -26,7 +26,7 @@ where
     let centers = algorithm.sequential_run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
-    let radius = compute_radius_outliers(&dataset.to_vec()?, &centers, outliers);
+    let radius = compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
     println!(
         "Found clustering with {} centers in {:?}, with radius {}",
         centers.len(),
@@ -35,7 +35,10 @@ where
     );
 
     if let Some(coreset) = algorithm.coreset() {
-        reporter.set_coreset_info(coreset.len(), compute_radius(&dataset.to_vec()?, &coreset))
+        reporter.set_coreset_info(
+            coreset.len(),
+            compute_radius(&dataset.to_vec(None)?, &coreset),
+        )
     }
 
     reporter.set_outcome(elapsed, radius, centers.len() as u32);
@@ -58,7 +61,7 @@ where
 
     let start = Instant::now();
     let dataset = Dataset::new(&config.dataset);
-    let items: Vec<V> = dataset.to_vec()?;
+    let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
     println!("loaded {} items in {:?}", items.len(), start.elapsed());
     let outliers = config.outliers.num_outliers(items.len());
     let p = items.len() - outliers;
@@ -69,7 +72,7 @@ where
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
-        let radius = compute_radius_outliers(&dataset.to_vec()?, &centers, outliers);
+        let radius = compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
             centers.len(),
@@ -78,7 +81,10 @@ where
         );
 
         if let Some(coreset) = algorithm.coreset() {
-            reporter.set_coreset_info(coreset.len(), compute_radius(&dataset.to_vec()?, &coreset))
+            reporter.set_coreset_info(
+                coreset.len(),
+                compute_radius(&dataset.to_vec(None)?, &coreset),
+            )
         }
 
         reporter.set_outcome(elapsed, radius, centers.len() as u32);

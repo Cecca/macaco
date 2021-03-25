@@ -13,13 +13,13 @@ use kcmkc_base::{
 use kcmkc_sequential::disks::*;
 use serde::Deserialize;
 use serde::Serialize;
-use std::{io::BufWriter};
+use std::io::BufWriter;
 use std::{fs::File, path::PathBuf};
 use std::{io::prelude::*, time::Duration};
 
 use timely::{
     communication::{Allocator, WorkerGuards},
-    dataflow::channels::pact::{Exchange},
+    dataflow::channels::pact::Exchange,
     worker::Worker,
 };
 use timely::{
@@ -144,7 +144,7 @@ where
     });
 
     if worker.index() == 0 {
-        let dataset: Vec<T> = dataset.to_vec()?;
+        let dataset: Vec<T> = dataset.to_vec(None)?;
         for (i, x) in dataset.into_iter().enumerate() {
             input.send((i, x));
         }

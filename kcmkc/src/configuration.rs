@@ -14,7 +14,7 @@ use kcmkc_sequential::{
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, path::PathBuf, process::Command, rc::Rc};
 use timely::communication::Config as TimelyConfig;
-use timely::communication::{WorkerGuards};
+use timely::communication::WorkerGuards;
 use timely::worker::Config as WorkerConfig;
 use timely::worker::Worker;
 
@@ -177,6 +177,7 @@ impl ParallelConfiguration {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Configuration {
+    pub shuffle_seed: u64,
     pub outliers: OutliersSpec,
     pub algorithm: AlgorithmConfig,
     pub dataset: PathBuf,
