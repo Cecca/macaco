@@ -51,7 +51,7 @@ impl Reporter {
 
     fn default_db_path() -> std::path::PathBuf {
         #[allow(deprecated)]
-        let mut path = std::env::home_dir().expect("unable to get home directory");
+        let mut path = PathBuf::new();// std::env::home_dir().expect("unable to get home directory");
         path.push("kcmkc-results.sqlite");
         path
     }

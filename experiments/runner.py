@@ -26,8 +26,10 @@ def run_wiki():
     """
     datasets = [
         "wiki-d50-c100-s10000",
-        # "wiki-d50-c100-s100000",
+        "wiki-d50-c100-s100000",
     ]
+    for dataset in datasets:
+        DATASETS[dataset].preprocess()
     constraints = [
         # Very constrained solution
         list(range(0, 10)),

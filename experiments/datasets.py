@@ -548,13 +548,10 @@ for size in [100000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
     )
-    DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
-        base=DATASETS["MusixMatch"], size=size, seed=12341245
-    )
+    # DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
+    #     base=DATASETS["MusixMatch"], size=size, seed=12341245
+    # )
 
-DATASETS["MusixMatch-easy-7000"] = BoundedDifficultyDataset(
-    DATASETS["MusixMatch-s10000"], 7000
-)
 
 if __name__ == "__main__":
     dataset = DATASETS["MusixMatch-easy-7000"]
