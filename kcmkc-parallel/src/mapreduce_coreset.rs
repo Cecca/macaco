@@ -14,7 +14,7 @@ use rand_xorshift::XorShiftRng;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{cell::RefCell, time::Instant};
-use std::{collections::hash_map::DefaultHasher, time::Duration};
+use std::{time::Duration};
 use std::{ops::Deref, sync::atomic::AtomicU64};
 use timely::dataflow::operators::{aggregation::Aggregate, Exchange};
 use timely::dataflow::{InputHandle, ProbeHandle};

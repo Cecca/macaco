@@ -5,7 +5,7 @@ use kcmkc_base::{
 };
 use kcmkc_base::{
     matroid::augment,
-    types::{Distance, OrderedF32},
+    types::{Distance},
 };
 use rayon::prelude::*;
 use std::iter::FromIterator;
@@ -241,7 +241,7 @@ impl<'a, T: Clone> DiskMatroid1<'a, T> {
 }
 
 impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'a, T> {
-    fn is_independent(&self, set: &[ExpandedDisk<W>]) -> bool {
+    fn is_independent(&self, _set: &[ExpandedDisk<W>]) -> bool {
         todo!()
     }
 
@@ -264,7 +264,7 @@ impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'
 struct DiskMatroid2;
 
 impl<'a, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid2 {
-    fn is_independent(&self, set: &[ExpandedDisk<W>]) -> bool {
+    fn is_independent(&self, _set: &[ExpandedDisk<W>]) -> bool {
         todo!()
     }
 

@@ -14,7 +14,7 @@ use kcmkc_sequential::{
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, path::PathBuf, process::Command, rc::Rc};
 use timely::communication::Config as TimelyConfig;
-use timely::communication::{Allocator, WorkerGuards};
+use timely::communication::{WorkerGuards};
 use timely::worker::Config as WorkerConfig;
 use timely::worker::Worker;
 

@@ -65,8 +65,8 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
         matroid: Rc<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
-        let z = dataset.len() - p;
-        let k = matroid.rank();
+        let _z = dataset.len() - p;
+        let _k = matroid.rank();
 
         let start = Instant::now();
         // First find a clustering of tau centers minimizing the radius, with no
@@ -133,34 +133,4 @@ impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCor
 
         Ok(solution)
     }
-}
-
-fn disk_cover<'a, V: Distance>(points: &'a [V], radius: f32) -> Vec<Vec<&'a V>> {
-    let mut disks = Vec::new();
-    let mut covered = vec![false; points.len()];
-
-    let mut i = 0;
-    while i < points.len() {
-        if !covered[i] {
-            let mut disk = Vec::new();
-            disk.push(&points[i]);
-            let current_center = &points[i];
-            covered[i] = true;
-            let mut j = i + 1;
-            while j < points.len() {
-                if !covered[j] {
-                    let d = points[j].distance(current_center);
-                    if d <= radius {
-                        covered[j] = true;
-                        disk.push(&points[j]);
-                    }
-                }
-                j += 1;
-            }
-            disks.push(disk);
-        }
-        i += 1;
-    }
-
-    disks
 }

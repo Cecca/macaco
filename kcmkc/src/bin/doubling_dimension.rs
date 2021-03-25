@@ -4,7 +4,7 @@
 extern crate log;
 
 use anyhow::{Context, Result};
-use flate2::{write::GzEncoder, Compression};
+
 use kcmkc::configuration::*;
 use kcmkc_base::{
     dataset::{Dataset, Datatype},
@@ -13,13 +13,13 @@ use kcmkc_base::{
 use kcmkc_sequential::disks::*;
 use serde::Deserialize;
 use serde::Serialize;
-use std::{borrow::BorrowMut, cell::RefCell, io::BufWriter};
-use std::{collections::BTreeSet, fs::File, path::PathBuf};
+use std::{io::BufWriter};
+use std::{fs::File, path::PathBuf};
 use std::{io::prelude::*, time::Duration};
-use std::{ops::Deref, rc::Rc};
+
 use timely::{
     communication::{Allocator, WorkerGuards},
-    dataflow::channels::pact::{Exchange, Pipeline},
+    dataflow::channels::pact::{Exchange},
     worker::Worker,
 };
 use timely::{
