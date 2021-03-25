@@ -1,3 +1,4 @@
+import math
 import json
 import base64
 import subprocess
@@ -25,24 +26,30 @@ def run_wiki():
     """
     datasets = [
         "wiki-d50-c100-s10000",
-        "wiki-d50-c100-s100000",
+        # "wiki-d50-c100-s100000",
     ]
     constraints = [
         # Very constrained solution
         list(range(0, 10)),
         # The original matroid constraint, using all the categories
-        list(range(0, 100)),
+        # list(range(0, 100)),
     ]
     # Fraction of allowed outliers
-    frac_outliers = [0.1, 0.01]
+    frac_outliers = [
+        # 0.1,
+        0.01
+    ]
     # These seeds also define the number of repetitions
-    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    shuffle_seeds = [
+        43234,
+        # 23562, 12451, 445234, 234524
+    ]
 
     for dataset, constr, frac_out, shuffle_seed in itertools.product(
         datasets, constraints, frac_outliers, shuffle_seeds
     ):
         # Run the naive baseline
-        for seed in [1458, 345, 65623, 235]:
+        for seed in [1458, 345, 65623]:
             run(
                 {
                     "shuffle_seed": shuffle_seed,
@@ -52,6 +59,52 @@ def run_wiki():
                     "constraint": {"transversal": {"topics": constr}},
                 }
             )
+
+        # Run the baseline algorithm
+        run(
+            {
+                "shuffle_seed": shuffle_seed,
+                "outliers": {"Percentage": frac_out},
+                "algorithm": "ChenEtAl",
+                "dataset": DATASETS[dataset].get_path(),
+                "constraint": {"transversal": {"topics": constr}},
+            }
+        )
+
+        # Run coreset algorithms
+        taus = [2 ** x for x in [9, 10, 11, 12]]
+        for tau in taus:
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"SeqCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": constr}},
+                }
+            )
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"StreamingCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": constr}},
+                }
+            )
+            for threads in [2, 4, 8, 16]:
+                # Keep the size of the final coreset constant across thread counts
+                tau = int(math.ceil(tau / threads))
+                run(
+                    {
+                        "parallel": {"threads": threads},
+                        "shuffle_seed": shuffle_seed,
+                        "outliers": {"Percentage": frac_out},
+                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
+                        "dataset": DATASETS[dataset].get_path(),
+                        "constraint": {"transversal": {"topics": constr}},
+                    }
+                )
 
 
 def run_exploration():

@@ -52,7 +52,13 @@ pub fn kcenter<'a, V: Distance>(
         }
     }
 
-    assert!(centers.len() == k);
+    assert!(
+        centers.len() == k,
+        "expected centers.len() == k == {}, but got {} != {}",
+        k,
+        centers.len(),
+        k
+    );
 
     (
         centers,
