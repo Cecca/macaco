@@ -14,6 +14,7 @@ CREATE TABLE result_raw (
     dataset TEXT NOT NULL,
     dataset_params TEXT NOT NULL,
     dataset_version TEXT NOT NULL,
+    shuffle_seed INTEGER NOT NULL,
     constraint_params TEXT NOT NULL,
     total_time_ms INTEGER NOT NULL,
     coreset_time_ms INTEGER NOT NULL,

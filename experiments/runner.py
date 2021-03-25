@@ -4,6 +4,7 @@ import subprocess
 import sys
 from datasets import DATASETS
 import pprint
+import itertools
 
 
 EXECUTABLE = "target/release/kcmkc"
@@ -16,6 +17,41 @@ def run(configuration):
         print("Error in invocation with the following configuration")
         pprint.pprint(configuration)
         sys.exit(1)
+
+
+def run_wiki():
+    """
+    Run experiments on the Wikipedia dataset and its samples
+    """
+    datasets = [
+        "wiki-d50-c100-s10000",
+        "wiki-d50-c100-s100000",
+    ]
+    constraints = [
+        # Very constrained solution
+        list(range(0, 10)),
+        # The original matroid constraint, using all the categories
+        list(range(0, 100)),
+    ]
+    # Fraction of allowed outliers
+    frac_outliers = [0.1, 0.01]
+    # These seeds also define the number of repetitions
+    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+
+    for dataset, constr, frac_out, shuffle_seed in itertools.product(
+        datasets, constraints, frac_outliers, shuffle_seeds
+    ):
+        # Run the naive baseline
+        for seed in [1458, 345, 65623, 235]:
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"Random": {"seed": seed}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": constr}},
+                }
+            )
 
 
 def run_exploration():
@@ -65,4 +101,4 @@ def run_exploration():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    run_exploration()
+    run_wiki()

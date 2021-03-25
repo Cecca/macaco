@@ -250,6 +250,7 @@ impl Configuration {
             data_meta.parameters_string(),
             data_meta.constraint
         ));
+        sha.input(format!("{}", self.shuffle_seed));
         if let Some(parallel) = self.parallel.as_ref() {
             sha.input(format!("{}", parallel.threads));
             if let Some(hosts) = parallel.hosts.as_ref() {

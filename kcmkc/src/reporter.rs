@@ -8,7 +8,6 @@ use rusqlite::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-
 use crate::configuration::Configuration;
 
 struct Outcome {
@@ -139,6 +138,7 @@ impl Reporter {
                     code_version, date, hosts, threads, params_sha, outliers_spec,
                     algorithm, algorithm_params, algorithm_version,
                     dataset, dataset_params, dataset_version,
+                    shuffle_seed,
                     constraint_params,
                     total_time_ms,
                     coreset_time_ms,
@@ -153,6 +153,7 @@ impl Reporter {
                     :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
                     :dataset, :dataset_params, :dataset_version,
+                    :shuffle_seed,
                     :constraint_params,
                     :total_time_ms,
                     :coreset_time_ms,
@@ -177,6 +178,7 @@ impl Reporter {
                     ":dataset": dataset,
                     ":dataset_params": dataset_params,
                     ":dataset_version": dataset_version,
+                    ":shuffle_seed": self.config.shuffle_seed as i64,
                     ":constraint_params": serde_json::to_string(&self.config.constraint)?,
                     ":total_time_ms": outcome.total_time.as_millis() as i64,
                     ":coreset_time_ms": self.profile.as_ref().unwrap().0.as_millis() as i64,
