@@ -58,7 +58,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
     }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for SeqCoreset<V> {
+impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for SeqCoreset<V> {
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],

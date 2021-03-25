@@ -1,4 +1,5 @@
 use kcmkc_base::types::*;
+use rayon::prelude::*;
 
 // Pre-compute all pairwise distances, and then keep the distances from each point in sorted order.
 // This allows the retrieval of disks in time proportional to the size of the disk itself.
@@ -7,10 +8,10 @@ pub struct DiskBuilder {
 }
 
 impl DiskBuilder {
-    pub fn new<V: Distance>(points: &[V]) -> Self {
+    pub fn new<V: Distance + Sync>(points: &[V]) -> Self {
         println!("Pre-computing distances");
         let distances: Vec<Vec<(usize, f32)>> = points
-            .iter()
+            .par_iter()
             .map(|a| {
                 let mut dists: Vec<(usize, f32)> = points
                     .iter()

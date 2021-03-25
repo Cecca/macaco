@@ -57,7 +57,9 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
     }
 }
 
-impl<V: Distance + Clone + Weight + PartialEq> SequentialAlgorithm<V> for StreamingCoreset<V> {
+impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V>
+    for StreamingCoreset<V>
+{
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [V],

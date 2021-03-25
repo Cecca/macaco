@@ -3,10 +3,7 @@ use kcmkc_base::{
     matroid::{weighted_matroid_intersection, Matroid, Weight},
     perf_counters,
 };
-use kcmkc_base::{
-    matroid::augment,
-    types::{Distance},
-};
+use kcmkc_base::{matroid::augment, types::Distance};
 use rayon::prelude::*;
 use std::iter::FromIterator;
 use std::rc::Rc;
@@ -49,7 +46,7 @@ impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     }
 }
 
-impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtAl {
+impl<T: Distance + Clone + Debug + PartialEq + Sync> SequentialAlgorithm<T> for ChenEtAl {
     fn sequential_run<'a>(
         &mut self,
         dataset: &'a [T],
@@ -68,7 +65,7 @@ impl<T: Distance + Clone + Debug + PartialEq> SequentialAlgorithm<T> for ChenEtA
     }
 }
 
-pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq, W: WeightMap>(
+pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: WeightMap>(
     points: &'a [V],
     matroid: Rc<dyn Matroid<V>>,
     p: usize,
