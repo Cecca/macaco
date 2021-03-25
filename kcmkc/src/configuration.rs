@@ -24,7 +24,7 @@ pub enum AlgorithmConfig {
     ChenEtAl,
     SeqCoreset { tau: usize },
     StreamingCoreset { tau: usize },
-    MapReduceCoreset { tau: usize, seed: u64 },
+    MapReduceCoreset { tau: usize },
 }
 
 impl AlgorithmConfig {
@@ -329,9 +329,7 @@ impl Configure for WikiPage {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
-            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
-                Box::new(MapReduceCoreset::new(tau, seed))
-            }
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -345,9 +343,7 @@ impl Configure for WikiPage {
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
-            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
-                Box::new(MapReduceCoreset::new(tau, seed))
-            }
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }
@@ -368,9 +364,7 @@ impl Configure for Song {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
-            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
-                Box::new(MapReduceCoreset::new(tau, seed))
-            }
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -384,9 +378,7 @@ impl Configure for Song {
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
-            AlgorithmConfig::MapReduceCoreset { tau, seed } => {
-                Box::new(MapReduceCoreset::new(tau, seed))
-            }
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }

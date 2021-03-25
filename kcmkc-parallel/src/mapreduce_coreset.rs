@@ -9,12 +9,10 @@ use kcmkc_sequential::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
 };
-use rand::{RngCore, SeedableRng};
-use rand_xorshift::XorShiftRng;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{cell::RefCell, time::Instant};
-use std::{time::Duration};
 use std::{ops::Deref, sync::atomic::AtomicU64};
 use timely::dataflow::operators::{aggregation::Aggregate, Exchange};
 use timely::dataflow::{InputHandle, ProbeHandle};
@@ -29,17 +27,15 @@ use crate::ParallelAlgorithm;
 
 pub struct MapReduceCoreset<V> {
     tau: usize,
-    seed: u64,
     coreset: Option<Vec<V>>,
     profile: Option<(Duration, Duration)>,
     counters: Option<(u64, u64)>,
 }
 
 impl<V> MapReduceCoreset<V> {
-    pub fn new(tau: usize, seed: u64) -> Self {
+    pub fn new(tau: usize) -> Self {
         Self {
             tau,
-            seed,
             coreset: None,
             profile: None,
             counters: None,
@@ -57,7 +53,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset
     }
 
     fn parameters(&self) -> String {
-        format!("{{ \"tau\": {}, \"seed\": {} }}", self.tau, self.seed)
+        format!("{{ \"tau\": {} }}", self.tau)
     }
 
     fn coreset(&self) -> Option<Vec<V>> {
@@ -84,7 +80,7 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
         let start = Instant::now();
-        let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau, self.seed);
+        let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau);
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<T> = coreset.into_iter().map(|p| p.0).collect();
@@ -155,7 +151,6 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     dataset: &[T],
     matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
-    seed: u64,
 ) -> Vec<(T, u32)> {
     let mut input: InputHandle<(), (u64, T)> = InputHandle::new();
     let mut probe = ProbeHandle::new();
@@ -233,10 +228,9 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     // Populate the input, only with worker 0 that will
     // distribute all the input to the other workers
     if worker.index() == 0 {
-        let mut rng = XorShiftRng::seed_from_u64(seed);
         let mut cnt = 0;
         for x in dataset {
-            input.send((rng.next_u64(), x.clone()));
+            input.send((cnt, x.clone()));
             if cnt % 10000 == 0 {
                 // Do some work in order not to exhaust the buffers
                 worker.step();
