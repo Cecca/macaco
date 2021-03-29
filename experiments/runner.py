@@ -37,7 +37,7 @@ def run_wiki():
         # list(range(0, 100)),
     ]
     # Fraction of allowed outliers
-    frac_outliers = [0.1, 0.01]
+    frac_outliers = [0.01]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
