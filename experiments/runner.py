@@ -25,8 +25,8 @@ def run_wiki():
     Run experiments on the Wikipedia dataset and its samples
     """
     datasets = [
-        # "wiki-d50-c100-s10000",
-        "wiki-d50-c100-s50000",
+        "wiki-d50-c100-s50000",  # <- a sample where we can also run the baseline algorithm
+        "wiki-d50-c100",  # <- The full wikipedia dataset
     ]
     for dataset in datasets:
         DATASETS[dataset].preprocess()
@@ -56,16 +56,17 @@ def run_wiki():
                 }
             )
 
-        # Run the baseline algorithm
-        run(
-            {
-                "shuffle_seed": shuffle_seed,
-                "outliers": {"Percentage": frac_out},
-                "algorithm": "ChenEtAl",
-                "dataset": DATASETS[dataset].get_path(),
-                "constraint": {"transversal": {"topics": constr}},
-            }
-        )
+        if dataset in {"wiki-d50-c100-s50000"}:
+            # Run the baseline algorithm
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": "ChenEtAl",
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": constr}},
+                }
+            )
 
         # Run coreset algorithms
         taus = [2 ** x for x in [9, 10, 11, 12]]
