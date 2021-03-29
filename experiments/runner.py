@@ -69,6 +69,7 @@ def run_wiki():
 
         # Run coreset algorithms
         taus = [2 ** x for x in [9, 10, 11, 12]]
+        print(taus)
         for tau in taus:
             run(
                 {
@@ -90,13 +91,14 @@ def run_wiki():
             )
             for threads in [2, 4, 8, 16]:
                 # Keep the size of the final coreset constant across thread counts
-                tau = int(math.ceil(tau / threads))
+                rescaled_tau = int(math.ceil(tau / threads))
+                print("tau", tau, "threads", threads, "rescaled", rescaled_tau)
                 run(
                     {
                         "parallel": {"threads": threads},
                         "shuffle_seed": shuffle_seed,
                         "outliers": {"Percentage": frac_out},
-                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
+                        "algorithm": {"MapReduceCoreset": {"tau": rescaled_tau}},
                         "dataset": DATASETS[dataset].get_path(),
                         "constraint": {"transversal": {"topics": constr}},
                     }
