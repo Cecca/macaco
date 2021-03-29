@@ -26,22 +26,22 @@ where
     let centers = algorithm.sequential_run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
-    let radius = compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
+    let (radius_no_outliers, radius_all_points) =
+        compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
     println!(
         "Found clustering with {} centers in {:?}, with radius {}",
         centers.len(),
         elapsed,
-        radius
+        radius_no_outliers
     );
 
     if let Some(coreset) = algorithm.coreset() {
-        reporter.set_coreset_info(
-            coreset.len(),
-            compute_radius(&dataset.to_vec(None)?, &coreset),
-        )
+        let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
+        assert!(proxy_radius <= radius_all_points);
+        reporter.set_coreset_info(coreset.len(), proxy_radius)
     }
 
-    reporter.set_outcome(elapsed, radius, centers.len() as u32);
+    reporter.set_outcome(elapsed, radius_no_outliers, centers.len() as u32);
     reporter.set_profile(algorithm.time_profile());
     reporter.set_counters(algorithm.counters());
     reporter.save()?;
@@ -72,22 +72,22 @@ where
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
-        let radius = compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
+        let (radius_no_outliers, radius_all_points) =
+            compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
             centers.len(),
             elapsed,
-            radius
+            radius_no_outliers
         );
 
         if let Some(coreset) = algorithm.coreset() {
-            reporter.set_coreset_info(
-                coreset.len(),
-                compute_radius(&dataset.to_vec(None)?, &coreset),
-            )
+            let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
+            assert!(proxy_radius <= radius_all_points);
+            reporter.set_coreset_info(coreset.len(), proxy_radius)
         }
 
-        reporter.set_outcome(elapsed, radius, centers.len() as u32);
+        reporter.set_outcome(elapsed, radius_no_outliers, centers.len() as u32);
         reporter.set_profile(algorithm.time_profile());
         reporter.set_counters(algorithm.counters());
         reporter.save()?;
@@ -125,13 +125,17 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn compute_radius_outliers<T: Distance>(dataset: &[T], centers: &[T], outliers: usize) -> f32 {
+fn compute_radius_outliers<T: Distance>(
+    dataset: &[T],
+    centers: &[T],
+    outliers: usize,
+) -> (f32, f32) {
     let mut topk = TopK::new(outliers);
     for x in dataset {
         let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
         topk.insert(closest);
     }
-    topk.kth()
+    (topk.kth(), topk.max())
 }
 
 fn compute_radius<T: Distance>(dataset: &[T], centers: &[T]) -> f32 {
@@ -165,5 +169,8 @@ impl TopK {
     }
     fn kth(&self) -> f32 {
         (*self.topk.iter().next().unwrap()).into()
+    }
+    fn max(&self) -> f32 {
+        (*self.topk.iter().last().unwrap()).into()
     }
 }
