@@ -544,7 +544,7 @@ DATASETS = {
 }
 
 # Sampled datasets
-for size in [100000, 10000, 1000]:
+for size in [100000, 50000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
     )

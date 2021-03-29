@@ -26,7 +26,7 @@ def run_wiki():
     """
     datasets = [
         # "wiki-d50-c100-s10000",
-        "wiki-d50-c100-s100000",
+        "wiki-d50-c100-s50000",
     ]
     for dataset in datasets:
         DATASETS[dataset].preprocess()
@@ -37,14 +37,9 @@ def run_wiki():
         # list(range(0, 100)),
     ]
     # Fraction of allowed outliers
-    frac_outliers = [
-        0.1,
-        0.01
-    ]
+    frac_outliers = [0.1, 0.01]
     # These seeds also define the number of repetitions
-    shuffle_seeds = [
-        43234, 23562, 12451, 445234, 234524
-    ]
+    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
     for dataset, constr, frac_out, shuffle_seed in itertools.product(
         datasets, constraints, frac_outliers, shuffle_seeds
