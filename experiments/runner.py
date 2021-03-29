@@ -16,7 +16,7 @@ def run(configuration):
     sp = subprocess.run([EXECUTABLE, conf_str])
     if sp.returncode != 0:
         print("Error in invocation with the following configuration")
-        pprint.pprint(configuration)
+        print(json.dumps(configuration))
         sys.exit(1)
 
 
