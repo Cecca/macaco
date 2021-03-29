@@ -25,7 +25,7 @@ def run_wiki():
     Run experiments on the Wikipedia dataset and its samples
     """
     datasets = [
-        "wiki-d50-c100-s10000",
+        # "wiki-d50-c100-s10000",
         "wiki-d50-c100-s100000",
     ]
     for dataset in datasets:
@@ -38,13 +38,12 @@ def run_wiki():
     ]
     # Fraction of allowed outliers
     frac_outliers = [
-        # 0.1,
+        0.1,
         0.01
     ]
     # These seeds also define the number of repetitions
     shuffle_seeds = [
-        43234,
-        # 23562, 12451, 445234, 234524
+        43234, 23562, 12451, 445234, 234524
     ]
 
     for dataset, constr, frac_out, shuffle_seed in itertools.product(
