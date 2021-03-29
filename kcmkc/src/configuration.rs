@@ -8,8 +8,8 @@ use kcmkc_base::{
 use kcmkc_parallel::mapreduce_coreset::MapReduceCoreset;
 use kcmkc_parallel::ParallelAlgorithm;
 use kcmkc_sequential::{
-    chen_et_al::ChenEtAl, random::RandomClustering, seq_coreset::SeqCoreset,
-    streaming_coreset::StreamingCoreset, SequentialAlgorithm,
+    chen_et_al::ChenEtAl, greedy_heuristic::GreedyHeuristic, random::RandomClustering,
+    seq_coreset::SeqCoreset, streaming_coreset::StreamingCoreset, SequentialAlgorithm,
 };
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, path::PathBuf, process::Command, rc::Rc};
@@ -22,6 +22,7 @@ use timely::worker::Worker;
 pub enum AlgorithmConfig {
     Random { seed: u64 },
     ChenEtAl,
+    Greedy,
     SeqCoreset { tau: usize },
     StreamingCoreset { tau: usize },
     MapReduceCoreset { tau: usize },
@@ -325,6 +326,7 @@ impl Configure for WikiPage {
     }
     fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
         match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
@@ -334,6 +336,7 @@ impl Configure for WikiPage {
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
@@ -360,6 +363,7 @@ impl Configure for Song {
     }
     fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
         match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
@@ -369,6 +373,7 @@ impl Configure for Song {
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
         match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
             AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
