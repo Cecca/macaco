@@ -107,6 +107,7 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
 
 // Set up and run a small dataflow to collect performance counters from all workers
 fn collect_counters(worker: &mut Worker<Allocator>) -> (u64, u64) {
+    println!("Collecting counters");
     let distance_counter = Arc::new(AtomicU64::new(0));
     let distance_counter2 = Arc::clone(&distance_counter);
     let oracle_counter = Arc::new(AtomicU64::new(0));
@@ -139,6 +140,7 @@ fn collect_counters(worker: &mut Worker<Allocator>) -> (u64, u64) {
     input.send((1, perf_counters::matroid_oracle_count()));
     input.close();
     worker.step_while(|| !probe.done());
+    println!("Counters collected");
 
     (
         distance_counter2.load(std::sync::atomic::Ordering::SeqCst),
