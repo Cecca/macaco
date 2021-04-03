@@ -26,7 +26,9 @@ def run_wiki():
     """
     datasets = [
         "wiki-d50-c100-s50000",  # <- a sample where we can also run the baseline algorithm
+        "wiki-d50-c100-s50000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
         "wiki-d50-c100",  # <- The full wikipedia dataset
+        "wiki-d50-c100-eucl",  # <- The full wikipedia dataset, euclidean distance
     ]
     for dataset in datasets:
         DATASETS[dataset].preprocess()
