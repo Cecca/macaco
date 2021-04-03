@@ -132,6 +132,7 @@ fn main() -> Result<()> {
     if config.algorithm.is_sequential() {
         match config.datatype()? {
             Datatype::WikiPage => run_seq::<WikiPage>(&config),
+            Datatype::WikiPageEuclidean => run_seq::<WikiPageEuclidean>(&config),
             Datatype::Song => run_seq::<Song>(&config),
         }?;
     } else {
@@ -151,6 +152,21 @@ fn main() -> Result<()> {
                     .clone()
                     .execute(move |worker| {
                         run_par::<WikiPage>(
+                            &config,
+                            worker,
+                            Arc::clone(&items),
+                            Arc::clone(&barrier),
+                        )
+                    })
+                    .unwrap();
+            }
+            Datatype::WikiPageEuclidean => {
+                let items: Arc<RwLock<Option<Vec<WikiPageEuclidean>>>> =
+                    Arc::new(RwLock::new(None));
+                config
+                    .clone()
+                    .execute(move |worker| {
+                        run_par::<WikiPageEuclidean>(
                             &config,
                             worker,
                             Arc::clone(&items),

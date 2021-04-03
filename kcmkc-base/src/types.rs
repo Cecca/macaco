@@ -18,6 +18,7 @@ use serde::Deserialize;
 pub struct Vector {
     data: Vec<f32>,
     norm: f32,
+    norm_squared: f32,
 }
 
 impl<'de> Deserialize<'de> for Vector {
@@ -32,8 +33,13 @@ impl<'de> Deserialize<'de> for Vector {
 
 impl Vector {
     pub fn new(data: Vec<f32>) -> Self {
-        let norm: f32 = data.iter().map(|x| x * x).sum::<f32>().sqrt();
-        Self { data, norm }
+        let norm_squared: f32 = data.iter().map(|x| x * x).sum::<f32>();
+        let norm: f32 = norm_squared.sqrt();
+        Self {
+            data,
+            norm,
+            norm_squared,
+        }
     }
 
     /// Compute the inner product between two vectors.
@@ -48,12 +54,16 @@ impl Vector {
     pub fn cosine_distance(&self, other: &Self) -> f32 {
         let angle = self.inner_product(other) / (self.norm * other.norm);
         if angle >= 1.0 {
-            // This branch is to handle some cases where precision errors make /
+            // This branch is to handle some cases where precision errors make
             // the ratio computed above larger than one
             0.0
         } else {
             angle.acos() * std::f32::consts::FRAC_1_PI
         }
+    }
+
+    pub fn squared_euclidean_distance(&self, other: &Self) -> f32 {
+        self.norm_squared + other.norm_squared - 2.0 * self.inner_product(other)
     }
 }
 
@@ -153,6 +163,37 @@ impl TransveralMatroidElement for WikiPage {
 impl Weight for WikiPage {
     fn weight(&self) -> u32 {
         self.weight
+    }
+}
+
+/// A page of wikipedia, represented as a d-dimensional vector,
+/// with a set of topics.
+#[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]
+pub struct WikiPageEuclidean {
+    pub id: u32,
+    pub title: String,
+    pub vector: Vector,
+    pub topics: Vec<u32>,
+    #[serde(skip, default = "unit_weight")]
+    pub weight: u32,
+}
+
+impl TransveralMatroidElement for WikiPageEuclidean {
+    fn topics<'a>(&'a self) -> &'a [u32] {
+        &self.topics
+    }
+}
+
+impl Weight for WikiPageEuclidean {
+    fn weight(&self) -> u32 {
+        self.weight
+    }
+}
+
+impl Distance for WikiPageEuclidean {
+    fn distance(&self, other: &Self) -> f32 {
+        perf_counters::inc_distance_count();
+        self.vector.squared_euclidean_distance(&other.vector)
     }
 }
 

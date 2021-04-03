@@ -212,7 +212,8 @@ class CachedBowsCorpus(object):
 class Wikipedia(Dataset):
     version = 1
 
-    def __init__(self, date, dimensions, topics):
+    def __init__(self, date, dimensions, topics, distance="cosine"):
+        self.distance = distance
         self.date = date
         self.dimensions = dimensions
         self.topics = topics
@@ -230,8 +231,9 @@ class Wikipedia(Dataset):
         self.bow_cache = os.path.join(self.cache_dir, "bows.msgpack")
         self.out_fname = os.path.join(
             self.cache_dir,
-            "wiki-d{}-c{}-v{}.msgpack.gz".format(
-                self.dimensions, self.topics, Wikipedia.version
+            "wiki-d{}-c{}-v{}{}.msgpack.gz".format(
+                self.dimensions, self.topics, Wikipedia.version,
+                "euclidean" if distance == "euclidean" else ""
             ),
         )
 
@@ -242,9 +244,10 @@ class Wikipedia(Dataset):
         return self.out_fname
 
     def build_metadata(self):
+        datatype = "WikiPageEuclidean" if self.distance == "euclidean" else "WikiPage"
         meta = {
             "name": "Wikipedia",
-            "datatype": {"WikiPage": None},
+            "datatype": {datatype: None},
             "constraint": {"transversal": {"topics": list(range(0, self.topics))}},
             "version": Wikipedia.version,
             "parameters": {
@@ -540,6 +543,7 @@ class BoundedDifficultyDataset(Dataset):
 
 DATASETS = {
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
+    "wiki-d50-c100-eucl": Wikipedia("20210120", dimensions=50, topics=100, distance="euclidean"),
     "MusixMatch": MusixMatch(),
 }
 
@@ -547,6 +551,9 @@ DATASETS = {
 for size in [100000, 50000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
+    )
+    DATASETS["wiki-d50-c100-s{}-eucl".format(size)] = SampledDataset(
+        base=DATASETS["wiki-d50-c100-eucl"], size=size, seed=12341245
     )
     # DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
     #     base=DATASETS["MusixMatch"], size=size, seed=12341245

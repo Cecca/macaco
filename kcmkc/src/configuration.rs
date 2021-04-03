@@ -3,7 +3,7 @@ use kcmkc_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
     matroid::{Matroid, PartitionMatroid, TransveralMatroid},
-    types::{Song, WikiPage},
+    types::{Song, WikiPage, WikiPageEuclidean},
 };
 use kcmkc_parallel::mapreduce_coreset::MapReduceCoreset;
 use kcmkc_parallel::ParallelAlgorithm;
@@ -273,6 +273,15 @@ impl Configuration {
                     algorithm.parameters()
                 ));
             }
+            Datatype::WikiPageEuclidean => {
+                let algorithm = WikiPageEuclidean::configure_algorithm_info(&self);
+                sha.input(format!(
+                    "{}{}{}",
+                    algorithm.name(),
+                    algorithm.version(),
+                    algorithm.parameters()
+                ));
+            }
             Datatype::Song => {
                 let algorithm = Song::configure_algorithm_info(&self);
                 sha.input(format!(
@@ -318,6 +327,41 @@ pub trait Configure {
 }
 
 impl Configure for WikiPage {
+    fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
+        match &conf.constraint {
+            Constraint::Transversal { topics } => Rc::new(TransveralMatroid::new(topics.clone())),
+            _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
+        }
+    }
+    fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+        }
+    }
+    fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+        }
+    }
+    fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            _ => panic!("Cannot run algorithm in parallel"),
+        }
+    }
+}
+
+impl Configure for WikiPageEuclidean {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
             Constraint::Transversal { topics } => Rc::new(TransveralMatroid::new(topics.clone())),

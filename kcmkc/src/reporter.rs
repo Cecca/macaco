@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use chrono::prelude::*;
 use kcmkc_base::{
     dataset::Datatype,
-    types::{Song, WikiPage},
+    types::{Song, WikiPage, WikiPageEuclidean},
 };
 use rusqlite::*;
 use std::path::PathBuf;
@@ -51,7 +51,7 @@ impl Reporter {
 
     fn default_db_path() -> std::path::PathBuf {
         #[allow(deprecated)]
-        let mut path = PathBuf::new();// std::env::home_dir().expect("unable to get home directory");
+        let mut path = PathBuf::new(); // std::env::home_dir().expect("unable to get home directory");
         path.push("kcmkc-results.sqlite");
         path
     }
@@ -102,6 +102,10 @@ impl Reporter {
         let (algorithm, algorithm_version, algorithm_params) = match self.config.datatype()? {
             Datatype::WikiPage => {
                 let algo = WikiPage::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version(), algo.parameters())
+            }
+            Datatype::WikiPageEuclidean => {
+                let algo = WikiPageEuclidean::configure_algorithm_info(&self.config);
                 (algo.name(), algo.version(), algo.parameters())
             }
             Datatype::Song => {

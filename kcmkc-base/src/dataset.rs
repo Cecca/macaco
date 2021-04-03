@@ -113,6 +113,7 @@ impl Metadata {
 #[derive(Deserialize, Debug)]
 pub enum Datatype {
     WikiPage,
+    WikiPageEuclidean,
     Song,
 }
 

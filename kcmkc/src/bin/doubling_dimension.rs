@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use kcmkc::configuration::*;
 use kcmkc_base::{
     dataset::{Dataset, Datatype},
-    types::{Distance, OrderedF32, Song, WikiPage},
+    types::{Distance, OrderedF32, Song, WikiPage, WikiPageEuclidean},
 };
 use kcmkc_sequential::disks::*;
 use serde::Deserialize;
@@ -217,6 +217,9 @@ fn main() -> Result<()> {
     config.clone().execute(move |worker| {
         match config.datatype().unwrap() {
             Datatype::WikiPage => estimate_doubling_dimension::<WikiPage>(config.clone(), worker),
+            Datatype::WikiPageEuclidean => {
+                estimate_doubling_dimension::<WikiPageEuclidean>(config.clone(), worker)
+            }
             Datatype::Song => estimate_doubling_dimension::<Song>(config.clone(), worker),
         }
         .unwrap();
