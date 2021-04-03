@@ -57,19 +57,30 @@ fn run_par<V: Distance + Clone + Debug + Configure>(
 where
     for<'de> V: Deserialize<'de> + Abomonation,
 {
+    use std::sync::RwLock;
+
     let mut reporter = Reporter::from_config(config.clone());
     let matroid = V::configure_constraint(&config);
 
+    let items: RwLock<Option<Vec<V>>> = RwLock::new(None);
+
     let start = Instant::now();
     let dataset = Dataset::new(&config.dataset);
-    let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
-    println!("loaded {} items in {:?}", items.len(), start.elapsed());
-    let outliers = config.outliers.num_outliers(items.len());
-    let p = items.len() - outliers;
+    items
+        .write()
+        .unwrap()
+        .get_or_insert_with(|| dataset.to_vec(Some(config.shuffle_seed)).unwrap());
+    // let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
+    let n = items.read().unwrap().as_ref().unwrap().len();
+    println!("loaded {} items in {:?}", n, start.elapsed());
+    let outliers = config.outliers.num_outliers(n);
+    let p = n - outliers;
 
     let mut algorithm = V::configure_parallel_algorithm(&config);
     let timer = Instant::now();
-    let centers = algorithm.parallel_run(worker, &items[..], matroid, p)?;
+    let centers =
+        algorithm.parallel_run(worker, items.read().unwrap().as_ref().unwrap(), matroid, p)?;
+    // let centers = algorithm.parallel_run(worker, &items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
@@ -84,7 +95,8 @@ where
 
         if let Some(coreset) = algorithm.coreset() {
             println!("Computing proxy points radius");
-            let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
+            // let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
+            let proxy_radius = compute_radius(items.read().unwrap().as_ref().unwrap(), &coreset);
             assert!(proxy_radius <= radius_all_points);
             reporter.set_coreset_info(coreset.len(), proxy_radius)
         }
@@ -104,6 +116,7 @@ where
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
     let config_spec = std::env::args()
         .nth(1)
         .context("provide the specification of the configuration, either a file path or a json object encoded as base64")?;
