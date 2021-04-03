@@ -5,7 +5,7 @@ use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
 use rayon::prelude::*;
 use serde::Deserialize;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Barrier, RwLock};
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
 
@@ -55,6 +55,7 @@ fn run_par<V: Distance + Clone + Debug + Configure + Sync>(
     config: &Configuration,
     worker: &mut Worker<Allocator>,
     items: Arc<RwLock<Option<Vec<V>>>>,
+    barrier: Arc<Barrier>,
 ) -> Result<()>
 where
     for<'de> V: Deserialize<'de> + Abomonation,
@@ -69,6 +70,9 @@ where
         .write()
         .unwrap()
         .get_or_insert_with(|| dataset.to_vec(Some(config.shuffle_seed)).unwrap());
+
+    // Wait for all local threads
+    barrier.wait();
 
     let n = items.read().unwrap().as_ref().unwrap().len();
     println!("loaded {} items in {:?}", n, start.elapsed());
@@ -139,19 +143,29 @@ fn main() -> Result<()> {
         //     .unwrap();
         // })?;
 
+        let barrier = Arc::new(Barrier::new(config.clone().parallel.unwrap().threads));
         match config.datatype().unwrap() {
             Datatype::WikiPage => {
                 let items: Arc<RwLock<Option<Vec<WikiPage>>>> = Arc::new(RwLock::new(None));
                 config
                     .clone()
-                    .execute(move |worker| run_par::<WikiPage>(&config, worker, Arc::clone(&items)))
+                    .execute(move |worker| {
+                        run_par::<WikiPage>(
+                            &config,
+                            worker,
+                            Arc::clone(&items),
+                            Arc::clone(&barrier),
+                        )
+                    })
                     .unwrap();
             }
             Datatype::Song => {
                 let items: Arc<RwLock<Option<Vec<Song>>>> = Arc::new(RwLock::new(None));
                 config
                     .clone()
-                    .execute(move |worker| run_par::<Song>(&config, worker, Arc::clone(&items)))
+                    .execute(move |worker| {
+                        run_par::<Song>(&config, worker, Arc::clone(&items), Arc::clone(&barrier))
+                    })
                     .unwrap();
             }
         }
