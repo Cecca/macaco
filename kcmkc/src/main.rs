@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 use kcmkc::configuration::*;
 use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
+use progress_logger::ProgressLogger;
 use serde::Deserialize;
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
@@ -82,7 +83,7 @@ where
         );
 
         if let Some(coreset) = algorithm.coreset() {
-            println!("Computing proxy points ardius");
+            println!("Computing proxy points radius");
             let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
             assert!(proxy_radius <= radius_all_points);
             reporter.set_coreset_info(coreset.len(), proxy_radius)
@@ -147,10 +148,16 @@ fn compute_radius_outliers<T: Distance>(
 
 fn compute_radius<T: Distance>(dataset: &[T], centers: &[T]) -> f32 {
     let mut maxdist = OrderedF32(0.0);
+    let mut pl = ProgressLogger::builder()
+        .with_expected_updates(dataset.len() as u64)
+        .with_items_name("points")
+        .start();
     for x in dataset {
         let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
         maxdist = maxdist.max(closest);
+        pl.update_light(1u64);
     }
+    pl.stop();
     maxdist.into()
 }
 
