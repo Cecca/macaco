@@ -160,6 +160,7 @@ fn compute_radius_outliers<T: Distance>(
 }
 
 fn compute_radius<T: Distance>(dataset: &[T], centers: &[T]) -> f32 {
+    log::info!("Computing radius with no outliers");
     let mut maxdist = OrderedF32(0.0);
     let mut pl = ProgressLogger::builder()
         .with_expected_updates(dataset.len() as u64)
