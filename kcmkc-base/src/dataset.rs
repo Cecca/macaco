@@ -166,10 +166,16 @@ impl Dataset {
     where
         for<'de> T: Deserialize<'de>,
     {
+        println!("Loading dataset into vector");
+        let mut pl = progress_logger::ProgressLogger::builder()
+            .with_items_name("items")
+            .start();
         let mut result = Vec::new();
         self.for_each(|_, item| {
             result.push(item);
+            pl.update_light(1u64);
         })?;
+        pl.stop();
         if let Some(seed) = shuffle_seed {
             let mut rng = XorShiftRng::seed_from_u64(seed);
             result.shuffle(&mut rng);
