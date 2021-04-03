@@ -3,13 +3,13 @@ use anyhow::{Context, Result};
 use kcmkc::configuration::*;
 use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
-use progress_logger::ProgressLogger;
+use rayon::prelude::*;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
 
-fn run_seq<V: Distance + Clone + Debug + Configure>(config: &Configuration) -> Result<()>
+fn run_seq<V: Distance + Clone + Debug + Configure + Sync>(config: &Configuration) -> Result<()>
 where
     for<'de> V: Deserialize<'de> + Abomonation,
 {
@@ -51,7 +51,7 @@ where
     Ok(())
 }
 
-fn run_par<V: Distance + Clone + Debug + Configure>(
+fn run_par<V: Distance + Clone + Debug + Configure + Sync>(
     config: &Configuration,
     worker: &mut Worker<Allocator>,
     items: Arc<RwLock<Option<Vec<V>>>>,
@@ -173,19 +173,27 @@ fn compute_radius_outliers<T: Distance>(
     (topk.kth(), topk.max())
 }
 
-fn compute_radius<T: Distance>(dataset: &[T], centers: &[T]) -> f32 {
+fn compute_radius<T: Distance + Sync>(dataset: &[T], centers: &[T]) -> f32 {
     log::info!("Computing radius with no outliers");
-    let mut maxdist = OrderedF32(0.0);
-    let mut pl = ProgressLogger::builder()
-        .with_expected_updates(dataset.len() as u64)
-        .with_items_name("distances")
-        .start();
-    for x in dataset {
-        let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
-        maxdist = maxdist.max(closest);
-        pl.update(1u64);
-    }
-    pl.stop();
+    // let mut maxdist = OrderedF32(0.0);
+    // let mut pl = ProgressLogger::builder()
+    //     .with_expected_updates(dataset.len() as u64)
+    //     .with_items_name("distances")
+    //     .start();
+    // for x in dataset {
+    //     let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
+    //     maxdist = maxdist.max(closest);
+    //     pl.update(1u64);
+    // }
+    // pl.stop();
+    let maxdist = dataset
+        .into_par_iter()
+        .map(|x| {
+            let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
+            closest
+        })
+        .max()
+        .unwrap();
     maxdist.into()
 }
 

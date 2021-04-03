@@ -480,6 +480,7 @@ dependencies = [
  "kcmkc-sequential",
  "log",
  "progress-logger",
+ "rayon",
  "roaring",
  "rusqlite",
  "serde",
