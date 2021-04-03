@@ -167,10 +167,10 @@ impl Dataset {
         for<'de> T: Deserialize<'de>,
     {
         println!("Loading dataset into vector");
+        let mut result = Vec::new();
         let mut pl = progress_logger::ProgressLogger::builder()
             .with_items_name("items")
             .start();
-        let mut result = Vec::with_capacity(self.size::<T>()?);
         self.for_each(|_, item| {
             result.push(item);
             pl.update(1u64);

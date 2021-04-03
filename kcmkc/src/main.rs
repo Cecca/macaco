@@ -5,6 +5,7 @@ use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
 use progress_logger::ProgressLogger;
 use serde::Deserialize;
+use std::sync::{Arc, RwLock};
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
 
@@ -53,24 +54,22 @@ where
 fn run_par<V: Distance + Clone + Debug + Configure>(
     config: &Configuration,
     worker: &mut Worker<Allocator>,
+    items: Arc<RwLock<Option<Vec<V>>>>,
 ) -> Result<()>
 where
     for<'de> V: Deserialize<'de> + Abomonation,
 {
-    use std::sync::RwLock;
-
     let mut reporter = Reporter::from_config(config.clone());
     let matroid = V::configure_constraint(&config);
 
-    let items: RwLock<Option<Vec<V>>> = RwLock::new(None);
-
     let start = Instant::now();
     let dataset = Dataset::new(&config.dataset);
+    // let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
     items
         .write()
         .unwrap()
         .get_or_insert_with(|| dataset.to_vec(Some(config.shuffle_seed)).unwrap());
-    // let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
+
     let n = items.read().unwrap().as_ref().unwrap().len();
     println!("loaded {} items in {:?}", n, start.elapsed());
     let outliers = config.outliers.num_outliers(n);
@@ -80,12 +79,11 @@ where
     let timer = Instant::now();
     let centers =
         algorithm.parallel_run(worker, items.read().unwrap().as_ref().unwrap(), matroid, p)?;
-    // let centers = algorithm.parallel_run(worker, &items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
         let (radius_no_outliers, radius_all_points) =
-            compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
+            compute_radius_outliers(items.read().unwrap().as_ref().unwrap(), &centers, outliers);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
             centers.len(),
@@ -95,7 +93,6 @@ where
 
         if let Some(coreset) = algorithm.coreset() {
             println!("Computing proxy points radius");
-            // let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
             let proxy_radius = compute_radius(items.read().unwrap().as_ref().unwrap(), &coreset);
             assert!(proxy_radius <= radius_all_points);
             reporter.set_coreset_info(coreset.len(), proxy_radius)
@@ -134,13 +131,30 @@ fn main() -> Result<()> {
             Datatype::Song => run_seq::<Song>(&config),
         }?;
     } else {
-        config.clone().execute(move |worker| {
-            match config.datatype().unwrap() {
-                Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
-                Datatype::Song => run_par::<Song>(&config, worker),
+        // config.clone().execute(move |worker| {
+        //     match config.datatype().unwrap() {
+        //         Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
+        //         Datatype::Song => run_par::<Song>(&config, worker),
+        //     }
+        //     .unwrap();
+        // })?;
+
+        match config.datatype().unwrap() {
+            Datatype::WikiPage => {
+                let items: Arc<RwLock<Option<Vec<WikiPage>>>> = Arc::new(RwLock::new(None));
+                config
+                    .clone()
+                    .execute(move |worker| run_par::<WikiPage>(&config, worker, Arc::clone(&items)))
+                    .unwrap();
             }
-            .unwrap();
-        })?;
+            Datatype::Song => {
+                let items: Arc<RwLock<Option<Vec<Song>>>> = Arc::new(RwLock::new(None));
+                config
+                    .clone()
+                    .execute(move |worker| run_par::<Song>(&config, worker, Arc::clone(&items)))
+                    .unwrap();
+            }
+        }
     }
 
     Ok(())
@@ -164,12 +178,12 @@ fn compute_radius<T: Distance>(dataset: &[T], centers: &[T]) -> f32 {
     let mut maxdist = OrderedF32(0.0);
     let mut pl = ProgressLogger::builder()
         .with_expected_updates(dataset.len() as u64)
-        .with_items_name("points")
+        .with_items_name("distances")
         .start();
     for x in dataset {
         let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
         maxdist = maxdist.max(closest);
-        pl.update_light(1u64);
+        pl.update(1u64);
     }
     pl.stop();
     maxdist.into()
