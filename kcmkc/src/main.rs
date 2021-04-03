@@ -82,15 +82,22 @@ where
         );
 
         if let Some(coreset) = algorithm.coreset() {
+            println!("Computing proxy points ardius");
             let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
             assert!(proxy_radius <= radius_all_points);
             reporter.set_coreset_info(coreset.len(), proxy_radius)
         }
 
+        println!("Reporting result");
+        println!(" . set outcome");
         reporter.set_outcome(elapsed, radius_no_outliers, centers.len() as u32);
+        println!(" . set profile");
         reporter.set_profile(algorithm.time_profile());
+        println!(" . set counters");
         reporter.set_counters(algorithm.counters());
+        println!(" . save");
         reporter.save()?;
+        println!("...done!")
     }
     Ok(())
 }
