@@ -31,6 +31,7 @@ def run_wiki():
         "wiki-d50-c100-eucl",  # <- The full wikipedia dataset, euclidean distance
     ]
     for dataset in datasets:
+        DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
     constraints = [
         # Very constrained solution

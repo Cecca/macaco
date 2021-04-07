@@ -246,7 +246,7 @@ class Wikipedia(Dataset):
     def build_metadata(self):
         datatype = "WikiPageEuclidean" if self.distance == "euclidean" else "WikiPage"
         meta = {
-            "name": "Wikipedia",
+            "name": "Wikipedia{}".format("-euclidean" if self.distance == "euclidean" else ""),
             "datatype": {datatype: None},
             "constraint": {"transversal": {"topics": list(range(0, self.topics))}},
             "version": Wikipedia.version,
