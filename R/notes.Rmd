@@ -1,0 +1,55 @@
+---
+title: Notes on matroid clustering experiments
+---
+
+```{r echo=F}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Execution time/quality tradeoff
+
+This set of experiments eaims at exploring the relationship between
+the running time of an algorithm and the radius of the returned clustering,
+under different parameterizations.
+
+The following algorithms are tested:
+- `Random`: select a random maximal independent set as 
+   the set of cluster centers.
+- `ChenEtAl`: this is the baseline 7-approximation algorithm, which takes
+  no parameters. We run it only on a sample of the full dataset.
+- `SeqCoreset`: the sequential coreset construction, featuring as the only
+  parameter $\tau$, which controls the size of the coreset
+- `StreamCoreset`: constructs the coreset in streaming, with a single parameter
+  $\tau$ controlling the coreset size, and hence the working memory
+- `MRCoreset`: builds the coreset in parallel. Takes two parameters:
+  $\tau$ which controls the size of the coreset, and the number of parallel
+  workers to use, which ranges from 2 to 16.
+
+For coreset-based algorithms, we set $\tau \in [512, 1024, 2048, 4096]$.
+The number of outliers is fixed at $1\%$ of the size of the dataset.
+We run on both the full Wikipedia dataset, and on a sample of 50\,000
+points, which is the largest size that can be handled by
+`ChenEtAl`^[which requires to pre-compute the distance matrix, thus requiring quadratic space].
+
+As for the matroid constraint, the points in the dataset belong to one or more
+of 100 categories, numbered from 0 to 99. 
+In this first set of experiments, we impose a transversal matroid constraint
+on the set of the first 10 categories.
+
+The points in the dataset are derived from
+Wikipedia pages using [GloVe](https://nlp.stanford.edu/projects/glove/).
+As a distance metric we can use either the euclidean distance or the 
+cosine distance.
+In this set of experiments we consider both.
+
+Each experiment is repeated 5 times, and the following plot
+reports the averages.
+
+```{r}
+girafe(
+    ggobj = drake::readd(plot_tradeoff),
+    options = list(
+        opts_sizing(width = 1)
+    )
+)
+```
