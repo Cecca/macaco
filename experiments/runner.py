@@ -25,9 +25,9 @@ def run_wiki():
     Run experiments on the Wikipedia dataset and its samples
     """
     datasets = [
-        "wiki-d50-c100-s50000",  # <- a sample where we can also run the baseline algorithm
+        # "wiki-d50-c100-s50000",  # <- a sample where we can also run the baseline algorithm
         "wiki-d50-c100-s50000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
-        "wiki-d50-c100",  # <- The full wikipedia dataset
+        # "wiki-d50-c100",  # <- The full wikipedia dataset
         "wiki-d50-c100-eucl",  # <- The full wikipedia dataset, euclidean distance
     ]
     for dataset in datasets:
@@ -59,7 +59,7 @@ def run_wiki():
                 }
             )
 
-        if dataset in {"wiki-d50-c100-s50000"}:
+        if dataset in {"wiki-d50-c100-s50000", "wiki-d50-c100-s50000-eucl"}:
             # Run the baseline algorithm
             run(
                 {
