@@ -37,7 +37,7 @@ def run_wiki():
         # Very constrained solution
         list(range(0, 10)),
         # The original matroid constraint, using all the categories
-        # list(range(0, 100)),
+        list(range(0, 100)),
     ]
     # Fraction of allowed outliers
     frac_outliers = [0.01]
