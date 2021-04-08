@@ -8,6 +8,9 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 ## Execution time/quality tradeoff
 
+**Caveat**: the observations on the `Random` algorithm might hold only for this very low-rank
+matroid we are using. We should test with a higher-rank matroid.
+
 This set of experiments eaims at exploring the relationship between
 the running time of an algorithm and the radius of the returned clustering,
 under different parameterizations.
@@ -24,10 +27,12 @@ The following algorithms are tested:
 - `MRCoreset`: builds the coreset in parallel. Takes two parameters:
   $\tau$ which controls the size of the coreset, and the number of parallel
   workers to use, which ranges from 2 to 16.
+  In these experiments, $\tau$ controls the size of the _composed_ coreset, so for
+  $w$ workers each worker builds a the coreset around a clustering with $\tau/w$ centers.
 
 For coreset-based algorithms, we set $\tau \in [512, 1024, 2048, 4096]$.
 The number of outliers is fixed at $1\%$ of the size of the dataset.
-We run on both the full Wikipedia dataset, and on a sample of 50\,000
+We run on both the full Wikipedia dataset, and on a sample of 50000
 points, which is the largest size that can be handled by
 `ChenEtAl`^[which requires to pre-compute the distance matrix, thus requiring quadratic space].
 
@@ -43,7 +48,10 @@ cosine distance.
 In this set of experiments we consider both.
 
 Each experiment is repeated 5 times, and the following plot
-reports the averages.
+reports the averages. On the left we have the full datasets,
+on the right we have the samples.
+Hovering with the mouse on the dots shows the radius, time and parameter configuration.
+On top we have datasets using the euclidean distance, at the bottom those using the cosine distance.
 
 ```{r}
 girafe(
@@ -53,3 +61,19 @@ girafe(
     )
 )
 ```
+
+As expected, `ChenEtAl` is the slowest algorithm and, somewhat surprisingly, is not the most accurate one,
+even though all coreset-based algorithms use it as a subroutine to compute their output.
+The other surprising thing is the performance of `Random`.
+While it is obvious that it should be the fastest, since it does very little work, the quality of
+random clusterings is surprisingly good.
+So good, in fact, that it outperforms some configurations of the coreset-based algorithms, especially
+on the full dataset under euclidean distance.
+One can easily see that an heuristic that simply draws some random independent sets and then keeps the maximum 
+would get very good results, even though with no guarantees.
+
+As for the coreset-based approaches, we have that `SeqCoreset` and `MRCoreset` provide solutions of comparable quality
+
+One could also think about drawing some random independent sets on the coresets and compare their radius with the
+one obtained with `ChenEtAl`, keeping the best.
+
