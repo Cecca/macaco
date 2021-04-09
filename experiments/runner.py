@@ -12,6 +12,8 @@ EXECUTABLE = "target/release/kcmkc"
 
 
 def run(configuration):
+    with open("/tmp/kcmkc-current.json", "w") as fp:
+        json.dump(configuration, fp)
     conf_str = base64.b64encode(json.dumps(configuration).encode("utf-8"))
     sp = subprocess.run([EXECUTABLE, conf_str])
     if sp.returncode != 0:
@@ -25,8 +27,8 @@ def run_wiki():
     Run experiments on the Wikipedia dataset and its samples
     """
     datasets = [
-        "wiki-d50-c100-s50000",  # <- a sample where we can also run the baseline algorithm
-        "wiki-d50-c100-s50000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
+        "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
+        "wiki-d50-c100-s10000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
         # "wiki-d50-c100",  # <- The full wikipedia dataset
         # "wiki-d50-c100-eucl",  # <- The full wikipedia dataset, euclidean distance
     ]
@@ -35,7 +37,7 @@ def run_wiki():
         DATASETS[dataset].preprocess()
     constraints = [
         # Very constrained solution
-        list(range(0, 10)),
+        # list(range(0, 10)),
         # The original matroid constraint, using all the categories
         list(range(0, 100)),
     ]
@@ -59,7 +61,7 @@ def run_wiki():
                 }
             )
 
-        if dataset in {"wiki-d50-c100-s50000", "wiki-d50-c100-s50000-eucl"}:
+        if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
             # Run the baseline algorithm
             run(
                 {
@@ -71,42 +73,42 @@ def run_wiki():
                 }
             )
 
-        # Run coreset algorithms
-        taus = [2 ** x for x in [9, 10, 11, 12]]
-        print(taus)
-        for tau in taus:
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
-                    "algorithm": {"SeqCoreset": {"tau": tau}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
-                    "algorithm": {"StreamingCoreset": {"tau": tau}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
-            for threads in [2, 4, 8, 16]:
-                # Keep the size of the final coreset constant across thread counts
-                rescaled_tau = int(math.ceil(tau / threads))
-                print("tau", tau, "threads", threads, "rescaled", rescaled_tau)
-                run(
-                    {
-                        "parallel": {"threads": threads},
-                        "shuffle_seed": shuffle_seed,
-                        "outliers": {"Percentage": frac_out},
-                        "algorithm": {"MapReduceCoreset": {"tau": rescaled_tau}},
-                        "dataset": DATASETS[dataset].get_path(),
-                        "constraint": {"transversal": {"topics": constr}},
-                    }
-                )
+        # # Run coreset algorithms
+        # taus = [2 ** x for x in [5, 6, 7, 8]]#9, 10, 11, 12]]
+        # print(taus)
+        # for tau in taus:
+        #     run(
+        #         {
+        #             "shuffle_seed": shuffle_seed,
+        #             "outliers": {"Percentage": frac_out},
+        #             "algorithm": {"SeqCoreset": {"tau": tau}},
+        #             "dataset": DATASETS[dataset].get_path(),
+        #             "constraint": {"transversal": {"topics": constr}},
+        #         }
+        #     )
+        #     run(
+        #         {
+        #             "shuffle_seed": shuffle_seed,
+        #             "outliers": {"Percentage": frac_out},
+        #             "algorithm": {"StreamingCoreset": {"tau": tau}},
+        #             "dataset": DATASETS[dataset].get_path(),
+        #             "constraint": {"transversal": {"topics": constr}},
+        #         }
+        #     )
+        #     for threads in [2, 4, 8, 16]:
+        #         # Keep the size of the final coreset constant across thread counts
+        #         rescaled_tau = int(math.ceil(tau / threads))
+        #         print("tau", tau, "threads", threads, "rescaled", rescaled_tau)
+        #         run(
+        #             {
+        #                 "parallel": {"threads": threads},
+        #                 "shuffle_seed": shuffle_seed,
+        #                 "outliers": {"Percentage": frac_out},
+        #                 "algorithm": {"MapReduceCoreset": {"tau": rescaled_tau}},
+        #                 "dataset": DATASETS[dataset].get_path(),
+        #                 "constraint": {"transversal": {"topics": constr}},
+        #             }
+        #         )
 
 
 def run_exploration():
