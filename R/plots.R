@@ -22,9 +22,22 @@ scale_color_algorithm <- function() {
 }
 
 do_plot_tradeoff <- function(data) {
+    assertthat::assert_that(
+        count(distinct(data, rank)) == 1,
+        msg = str_c(
+            "Should have a single rank in do_plot_tradeoff: ",
+            pull(distinct(data, rank))
+        )
+    )
+
+    title <- str_c("Rank ", distinct(data, rank) %>% pull())
+
     plotdata <- data %>%
         mutate(total_time = set_units(total_time, "s") %>% drop_units()) %>%
         mutate(dataset = fct_reorder2(dataset, is_sample, distance))
+
+    random <- plotdata %>% filter(algorithm == "Random")
+
     averages <- plotdata %>%
         mutate(algorithm_params = if_else(algorithm == "Random", "", algorithm_params)) %>%
         group_by(dataset, outliers_spec, algorithm, algorithm_params) %>%
@@ -37,11 +50,11 @@ do_plot_tradeoff <- function(data) {
             "\nparameters: ", algorithm_params
         )
     )) +
-        # geom_point(alpha = 0.5, size = 0.5) +
+        geom_point(data = random, alpha = 0.5, size = 0.5) +
         geom_point_interactive(data = averages, size = 1.2) +
         scale_y_continuous(trans = "log10") +
         scale_color_algorithm() +
-        labs(y = "total time (s)", x = "radius") +
+        labs(y = "total time (s)", x = "radius", title = title) +
         facet_wrap(vars(dataset, outliers_spec), scales = "free") +
         theme_paper()
 }
