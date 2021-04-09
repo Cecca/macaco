@@ -388,7 +388,9 @@ impl ExchangeGraph {
         m2: &M2,
         independent_set: &mut [bool],
     ) {
-        self.reversed = false;
+        self.forward();
+        let present_before: std::collections::BTreeSet<(usize, usize)> =
+            self.edges.iter().copied().collect();
         self.length.clear();
         self.edges.clear();
         self.distance.clear();
@@ -413,6 +415,7 @@ impl ExchangeGraph {
         //  - (y, x) is in the graph iff I - y + x is independent in m1
         //  - (x, y) is in the graph iff I - y + x is independent in m2
         let timer = std::time::Instant::now();
+        let mut cnt_present_before = 0;
         // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without y
@@ -425,15 +428,25 @@ impl ExchangeGraph {
             for (x, _) in independent_set.iter().enumerate().filter(|p| !p.1) {
                 scratch.push(&set[x]);
                 if m1.is_independent_ref(&scratch) {
+                    if present_before.contains(&(y, x)) {
+                        cnt_present_before += 1;
+                    }
                     self.edges.push((y, x));
                 }
                 if m2.is_independent_ref(&scratch) {
+                    if present_before.contains(&(x, y)) {
+                        cnt_present_before += 1;
+                    }
                     self.edges.push((x, y));
                 }
                 scratch.pop();
             }
         }
-        debug!("created edges in {:?}", timer.elapsed());
+        debug!(
+            "created edges in {:?}. {} were present in the previous iteration",
+            timer.elapsed(),
+            cnt_present_before
+        );
         let timer = std::time::Instant::now();
         self.edges
             .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
