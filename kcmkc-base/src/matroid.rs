@@ -3,6 +3,7 @@ use rayon::prelude::*;
 use std::time::Instant;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 use std::{collections::HashMap, marker::PhantomData};
+use thread_local::ThreadLocal;
 
 use crate::perf_counters;
 
@@ -71,6 +72,8 @@ pub trait TransveralMatroidElement {
 pub struct TransveralMatroid<T> {
     topics: Vec<u32>,
     _marker: PhantomData<T>,
+    scratch_visited: ThreadLocal<RefCell<Vec<bool>>>,
+    scratch_representatives: ThreadLocal<RefCell<Vec<Option<usize>>>>,
 }
 
 impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
@@ -82,12 +85,12 @@ impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
         perf_counters::inc_matroid_oracle_count();
         // FIXME: find a way to remove this allocation, if it is a bottleneck
         let set: Vec<&T> = set.iter().collect();
-        set.len() < self.topics.len() && self.maximum_matching(&set).count() == set.len()
+        set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
         perf_counters::inc_matroid_oracle_count();
-        set.len() < self.topics.len() && self.maximum_matching(set).count() == set.len()
+        set.len() < self.topics.len() && self.maximum_matching_size(set) == set.len()
     }
 }
 
@@ -96,14 +99,21 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
         Self {
             topics,
             _marker: PhantomData,
+            scratch_visited: ThreadLocal::new(),
+            scratch_representatives: ThreadLocal::new(),
         }
     }
 
-    // Return the indices of the elements in `set` that form a maximum matching
-    // wrt the ground topics
-    fn maximum_matching(&self, set: &[&T]) -> impl Iterator<Item = usize> {
-        let mut visited = vec![false; self.topics.len()];
-        let mut representatives = vec![None; self.topics.len()];
+    fn maximum_matching_size(&self, set: &[&T]) -> usize {
+        let n_topics = self.topics.len();
+        let mut visited = self
+            .scratch_visited
+            .get_or(|| RefCell::new(vec![false; n_topics]))
+            .borrow_mut();
+        let mut representatives = self
+            .scratch_representatives
+            .get_or(|| RefCell::new(vec![None; self.topics.len()]))
+            .borrow_mut();
 
         for idx in 0..set.len() {
             // reset the flags
@@ -114,7 +124,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
             self.find_matching_for(set, idx, &mut representatives, &mut visited);
         }
 
-        representatives.into_iter().filter_map(|opt| opt)
+        representatives.iter().filter(|opt| opt.is_some()).count()
     }
 
     fn find_matching_for(
@@ -408,8 +418,8 @@ impl ExchangeGraph {
             }));
         debug!("computed lengths in {:?}", timer.elapsed());
 
+        // edge building. This is the costly operation.
         let timer = std::time::Instant::now();
-
         // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without J
