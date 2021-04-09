@@ -397,7 +397,9 @@ impl ExchangeGraph {
                 }
             })
             .collect();
+        debug!("computed length in {:?}", timer.elapsed());
 
+        let timer = std::time::Instant::now();
         let mut edges = Vec::new();
 
         // y is an element in the independent set, x is an element outside of the independent set
@@ -420,7 +422,10 @@ impl ExchangeGraph {
                 scratch.pop();
             }
         }
+        debug!("created edges in {:?}", timer.elapsed());
+        let timer = std::time::Instant::now();
         edges.sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
+        debug!("sorted edges in z-order in {:?}", timer.elapsed());
         debug!(
             "Created exchange graph with {} edges and {} nodes in {:?}",
             edges.len(),
