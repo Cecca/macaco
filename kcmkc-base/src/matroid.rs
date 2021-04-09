@@ -230,8 +230,9 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
     m2: &M2,
 ) -> impl Iterator<Item = &'a V> + 'a {
     let mut independent_set = vec![false; set.len()];
+    let mut graph = ExchangeGraph::default();
     let mut last = 0;
-    while augment_intersection(set, m1, m2, &mut independent_set) {
+    while augment_intersection(set, m1, m2, &mut independent_set, &mut graph) {
         // All of the statements in this while body are for debug purposes
         let current_size = independent_set.iter().filter(|included| **included).count();
         #[cfg(debug_assertions)]
@@ -272,8 +273,8 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     m1: &M1,
     m2: &M2,
     independent_set: &mut [bool],
+    graph: &mut ExchangeGraph,
 ) -> bool {
-    let mut graph = ExchangeGraph::default();
     graph.reset_to(set, m1, m2, independent_set);
 
     let timer = Instant::now();
@@ -335,15 +336,9 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         // more destinations than sources
         if let Some((_, path)) = x1
             .iter()
-            .flat_map(|i| {
-                // tl_graph
-                //     .get_or(|| RefCell::new(graph.clone()))
-                //     .borrow_mut()
-                graph.bellman_ford(*i, &x2)
-            })
+            .flat_map(|i| graph.bellman_ford(*i, &x2))
             .min_by_key(|(d, path)| (*d, path.len()))
         {
-            // println!("     Augmenting path: {:?}", path);
             for i in path {
                 // Computing the xor on the flags array is equivalent to computing the
                 // symmetric difference of the path and the independent set
@@ -359,15 +354,9 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         graph.reverse(); // flip the edges first
         if let Some((_, path)) = x2
             .iter()
-            .flat_map(|i| {
-                // tl_graph
-                //     .get_or(|| RefCell::new(graph.clone()))
-                //     .borrow_mut()
-                graph.bellman_ford(*i, &x1)
-            })
+            .flat_map(|i| graph.bellman_ford(*i, &x1))
             .min_by_key(|(d, path)| (*d, path.len()))
         {
-            // println!("     Augmenting path: {:?}", path);
             for i in path {
                 // Computing the xor on the flags array is equivalent to computing the
                 // symmetric difference of the path and the independent set
@@ -419,10 +408,14 @@ impl ExchangeGraph {
         debug!("computed lengths in {:?}", timer.elapsed());
 
         // edge building. This is the costly operation.
+        //
+        // edge invariants, where I is the independent set:
+        //  - (y, x) is in the graph iff I - y + x is independent in m1
+        //  - (x, y) is in the graph iff I - y + x is independent in m2
         let timer = std::time::Instant::now();
         // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
-            // The independent set without J
+            // The independent set without y
             let mut scratch: Vec<&V> = independent_set
                 .iter()
                 .enumerate()
@@ -466,6 +459,12 @@ impl ExchangeGraph {
 
     fn reverse(&mut self) {
         if !self.reversed {
+            self.flip_edges();
+        }
+    }
+
+    fn forward(&mut self) {
+        if self.reversed {
             self.flip_edges();
         }
     }
