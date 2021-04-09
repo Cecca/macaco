@@ -1,6 +1,6 @@
-use std::time::Instant;
 use log::*;
 use rayon::prelude::*;
+use std::time::Instant;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 use std::{collections::HashMap, marker::PhantomData};
 
@@ -263,7 +263,8 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     m2: &M2,
     independent_set: &mut [bool],
 ) -> bool {
-    let mut graph = ExchangeGraph::new(set, m1, m2, independent_set);
+    let mut graph = ExchangeGraph::default();
+    graph.reset_to(set, m1, m2, independent_set);
 
     let timer = Instant::now();
     let mut independent_set_elements: Vec<&V> = independent_set
@@ -274,7 +275,10 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .collect();
     debug_assert!(m1.is_independent_ref(&independent_set_elements));
     debug_assert!(m2.is_independent_ref(&independent_set_elements));
-    debug!("Retrieved references to independent set elements in {:?}", timer.elapsed());
+    debug!(
+        "Retrieved references to independent set elements in {:?}",
+        timer.elapsed()
+    );
 
     let timer = Instant::now();
     // define the source and destination sets.
@@ -307,7 +311,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .map(|p| p.0)
         .collect();
 
-    let tl_graph = Arc::new(thread_local::ThreadLocal::new());
+    // let tl_graph = Arc::new(thread_local::ThreadLocal::new());
 
     debug!(
         "looking for best paths from {} sources to {} destinations (defined in {:?})",
@@ -320,12 +324,12 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     let res = if x1.len() < x2.len() {
         // more destinations than sources
         if let Some((_, path)) = x1
-            .par_iter()
+            .iter()
             .flat_map(|i| {
-                tl_graph
-                    .get_or(|| RefCell::new(graph.clone()))
-                    .borrow_mut()
-                    .bellman_ford(*i, &x2)
+                // tl_graph
+                //     .get_or(|| RefCell::new(graph.clone()))
+                //     .borrow_mut()
+                graph.bellman_ford(*i, &x2)
             })
             .min_by_key(|(d, path)| (*d, path.len()))
         {
@@ -344,12 +348,12 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         debug!("more sources than destinations, flipping the edges");
         graph.reverse(); // flip the edges first
         if let Some((_, path)) = x2
-            .par_iter()
+            .iter()
             .flat_map(|i| {
-                tl_graph
-                    .get_or(|| RefCell::new(graph.clone()))
-                    .borrow_mut()
-                    .bellman_ford(*i, &x1)
+                // tl_graph
+                //     .get_or(|| RefCell::new(graph.clone()))
+                //     .borrow_mut()
+                graph.bellman_ford(*i, &x1)
             })
             .min_by_key(|(d, path)| (*d, path.len()))
         {
@@ -368,7 +372,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     res
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct ExchangeGraph {
     reversed: bool,
     length: Vec<i32>,
@@ -378,29 +382,33 @@ struct ExchangeGraph {
 }
 
 impl ExchangeGraph {
-    fn new<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
+    fn reset_to<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
+        &mut self,
         set: &[V],
         m1: &M1,
         m2: &M2,
         independent_set: &mut [bool],
-    ) -> Self {
+    ) {
+        self.reversed = false;
+        self.length.clear();
+        self.edges.clear();
+        self.distance.clear();
+        self.predecessor.clear();
         let timer = std::time::Instant::now();
         let n = set.len();
-        let length = set
-            .iter()
-            .zip(independent_set.iter())
-            .map(|(v, included)| {
+
+        // reuse already allocated space, if any
+        self.length
+            .extend(set.iter().zip(independent_set.iter()).map(|(v, included)| {
                 if *included {
                     v.weight() as i32
                 } else {
                     -(v.weight() as i32)
                 }
-            })
-            .collect();
-        debug!("computed length in {:?}", timer.elapsed());
+            }));
+        debug!("computed lengths in {:?}", timer.elapsed());
 
         let timer = std::time::Instant::now();
-        let mut edges = Vec::new();
 
         // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
@@ -414,35 +422,28 @@ impl ExchangeGraph {
             for (x, _) in independent_set.iter().enumerate().filter(|p| !p.1) {
                 scratch.push(&set[x]);
                 if m1.is_independent_ref(&scratch) {
-                    edges.push((y, x));
+                    self.edges.push((y, x));
                 }
                 if m2.is_independent_ref(&scratch) {
-                    edges.push((x, y));
+                    self.edges.push((x, y));
                 }
                 scratch.pop();
             }
         }
         debug!("created edges in {:?}", timer.elapsed());
         let timer = std::time::Instant::now();
-        edges.sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
+        self.edges
+            .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
         debug!("sorted edges in z-order in {:?}", timer.elapsed());
         debug!(
             "Created exchange graph with {} edges and {} nodes in {:?}",
-            edges.len(),
+            self.edges.len(),
             n,
             timer.elapsed()
         );
 
-        let distance: Vec<Option<i32>> = vec![None; n];
-        let predecessor: Vec<Option<usize>> = vec![None; n];
-
-        Self {
-            reversed: false,
-            length,
-            edges,
-            distance,
-            predecessor,
-        }
+        self.distance.resize(n, None);
+        self.predecessor.resize(n, None);
     }
 
     /// reverse the arcs
