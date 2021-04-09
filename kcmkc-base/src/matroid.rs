@@ -1,3 +1,4 @@
+use log::*;
 use std::rc::Rc;
 use std::{collections::HashMap, marker::PhantomData};
 
@@ -232,16 +233,16 @@ pub fn weighted_matroid_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<
             debug_assert!(m1.is_independent_ref(&current_items));
             debug_assert!(m2.is_independent_ref(&current_items));
         }
-        // println!(
-        //     "      Independent set of size {} and weight {}",
-        //     current_size,
-        //     independent_set
-        //         .iter()
-        //         .enumerate()
-        //         .filter(|(_, included)| **included)
-        //         .map(|(i, _)| set[i].weight())
-        //         .sum::<u32>()
-        // );
+        debug!(
+            "Independent set of size {} and weight {}",
+            current_size,
+            independent_set
+                .iter()
+                .enumerate()
+                .filter(|(_, included)| **included)
+                .map(|(i, _)| set[i].weight())
+                .sum::<u32>()
+        );
         assert!(current_size > last);
         last = current_size;
     }
@@ -369,6 +370,11 @@ impl ExchangeGraph {
             }
         }
         edges.sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
+        debug!(
+            "Created exchange graph with {} edges and {} nodes",
+            edges.len(),
+            n
+        );
 
         let distance: Vec<Option<i32>> = vec![None; n];
         let predecessor: Vec<Option<usize>> = vec![None; n];
@@ -401,6 +407,8 @@ impl ExchangeGraph {
     ///
     /// If no path exist, then None is returned
     fn bellman_ford(&mut self, src: usize, dsts: &[usize]) -> Option<(i32, Vec<usize>)> {
+        use std::time::Instant;
+
         let n = self.length.len();
 
         // reset the support arrays
@@ -409,6 +417,8 @@ impl ExchangeGraph {
 
         self.distance[src].replace(self.length[src]);
 
+        debug!("computing shortest paths...");
+        let timer = Instant::now();
         // compute shortest paths
         for _ in 0..n {
             let mut updated = false;
@@ -433,6 +443,7 @@ impl ExchangeGraph {
                 break;
             }
         }
+        debug!("... done in {:?}", timer.elapsed());
 
         // Check the lengths of the paths
         #[cfg(debug_assertions)]
@@ -447,8 +458,11 @@ impl ExchangeGraph {
 
         // using flat map we filter out unreachable destinations
         if let Some(shortest_dist) = dsts.iter().flat_map(|i| self.distance[*i]).min() {
+            debug!("find the best path among the shortest...");
+            let timer = Instant::now();
             // Look, among the destinations
-            dsts.iter()
+            let res = dsts
+                .iter()
                 // for the ones at minimum distance
                 .filter(|i| {
                     self.distance[**i].is_some() && self.distance[**i].unwrap() == shortest_dist
@@ -460,7 +474,9 @@ impl ExchangeGraph {
                     let path: Vec<usize> = self.iter_path(*i).collect();
                     assert!(path.len() > 0);
                     (self.distance[*i].unwrap(), path)
-                })
+                });
+            debug!("...done in {:?}", timer.elapsed());
+            res
         } else {
             None
         }

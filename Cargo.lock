@@ -499,6 +499,7 @@ dependencies = [
  "abomonation_derive",
  "anyhow",
  "flate2",
+ "log",
  "progress-logger",
  "rand",
  "rand_xorshift",
