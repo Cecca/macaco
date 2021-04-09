@@ -275,7 +275,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     independent_set: &mut [bool],
     graph: &mut ExchangeGraph,
 ) -> bool {
-    graph.reset_to(set, m1, m2, independent_set);
+    graph.update(set, m1, m2, independent_set);
 
     let timer = Instant::now();
     let mut independent_set_elements: Vec<&V> = independent_set
@@ -343,6 +343,10 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
                 // Computing the xor on the flags array is equivalent to computing the
                 // symmetric difference of the path and the independent set
                 independent_set[i] ^= true;
+                // remove from the graph all the edges incident to i, so that
+                // they will be updated in the next iteration
+                let removed = graph.remove_incident(i);
+                debug!("removed {} edges from the graph", removed);
             }
             true
         } else {
@@ -361,6 +365,10 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
                 // Computing the xor on the flags array is equivalent to computing the
                 // symmetric difference of the path and the independent set
                 independent_set[i] ^= true;
+                // remove from the graph all the edges incident to i, so that
+                // they will be updated in the next iteration
+                let removed = graph.remove_incident(i);
+                debug!("removed {} edges from the graph", removed);
             }
             true
         } else {
@@ -381,16 +389,32 @@ struct ExchangeGraph {
 }
 
 impl ExchangeGraph {
-    fn reset_to<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
+    /// remove from the graph all the edges incident to the given node, if any
+    fn remove_incident(&mut self, x: usize) -> usize {
+        debug!(" . remove edges incident to {}", x);
+        let mut i = 0;
+        let mut cnt = 0;
+        while i < self.edges.len() {
+            if self.edges[i].0 == x || self.edges[i].1 == x {
+                self.edges.swap_remove(i);
+                cnt += 1;
+            }
+            i += 1;
+        }
+        cnt
+    }
+
+    fn update<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         &mut self,
         set: &[V],
         m1: &M1,
         m2: &M2,
         independent_set: &mut [bool],
     ) {
-        self.reversed = false;
+        // ensure that the edges are pointing forward before the update
+        self.forward();
+        // clear everything except for the edges
         self.length.clear();
-        self.edges.clear();
         self.distance.clear();
         self.predecessor.clear();
         let timer = std::time::Instant::now();
@@ -410,9 +434,13 @@ impl ExchangeGraph {
         // edge building. This is the costly operation.
         //
         // edge invariants, where I is the independent set:
+        //  - y is inside the independent set, x is outside
         //  - (y, x) is in the graph iff I - y + x is independent in m1
         //  - (x, y) is in the graph iff I - y + x is independent in m2
         let timer = std::time::Instant::now();
+        // sort the edges to allow binary search
+        self.edges.sort();
+        let mut new_edges = Vec::new();
         // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without y
@@ -424,16 +452,17 @@ impl ExchangeGraph {
                 .collect();
             for (x, _) in independent_set.iter().enumerate().filter(|p| !p.1) {
                 scratch.push(&set[x]);
-                if m1.is_independent_ref(&scratch) {
-                    self.edges.push((y, x));
+                if self.edges.binary_search(&(y, x)).is_err() && m1.is_independent_ref(&scratch) {
+                    new_edges.push((y, x));
                 }
-                if m2.is_independent_ref(&scratch) {
-                    self.edges.push((x, y));
+                if self.edges.binary_search(&(x, y)).is_err() && m2.is_independent_ref(&scratch) {
+                    new_edges.push((x, y));
                 }
                 scratch.pop();
             }
         }
-        debug!("created edges in {:?}", timer.elapsed());
+        self.edges.extend(new_edges.into_iter());
+        debug!("updated edges in {:?}", timer.elapsed());
         let timer = std::time::Instant::now();
         self.edges
             .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
