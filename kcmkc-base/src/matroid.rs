@@ -380,25 +380,26 @@ impl ExchangeGraph {
         self.distance.clear();
         self.predecessor.clear();
 
-        // remove from the edges the ones no longer respecting invariants
-        let mut cnt_removed = 0;
-        let mut i = 0;
-        let timer = Instant::now();
-        while i < self.edges.len() {
-            // first invariant, edge endpoints must be one in and the other out of the independent set
-            let in0 = independent_set[self.edges[i].0];
-            let in1 = independent_set[self.edges[i].1];
-            if (in0 && in1) || (!in0 && !in1) {
-                self.edges.swap_remove(i);
-                cnt_removed += 1;
-            }
-            i += 1;
-        }
-        debug!(
-            "removed {} edges not respecting the invariant in {:?}",
-            cnt_removed,
-            timer.elapsed()
-        );
+        self.edges.clear();
+        // // remove from the edges the ones no longer respecting invariants
+        // let mut cnt_removed = 0;
+        // let mut i = 0;
+        // let timer = Instant::now();
+        // while i < self.edges.len() {
+        //     // first invariant, edge endpoints must be one in and the other out of the independent set
+        //     let in0 = independent_set[self.edges[i].0];
+        //     let in1 = independent_set[self.edges[i].1];
+        //     if (in0 && in1) || (!in0 && !in1) {
+        //         self.edges.swap_remove(i);
+        //         cnt_removed += 1;
+        //     }
+        //     i += 1;
+        // }
+        // debug!(
+        //     "removed {} edges not respecting the invariant in {:?}",
+        //     cnt_removed,
+        //     timer.elapsed()
+        // );
 
         let timer = std::time::Instant::now();
         let n = set.len();
@@ -420,9 +421,9 @@ impl ExchangeGraph {
         //  - (y, x) is in the graph iff I - y + x is independent in m1
         //  - (x, y) is in the graph iff I - y + x is independent in m2
         let timer = std::time::Instant::now();
-        self.edges.sort_unstable(); // sort to enable binary search
-                                    // y is an element in the independent set, x is an element outside of the independent set
-        let mut extension = Vec::new();
+        // self.edges.sort_unstable(); // sort to enable binary search
+        //                             // y is an element in the independent set, x is an element outside of the independent set
+        // let mut extension = Vec::new();
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without y
             let mut scratch: Vec<&V> = independent_set
@@ -435,16 +436,16 @@ impl ExchangeGraph {
                 scratch.push(&set[x]);
                 // call the independent set oracle and possibly push the edge only if it
                 // is not already in the list of edges
-                if self.edges.binary_search(&(y, x)).is_err() && m1.is_independent_ref(&scratch) {
-                    extension.push((y, x));
+                if m1.is_independent_ref(&scratch) {
+                    self.edges.push((y, x));
                 }
-                if self.edges.binary_search(&(x, y)).is_err() && m2.is_independent_ref(&scratch) {
-                    extension.push((x, y));
+                if m2.is_independent_ref(&scratch) {
+                    self.edges.push((x, y));
                 }
                 scratch.pop();
             }
         }
-        self.edges.extend(extension.into_iter());
+        // self.edges.extend(extension.into_iter());
         debug!("created edges in {:?}", timer.elapsed(),);
         let timer = std::time::Instant::now();
         self.edges
