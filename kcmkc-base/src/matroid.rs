@@ -311,30 +311,58 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         x2.len()
     );
     // find the best path, if any
-    if let Some((_, path)) = x1
-        .par_iter()
-        .flat_map(|i| {
-            tl_graph
-                .get_or(|| RefCell::new(graph.clone()))
-                .borrow_mut()
-                .bellman_ford(*i, &x2)
-        })
-        .min_by_key(|(d, path)| (*d, path.len()))
-    {
-        // println!("     Augmenting path: {:?}", path);
-        for i in path {
-            // Computing the xor on the flags array is equivalent to computing the
-            // symmetric difference of the path and the independent set
-            independent_set[i] ^= true;
+    if x1.len() < x2.len() {
+        // more destinations than sources
+        if let Some((_, path)) = x1
+            .par_iter()
+            .flat_map(|i| {
+                tl_graph
+                    .get_or(|| RefCell::new(graph.clone()))
+                    .borrow_mut()
+                    .bellman_ford(*i, &x2)
+            })
+            .min_by_key(|(d, path)| (*d, path.len()))
+        {
+            // println!("     Augmenting path: {:?}", path);
+            for i in path {
+                // Computing the xor on the flags array is equivalent to computing the
+                // symmetric difference of the path and the independent set
+                independent_set[i] ^= true;
+            }
+            true
+        } else {
+            false
         }
-        true
     } else {
-        false
+        // more sources than destinations
+        debug!("more sources than destinations, flipping the edges");
+        graph.reverse(); // flip the edges first
+        if let Some((_, path)) = x2
+            .par_iter()
+            .flat_map(|i| {
+                tl_graph
+                    .get_or(|| RefCell::new(graph.clone()))
+                    .borrow_mut()
+                    .bellman_ford(*i, &x1)
+            })
+            .min_by_key(|(d, path)| (*d, path.len()))
+        {
+            // println!("     Augmenting path: {:?}", path);
+            for i in path {
+                // Computing the xor on the flags array is equivalent to computing the
+                // symmetric difference of the path and the independent set
+                independent_set[i] ^= true;
+            }
+            true
+        } else {
+            false
+        }
     }
 }
 
 #[derive(Clone)]
 struct ExchangeGraph {
+    reversed: bool,
     length: Vec<i32>,
     edges: Vec<(usize, usize)>,
     distance: Vec<Option<i32>>,
@@ -394,10 +422,25 @@ impl ExchangeGraph {
         let predecessor: Vec<Option<usize>> = vec![None; n];
 
         Self {
+            reversed: false,
             length,
             edges,
             distance,
             predecessor,
+        }
+    }
+
+    /// reverse the arcs
+    fn flip_edges(&mut self) {
+        for edge in self.edges.iter_mut() {
+            *edge = (edge.1, edge.0);
+        }
+        self.reversed = !self.reversed;
+    }
+
+    fn reverse(&mut self) {
+        if !self.reversed {
+            self.flip_edges();
         }
     }
 
@@ -419,10 +462,9 @@ impl ExchangeGraph {
     /// and going to `dsts` as a sequence of indices.
     /// Ties are broken by picking the one with fewest edges.
     ///
-    /// If no path exist, then None is returned
+    /// If no path exist, then None is returned.
+    /// Otherwise, return the weight of the path and the sequence of its nodes
     fn bellman_ford(&mut self, src: usize, dsts: &[usize]) -> Option<(i32, Vec<usize>)> {
-        use std::time::Instant;
-
         let n = self.length.len();
 
         // reset the support arrays
