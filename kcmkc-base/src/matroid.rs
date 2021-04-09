@@ -275,7 +275,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     independent_set: &mut [bool],
     graph: &mut ExchangeGraph,
 ) -> bool {
-    graph.reset_to(set, m1, m2, independent_set);
+    graph.update(set, m1, m2, independent_set);
 
     let timer = Instant::now();
     let mut independent_set_elements: Vec<&V> = independent_set
@@ -381,20 +381,36 @@ struct ExchangeGraph {
 }
 
 impl ExchangeGraph {
-    fn reset_to<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
+    fn update<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         &mut self,
         set: &[V],
         m1: &M1,
         m2: &M2,
         independent_set: &mut [bool],
     ) {
-        self.forward();
-        let present_before: std::collections::BTreeSet<(usize, usize)> =
-            self.edges.iter().copied().collect();
+        self.forward(); // ensure that edges are pointing forward
         self.length.clear();
-        self.edges.clear();
         self.distance.clear();
         self.predecessor.clear();
+
+        // remove from the edges the ones no longer respecting invariants
+        let mut cnt_removed = 0;
+        let mut i = 0;
+        let timer = Instant::now();
+        while i < self.edges.len() {
+            // first invariant, edge endpoints must be one in and the other out of the independent set
+            if !(independent_set[self.edges[i].0] ^ independent_set[self.edges[i].0]) {
+                self.edges.swap_remove(i);
+                cnt_removed += 1;
+            }
+            i += 1;
+        }
+        debug!(
+            "removed {} edges not respecting the invariant in {:?}",
+            cnt_removed,
+            timer.elapsed()
+        );
+
         let timer = std::time::Instant::now();
         let n = set.len();
 
@@ -415,8 +431,8 @@ impl ExchangeGraph {
         //  - (y, x) is in the graph iff I - y + x is independent in m1
         //  - (x, y) is in the graph iff I - y + x is independent in m2
         let timer = std::time::Instant::now();
-        let mut cnt_present_before = 0;
-        // y is an element in the independent set, x is an element outside of the independent set
+        self.edges.sort_unstable(); // sort to enable binary search
+                                    // y is an element in the independent set, x is an element outside of the independent set
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without y
             let mut scratch: Vec<&V> = independent_set
@@ -427,26 +443,18 @@ impl ExchangeGraph {
                 .collect();
             for (x, _) in independent_set.iter().enumerate().filter(|p| !p.1) {
                 scratch.push(&set[x]);
-                if m1.is_independent_ref(&scratch) {
-                    if present_before.contains(&(y, x)) {
-                        cnt_present_before += 1;
-                    }
+                // call the independent set oracle and possibly push the edge only if it
+                // is not already in the list of edges
+                if self.edges.binary_search(&(y, x)).is_err() && m1.is_independent_ref(&scratch) {
                     self.edges.push((y, x));
                 }
-                if m2.is_independent_ref(&scratch) {
-                    if present_before.contains(&(x, y)) {
-                        cnt_present_before += 1;
-                    }
+                if self.edges.binary_search(&(x, y)).is_err() && m2.is_independent_ref(&scratch) {
                     self.edges.push((x, y));
                 }
                 scratch.pop();
             }
         }
-        debug!(
-            "created edges in {:?}. {} were present in the previous iteration",
-            timer.elapsed(),
-            cnt_present_before
-        );
+        debug!("created edges in {:?}", timer.elapsed(),);
         let timer = std::time::Instant::now();
         self.edges
             .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
