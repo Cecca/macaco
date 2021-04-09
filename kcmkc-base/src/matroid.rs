@@ -331,42 +331,28 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         timer.elapsed()
     );
     let timer = Instant::now();
-    // find the best path, if any
-    let res = if true {
-        // x1.len() < x2.len() {
-        // more destinations than sources
-        if let Some((_, path)) = x1
-            .iter()
-            .flat_map(|i| graph.bellman_ford(*i, &x2))
-            .min_by_key(|(d, path)| (*d, path.len()))
-        {
-            for i in path {
-                // Computing the xor on the flags array is equivalent to computing the
-                // symmetric difference of the path and the independent set
-                independent_set[i] ^= true;
-            }
-            true
-        } else {
-            false
-        }
+    // compute paths from the set of smaller cardinality
+    let (sources, destinations) = if x1.len() < x2.len() {
+        (x1, x2)
     } else {
-        // more sources than destinations
         debug!("more sources than destinations, flipping the edges");
         graph.reverse(); // flip the edges first
-        if let Some((_, path)) = x2
-            .iter()
-            .flat_map(|i| graph.bellman_ford(*i, &x1))
-            .min_by_key(|(d, path)| (*d, path.len()))
-        {
-            for i in path {
-                // Computing the xor on the flags array is equivalent to computing the
-                // symmetric difference of the path and the independent set
-                independent_set[i] ^= true;
-            }
-            true
-        } else {
-            false
+        (x2, x1)
+    };
+    // find the best path, if any
+    let res = if let Some((_, path)) = sources
+        .iter()
+        .flat_map(|i| graph.bellman_ford(*i, &destinations))
+        .min_by_key(|(d, path)| (*d, path.len()))
+    {
+        for i in path {
+            // Computing the xor on the flags array is equivalent to computing the
+            // symmetric difference of the path and the independent set
+            independent_set[i] ^= true;
         }
+        true
+    } else {
+        false
     };
     debug!("augmenting path found (if any) in {:?}", timer.elapsed());
     res
