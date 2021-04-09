@@ -1,3 +1,4 @@
+use std::time::Instant;
 use log::*;
 use rayon::prelude::*;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
@@ -264,6 +265,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
 ) -> bool {
     let mut graph = ExchangeGraph::new(set, m1, m2, independent_set);
 
+    let timer = Instant::now();
     let mut independent_set_elements: Vec<&V> = independent_set
         .iter()
         .zip(set.iter())
@@ -272,7 +274,9 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .collect();
     debug_assert!(m1.is_independent_ref(&independent_set_elements));
     debug_assert!(m2.is_independent_ref(&independent_set_elements));
+    debug!("Retrieved references to independent set elements in {:?}", timer.elapsed());
 
+    let timer = Instant::now();
     // define the source and destination sets.
     // When the input independent set is empty, it makes sense that the sets
     // x1 and x2 are equal, and corresponding to the full set.
@@ -306,12 +310,14 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     let tl_graph = Arc::new(thread_local::ThreadLocal::new());
 
     debug!(
-        "looking for best paths from {} sources to {} destinations",
+        "looking for best paths from {} sources to {} destinations (defined in {:?})",
         x1.len(),
-        x2.len()
+        x2.len(),
+        timer.elapsed()
     );
+    let timer = Instant::now();
     // find the best path, if any
-    if x1.len() < x2.len() {
+    let res = if x1.len() < x2.len() {
         // more destinations than sources
         if let Some((_, path)) = x1
             .par_iter()
@@ -357,7 +363,9 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         } else {
             false
         }
-    }
+    };
+    debug!("augmenting path found (if any) in {:?}", timer.elapsed());
+    res
 }
 
 #[derive(Clone)]
@@ -376,6 +384,7 @@ impl ExchangeGraph {
         m2: &M2,
         independent_set: &mut [bool],
     ) -> Self {
+        let timer = std::time::Instant::now();
         let n = set.len();
         let length = set
             .iter()
@@ -413,9 +422,10 @@ impl ExchangeGraph {
         }
         edges.sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
         debug!(
-            "Created exchange graph with {} edges and {} nodes",
+            "Created exchange graph with {} edges and {} nodes in {:?}",
             edges.len(),
-            n
+            n,
+            timer.elapsed()
         );
 
         let distance: Vec<Option<i32>> = vec![None; n];
