@@ -332,7 +332,8 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     );
     let timer = Instant::now();
     // find the best path, if any
-    let res = if x1.len() < x2.len() {
+    let res = if true {
+        // x1.len() < x2.len() {
         // more destinations than sources
         if let Some((_, path)) = x1
             .iter()
@@ -486,12 +487,14 @@ impl ExchangeGraph {
         if !self.reversed {
             self.flip_edges();
         }
+        assert!(self.reversed);
     }
 
     fn forward(&mut self) {
         if self.reversed {
             self.flip_edges();
         }
+        assert!(!self.reversed);
     }
 
     /// Iterator on the paths reaching `i`
