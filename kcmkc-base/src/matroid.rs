@@ -454,13 +454,9 @@ impl ExchangeGraph {
                 scratch.push(&set[x]);
                 if self.edges.binary_search(&(y, x)).is_err() && m1.is_independent_ref(&scratch) {
                     new_edges.push((y, x));
-                } else {
-                    assert!(m1.is_independent_ref(&scratch));
                 }
                 if self.edges.binary_search(&(x, y)).is_err() && m2.is_independent_ref(&scratch) {
                     new_edges.push((x, y));
-                } else {
-                    assert!(m2.is_independent_ref(&scratch));
                 }
                 scratch.pop();
             }
