@@ -1,5 +1,6 @@
 use log::*;
-use std::rc::Rc;
+use rayon::prelude::*;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 use std::{collections::HashMap, marker::PhantomData};
 
 use crate::perf_counters;
@@ -302,10 +303,22 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .map(|p| p.0)
         .collect();
 
+    let tl_graph = Arc::new(thread_local::ThreadLocal::new());
+
+    debug!(
+        "looking for best paths from {} sources to {} destinations",
+        x1.len(),
+        x2.len()
+    );
     // find the best path, if any
     if let Some((_, path)) = x1
-        .iter()
-        .flat_map(|i| graph.bellman_ford(*i, &x2))
+        .par_iter()
+        .flat_map(|i| {
+            tl_graph
+                .get_or(|| RefCell::new(graph.clone()))
+                .borrow_mut()
+                .bellman_ford(*i, &x2)
+        })
         .min_by_key(|(d, path)| (*d, path.len()))
     {
         // println!("     Augmenting path: {:?}", path);
@@ -320,6 +333,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     }
 }
 
+#[derive(Clone)]
 struct ExchangeGraph {
     length: Vec<i32>,
     edges: Vec<(usize, usize)>,
@@ -417,8 +431,6 @@ impl ExchangeGraph {
 
         self.distance[src].replace(self.length[src]);
 
-        debug!("computing shortest paths...");
-        let timer = Instant::now();
         // compute shortest paths
         for _ in 0..n {
             let mut updated = false;
@@ -443,7 +455,6 @@ impl ExchangeGraph {
                 break;
             }
         }
-        debug!("... done in {:?}", timer.elapsed());
 
         // Check the lengths of the paths
         #[cfg(debug_assertions)]
@@ -458,11 +469,8 @@ impl ExchangeGraph {
 
         // using flat map we filter out unreachable destinations
         if let Some(shortest_dist) = dsts.iter().flat_map(|i| self.distance[*i]).min() {
-            debug!("find the best path among the shortest...");
-            let timer = Instant::now();
             // Look, among the destinations
-            let res = dsts
-                .iter()
+            dsts.iter()
                 // for the ones at minimum distance
                 .filter(|i| {
                     self.distance[**i].is_some() && self.distance[**i].unwrap() == shortest_dist
@@ -474,9 +482,7 @@ impl ExchangeGraph {
                     let path: Vec<usize> = self.iter_path(*i).collect();
                     assert!(path.len() > 0);
                     (self.distance[*i].unwrap(), path)
-                });
-            debug!("...done in {:?}", timer.elapsed());
-            res
+                })
         } else {
             None
         }
