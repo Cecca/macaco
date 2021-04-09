@@ -399,7 +399,9 @@ impl ExchangeGraph {
         let timer = Instant::now();
         while i < self.edges.len() {
             // first invariant, edge endpoints must be one in and the other out of the independent set
-            if !(independent_set[self.edges[i].0] ^ independent_set[self.edges[i].0]) {
+            let in0 = independent_set[self.edges[i].0];
+            let in1 = independent_set[self.edges[i].1];
+            if (in0 && in1) || (!in0 && !in1) {
                 self.edges.swap_remove(i);
                 cnt_removed += 1;
             }
