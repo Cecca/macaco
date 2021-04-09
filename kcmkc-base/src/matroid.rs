@@ -433,6 +433,7 @@ impl ExchangeGraph {
         let timer = std::time::Instant::now();
         self.edges.sort_unstable(); // sort to enable binary search
                                     // y is an element in the independent set, x is an element outside of the independent set
+        let mut extension = Vec::new();
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without y
             let mut scratch: Vec<&V> = independent_set
@@ -446,14 +447,15 @@ impl ExchangeGraph {
                 // call the independent set oracle and possibly push the edge only if it
                 // is not already in the list of edges
                 if self.edges.binary_search(&(y, x)).is_err() && m1.is_independent_ref(&scratch) {
-                    self.edges.push((y, x));
+                    extension.push((y, x));
                 }
                 if self.edges.binary_search(&(x, y)).is_err() && m2.is_independent_ref(&scratch) {
-                    self.edges.push((x, y));
+                    extension.push((x, y));
                 }
                 scratch.pop();
             }
         }
+        self.edges.extend(extension.into_iter());
         debug!("created edges in {:?}", timer.elapsed(),);
         let timer = std::time::Instant::now();
         self.edges
