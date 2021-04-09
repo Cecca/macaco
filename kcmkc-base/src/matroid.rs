@@ -340,7 +340,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         (x2, x1)
     };
     // find the best path, if any
-    let res = if let Some((_, path)) = sources
+    if let Some((_, path)) = sources
         .iter()
         .flat_map(|i| graph.bellman_ford(*i, &destinations))
         .min_by_key(|(d, path)| (*d, path.len()))
@@ -350,12 +350,12 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
             // symmetric difference of the path and the independent set
             independent_set[i] ^= true;
         }
+        debug!("augmenting path found (if any) in {:?}", timer.elapsed());
         true
     } else {
+        debug!("no augmenting path! {:?}", timer.elapsed());
         false
-    };
-    debug!("augmenting path found (if any) in {:?}", timer.elapsed());
-    res
+    }
 }
 
 #[derive(Clone, Default)]
