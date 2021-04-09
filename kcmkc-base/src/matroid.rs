@@ -119,9 +119,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
 
         for idx in 0..set.len() {
             // reset the flags
-            for flag in visited.iter_mut() {
-                *flag = false;
-            }
+            visited.fill(false);
             // try to accomodate the new element
             self.find_matching_for(set, idx, &mut representatives, &mut visited);
         }
@@ -137,7 +135,7 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
         visited: &mut [bool],
     ) -> bool {
         for (topic_idx, topic) in self.topics.iter().enumerate() {
-            if set[idx].topics().iter().find(|t| *t == topic).is_some() && !visited[topic_idx] {
+            if !visited[topic_idx] && set[idx].topics().iter().find(|t| *t == topic).is_some() {
                 visited[topic_idx] = true;
                 let can_set = if let Some(displacing_idx) = representatives[topic_idx] {
                     // try to move the representative to another set
