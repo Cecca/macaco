@@ -110,10 +110,12 @@ impl<T: TransveralMatroidElement> TransveralMatroid<T> {
             .scratch_visited
             .get_or(|| RefCell::new(vec![false; n_topics]))
             .borrow_mut();
+        visited.fill(false);
         let mut representatives = self
             .scratch_representatives
             .get_or(|| RefCell::new(vec![None; self.topics.len()]))
             .borrow_mut();
+        representatives.fill(None);
 
         for idx in 0..set.len() {
             // reset the flags
