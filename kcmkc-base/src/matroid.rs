@@ -134,10 +134,13 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
         representatives: &mut [Option<usize>],
         visited: &mut [bool],
     ) -> bool {
-        for (topic_idx, topic) in self.topics.iter().enumerate() {
-            if !visited[topic_idx] && set[idx].topics().iter().find(|t| *t == topic).is_some() {
-                visited[topic_idx] = true;
-                let can_set = if let Some(displacing_idx) = representatives[topic_idx] {
+        for topic in set_intersection(
+            self.topics.iter().copied(),
+            set[idx].topics().iter().copied(),
+        ) {
+            if !visited[topic as usize] {
+                visited[topic as usize] = true;
+                let can_set = if let Some(displacing_idx) = representatives[topic as usize] {
                     // try to move the representative to another set
                     self.find_matching_for(set, displacing_idx, representatives, visited)
                 } else {
@@ -145,14 +148,58 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
                 };
 
                 if can_set {
-                    representatives[topic_idx].replace(idx);
+                    representatives[topic as usize].replace(idx);
                     return true;
                 }
             }
         }
+        // for (topic_idx, topic) in self.topics.iter().enumerate() {
+        //     if !visited[topic_idx] && set[idx].topics().iter().find(|t| *t == topic).is_some() {
+        //         visited[topic_idx] = true;
+        //         let can_set = if let Some(displacing_idx) = representatives[topic_idx] {
+        //             // try to move the representative to another set
+        //             self.find_matching_for(set, displacing_idx, representatives, visited)
+        //         } else {
+        //             true
+        //         };
+
+        //         if can_set {
+        //             representatives[topic_idx].replace(idx);
+        //             return true;
+        //         }
+        //     }
+        // }
 
         false
     }
+}
+
+fn set_intersection<I1: IntoIterator<Item = u32>, I2: IntoIterator<Item = u32>>(
+    a: I1,
+    b: I2,
+) -> impl Iterator<Item = u32> {
+    let mut i1 = a.into_iter();
+    let mut i2 = b.into_iter();
+
+    let mut cur_a = i1.next();
+    let mut cur_b = i2.next();
+
+    std::iter::from_fn(move || loop {
+        match (cur_a, cur_b) {
+            (Some(a), Some(b)) => {
+                if a < b {
+                    cur_a = i1.next();
+                } else if a > b {
+                    cur_b = i2.next();
+                } else {
+                    cur_a = i1.next();
+                    cur_b = i2.next();
+                    return Some(a);
+                }
+            }
+            _ => return None,
+        }
+    })
 }
 
 /// Element of a set on which we can impose a partition matroid
