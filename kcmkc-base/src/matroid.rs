@@ -153,22 +153,6 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
                 }
             }
         }
-        // for (topic_idx, topic) in self.topics.iter().enumerate() {
-        //     if !visited[topic_idx] && set[idx].topics().iter().find(|t| *t == topic).is_some() {
-        //         visited[topic_idx] = true;
-        //         let can_set = if let Some(displacing_idx) = representatives[topic_idx] {
-        //             // try to move the representative to another set
-        //             self.find_matching_for(set, displacing_idx, representatives, visited)
-        //         } else {
-        //             true
-        //         };
-
-        //         if can_set {
-        //             representatives[topic_idx].replace(idx);
-        //             return true;
-        //         }
-        //     }
-        // }
 
         false
     }
