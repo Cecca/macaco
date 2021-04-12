@@ -363,9 +363,11 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     let timer = Instant::now();
 
     let singleton_paths: Vec<(i32, Vec<usize>)> =
-        x1.iter().map(|i| (graph.length[*i], vec![*i])).collect();
+    set_intersection(x1.iter().map(|i| *i as u32), x2.iter().map(|i| *i as u32)).map(|i| (graph.length[i as usize], vec![i as usize])).collect();
+    debug!("There are {} singleton paths", singleton_paths.len());
 
     // compute paths from the set of smaller cardinality
+    // let (sources, destinations) = (x1, x2);
     let (sources, destinations) = if x1.len() < x2.len() {
         (x1, x2)
     } else {
