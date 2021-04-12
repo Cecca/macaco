@@ -1,7 +1,6 @@
 use log::*;
-use rayon::prelude::*;
 use std::time::Instant;
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc};
 use std::{collections::HashMap, marker::PhantomData};
 use thread_local::ThreadLocal;
 
