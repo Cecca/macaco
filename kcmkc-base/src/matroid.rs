@@ -392,7 +392,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
 struct ExchangeGraph {
     reversed: bool,
     length: Vec<i32>,
-    edges: Vec<(usize, usize)>,
+    edges: Vec<(usize, usize, i32)>,
     distance: Vec<Option<i32>>,
     predecessor: Vec<Option<usize>>,
 }
@@ -444,24 +444,23 @@ impl ExchangeGraph {
                 // call the independent set oracle and possibly push the edge only if it
                 // is not already in the list of edges
                 if m1.is_independent_ref(&scratch) {
-                    self.edges.push((y, x));
+                    self.edges.push((y, x, self.length[y] + self.length[x]));
                 }
                 if m2.is_independent_ref(&scratch) {
-                    self.edges.push((x, y));
+                    self.edges.push((x, y, self.length[x] + self.length[y]));
                 }
                 scratch.pop();
             }
         }
-        debug!("created edges in {:?}", timer.elapsed(),);
-        let timer = std::time::Instant::now();
-        self.edges
-            .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
-        debug!("sorted edges in z-order in {:?}", timer.elapsed());
+        // debug!("created edges in {:?}", timer.elapsed(),);
+        // let timer = std::time::Instant::now();
+        // self.edges
+        //     .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
+        // debug!("sorted edges in z-order in {:?}", timer.elapsed());
         debug!(
-            "Created exchange graph with {} edges and {} nodes in {:?}",
+            "Created exchange graph with {} edges and {} nodes",
             self.edges.len(),
             n,
-            timer.elapsed()
         );
 
         self.distance.resize(n, None);
@@ -471,7 +470,7 @@ impl ExchangeGraph {
     /// reverse the arcs
     fn flip_edges(&mut self) {
         for edge in self.edges.iter_mut() {
-            *edge = (edge.1, edge.0);
+            *edge = (edge.1, edge.0, edge.2);
         }
         self.reversed = !self.reversed;
     }
@@ -510,23 +509,23 @@ impl ExchangeGraph {
         self.distance.fill(None);
         self.predecessor.fill(None);
 
-        self.distance[src].replace(self.length[src]);
+        self.distance[src].replace(0);
 
         // compute shortest paths
         for _ in 0..n {
             let mut updated = false;
-            for &(u, v) in &self.edges {
+            for &(u, v, w) in &self.edges {
                 // edge relaxation
                 if let Some(du) = self.distance[u] {
                     if let Some(dv) = self.distance[v] {
-                        if du + self.length[v] < dv {
+                        if du + w < dv {
                             updated = true;
-                            self.distance[v].replace(du + self.length[v]);
+                            self.distance[v].replace(du + w);
                             self.predecessor[v].replace(u);
                         }
                     } else {
                         updated = true;
-                        self.distance[v].replace(du + self.length[v]);
+                        self.distance[v].replace(du + w);
                         self.predecessor[v].replace(u);
                     }
                 }
