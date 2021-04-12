@@ -352,8 +352,17 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         .map(|p| p.0)
         .collect();
 
-    // let tl_graph = Arc::new(thread_local::ThreadLocal::new());
-
+    // --------------------------------------------------------------------------
+    // now we look at paths from x1 to x2 in the graph. To do so, we run the
+    // Bellman-Ford algorithm from each source vertex to get to the destinations.
+    // For efficiency, if x2 is larger than x1, then we flip the edges in the
+    // graph and use nodes in x2 as sources, so to do fewer invocations of the
+    // shortest-paths algorithm.
+    // The caveat is that weights are on the nodes instead of the edges.
+    // Therefore a path formed by a single node is a valid path. However,
+    // in our context, we accept such a path as valid *only* if the node is
+    // both in x1 and in x2, that is it is both a source and a destination.
+    //
     debug!(
         "looking for best paths from {} sources to {} destinations (defined in {:?})",
         x1.len(),
@@ -363,7 +372,9 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     let timer = Instant::now();
 
     let singleton_paths: Vec<(i32, Vec<usize>)> =
-    set_intersection(x1.iter().map(|i| *i as u32), x2.iter().map(|i| *i as u32)).map(|i| (graph.length[i as usize], vec![i as usize])).collect();
+        set_intersection(x1.iter().map(|i| *i as u32), x2.iter().map(|i| *i as u32))
+            .map(|i| (graph.length[i as usize], vec![i as usize]))
+            .collect();
     debug!("There are {} singleton paths", singleton_paths.len());
 
     // compute paths from the set of smaller cardinality
@@ -460,10 +471,6 @@ impl ExchangeGraph {
             }
         }
         debug!("created edges in {:?}", timer.elapsed());
-        // let timer = std::time::Instant::now();
-        // self.edges
-        //     .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
-        // debug!("sorted edges in z-order in {:?}", timer.elapsed());
         debug!(
             "Created exchange graph with {} edges and {} nodes in {:?}",
             self.edges.len(),
@@ -577,27 +584,4 @@ impl ExchangeGraph {
             None
         }
     }
-}
-
-/// Interleave the bits of the pairs. Using the resulting
-/// number as a sorting key improves cache locality
-#[inline]
-pub fn pair_to_zorder((mut x, mut y): (u32, u32)) -> u64 {
-    let mut z = 0;
-    let msb_mask = 1_u32 << 31;
-    for _ in 0..32 {
-        if x & msb_mask == 0 {
-            z = z << 1;
-        } else {
-            z = (z << 1) | 1;
-        }
-        if y & msb_mask == 0 {
-            z = z << 1;
-        } else {
-            z = (z << 1) | 1;
-        }
-        x = x << 1;
-        y = y << 1;
-    }
-    z
 }
