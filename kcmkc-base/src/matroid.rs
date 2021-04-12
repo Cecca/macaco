@@ -65,18 +65,18 @@ pub fn augment<T: Clone + PartialEq>(
 }
 
 /// Element of a set on which we can impose a transversal matroid
-pub trait TransveralMatroidElement {
+pub trait TransversalMatroidElement {
     fn topics<'a>(&'a self) -> &'a [u32];
 }
 
-pub struct TransveralMatroid<T> {
+pub struct TransversalMatroid<T> {
     topics: Vec<u32>,
     _marker: PhantomData<T>,
     scratch_visited: ThreadLocal<RefCell<Vec<bool>>>,
     scratch_representatives: ThreadLocal<RefCell<Vec<Option<usize>>>>,
 }
 
-impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
+impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
     fn rank(&self) -> usize {
         self.topics.len()
     }
@@ -94,7 +94,7 @@ impl<T: TransveralMatroidElement> Matroid<T> for TransveralMatroid<T> {
     }
 }
 
-impl<T: TransveralMatroidElement> TransveralMatroid<T> {
+impl<T: TransversalMatroidElement> TransversalMatroid<T> {
     pub fn new(topics: Vec<u32>) -> Self {
         Self {
             topics,

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use kcmkc_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
-    matroid::{Matroid, PartitionMatroid, TransveralMatroid},
+    matroid::{Matroid, PartitionMatroid, TransversalMatroid},
     types::{Song, WikiPage, WikiPageEuclidean},
 };
 use kcmkc_parallel::mapreduce_coreset::MapReduceCoreset;
@@ -329,7 +329,7 @@ pub trait Configure {
 impl Configure for WikiPage {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
-            Constraint::Transversal { topics } => Rc::new(TransveralMatroid::new(topics.clone())),
+            Constraint::Transversal { topics } => Rc::new(TransversalMatroid::new(topics.clone())),
             _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
         }
     }
@@ -364,7 +364,7 @@ impl Configure for WikiPage {
 impl Configure for WikiPageEuclidean {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
-            Constraint::Transversal { topics } => Rc::new(TransveralMatroid::new(topics.clone())),
+            Constraint::Transversal { topics } => Rc::new(TransversalMatroid::new(topics.clone())),
             _ => panic!("Can only build a transversal matroid constraint for WikiPage"),
         }
     }

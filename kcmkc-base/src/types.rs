@@ -154,7 +154,7 @@ impl WikiPage {
     }
 }
 
-impl TransveralMatroidElement for WikiPage {
+impl TransversalMatroidElement for WikiPage {
     fn topics<'a>(&'a self) -> &'a [u32] {
         &self.topics
     }
@@ -178,7 +178,7 @@ pub struct WikiPageEuclidean {
     pub weight: u32,
 }
 
-impl TransveralMatroidElement for WikiPageEuclidean {
+impl TransversalMatroidElement for WikiPageEuclidean {
     fn topics<'a>(&'a self) -> &'a [u32] {
         &self.topics
     }
