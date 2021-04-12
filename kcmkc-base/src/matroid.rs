@@ -361,6 +361,10 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
         timer.elapsed()
     );
     let timer = Instant::now();
+
+    let singleton_paths: Vec<(i32, Vec<usize>)> =
+        x1.iter().map(|i| (graph.length[*i], vec![*i])).collect();
+
     // compute paths from the set of smaller cardinality
     let (sources, destinations) = if x1.len() < x2.len() {
         (x1, x2)
@@ -373,6 +377,7 @@ fn augment_intersection<'a, V: Weight, M1: Matroid<V>, M2: Matroid<V>>(
     if let Some((_, path)) = sources
         .iter()
         .flat_map(|i| graph.bellman_ford(*i, &destinations))
+        .chain(singleton_paths.into_iter())
         .min_by_key(|(d, path)| (*d, path.len()))
     {
         for i in path {
@@ -452,11 +457,11 @@ impl ExchangeGraph {
                 scratch.pop();
             }
         }
-        debug!("created edges in {:?}", timer.elapsed(),);
-        let timer = std::time::Instant::now();
-        self.edges
-            .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
-        debug!("sorted edges in z-order in {:?}", timer.elapsed());
+        debug!("created edges in {:?}", timer.elapsed());
+        // let timer = std::time::Instant::now();
+        // self.edges
+        //     .sort_by_key(|(u, v)| pair_to_zorder((*u as u32, *v as u32)));
+        // debug!("sorted edges in z-order in {:?}", timer.elapsed());
         debug!(
             "Created exchange graph with {} edges and {} nodes in {:?}",
             self.edges.len(),
@@ -556,6 +561,8 @@ impl ExchangeGraph {
                 .filter(|i| {
                     self.distance[**i].is_some() && self.distance[**i].unwrap() == shortest_dist
                 })
+                // which consist of more than one node (singleton paths are handled by the caller)
+                .filter(|i| self.iter_path(**i).count() > 1)
                 // and reached with minimum number of steps
                 .min_by_key(|i| self.iter_path(**i).count())
                 // for that one, materialize the path
