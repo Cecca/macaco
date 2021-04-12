@@ -375,31 +375,11 @@ impl ExchangeGraph {
         m2: &M2,
         independent_set: &mut [bool],
     ) {
-        self.forward(); // ensure that edges are pointing forward
         self.length.clear();
         self.distance.clear();
         self.predecessor.clear();
-
         self.edges.clear();
-        // // remove from the edges the ones no longer respecting invariants
-        // let mut cnt_removed = 0;
-        // let mut i = 0;
-        // let timer = Instant::now();
-        // while i < self.edges.len() {
-        //     // first invariant, edge endpoints must be one in and the other out of the independent set
-        //     let in0 = independent_set[self.edges[i].0];
-        //     let in1 = independent_set[self.edges[i].1];
-        //     if (in0 && in1) || (!in0 && !in1) {
-        //         self.edges.swap_remove(i);
-        //         cnt_removed += 1;
-        //     }
-        //     i += 1;
-        // }
-        // debug!(
-        //     "removed {} edges not respecting the invariant in {:?}",
-        //     cnt_removed,
-        //     timer.elapsed()
-        // );
+        self.reversed = false;
 
         let timer = std::time::Instant::now();
         let n = set.len();
@@ -421,9 +401,6 @@ impl ExchangeGraph {
         //  - (y, x) is in the graph iff I - y + x is independent in m1
         //  - (x, y) is in the graph iff I - y + x is independent in m2
         let timer = std::time::Instant::now();
-        // self.edges.sort_unstable(); // sort to enable binary search
-        //                             // y is an element in the independent set, x is an element outside of the independent set
-        // let mut extension = Vec::new();
         for (y, _) in independent_set.iter().enumerate().filter(|p| *p.1) {
             // The independent set without y
             let mut scratch: Vec<&V> = independent_set
@@ -445,7 +422,6 @@ impl ExchangeGraph {
                 scratch.pop();
             }
         }
-        // self.edges.extend(extension.into_iter());
         debug!("created edges in {:?}", timer.elapsed(),);
         let timer = std::time::Instant::now();
         self.edges
@@ -475,13 +451,6 @@ impl ExchangeGraph {
             self.flip_edges();
         }
         assert!(self.reversed);
-    }
-
-    fn forward(&mut self) {
-        if self.reversed {
-            self.flip_edges();
-        }
-        assert!(!self.reversed);
     }
 
     /// Iterator on the paths reaching `i`
