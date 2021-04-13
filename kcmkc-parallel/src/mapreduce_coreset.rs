@@ -207,7 +207,11 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
-    debug!("Local chunk of dataset with {}", local_dataset.len());
+    debug!(
+        "Local chunk of dataset with {}, minimum key {}",
+        local_dataset.len(),
+        local_dataset.iter().map(|pair| pair.0).min().unwrap()
+    );
 
     worker.dataflow::<(), _, _>(|scope| {
         let mut stash = Vec::new();
