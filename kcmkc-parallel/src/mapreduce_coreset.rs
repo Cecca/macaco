@@ -90,18 +90,21 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         worker.dataflow(|scope| {
             scope
                 .input_from(&mut input)
-                .exchange(|x| x.0)
-                .unary(ExchangePact::new(|_| 0), "output_collector", |_, _| {
-                    move |input, output| {
-                        input.for_each(|t, data| {
-                            local_dataset
-                                .deref()
-                                .borrow_mut()
-                                .extend(data.replace(Vec::new()).into_iter());
-                            output.session(&t).give(());
-                        });
-                    }
-                })
+                .unary(
+                    ExchangePact::new(|x: &(u64, T)| x.0),
+                    "output_collector",
+                    |_, _| {
+                        move |input, output| {
+                            input.for_each(|t, data| {
+                                local_dataset
+                                    .deref()
+                                    .borrow_mut()
+                                    .extend(data.replace(Vec::new()).into_iter());
+                                output.session(&t).give(());
+                            });
+                        }
+                    },
+                )
                 .probe_with(&mut probe);
         });
         if worker.index() == 0 {
