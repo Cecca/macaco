@@ -21,6 +21,7 @@ use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
 use timely::{
     communication::Allocator,
+    dataflow::channels::pact::Pipeline as PipelinePact,
     dataflow::{channels::pact::Exchange as ExchangePact, operators::*},
 };
 
@@ -46,7 +47,7 @@ impl<V> MapReduceCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset<V> {
     fn version(&self) -> u32 {
-        2
+        3
     }
 
     fn name(&self) -> String {
@@ -81,6 +82,7 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
         // First distributed the dataset
+        let timer = Instant::now();
         let mut input: InputHandle<(), (u64, T)> = InputHandle::new();
         let mut probe = ProbeHandle::new();
         let local_dataset: Rc<RefCell<Vec<(u64, T)>>> = Rc::new(RefCell::new(Vec::new()));
@@ -115,6 +117,7 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         debug!("Waiting on the barrier");
         barrier.wait();
         debug!("Passed the barrier!");
+        debug!("Input distributed in {:?}", timer.elapsed());
 
         // then build the coreset, and start measuring time from there
         let start = Instant::now();
@@ -200,13 +203,14 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
+    debug!("Local chunk of dataset with {}", local_dataset.len());
 
     worker.dataflow::<(), _, _>(|scope| {
         let mut stash = Vec::new();
         local_dataset
             .to_stream(scope)
             .unary_notify(
-                ExchangePact::new(|x: &(u64, T)| x.0),
+                PipelinePact,
                 "coreset_builder",
                 None,
                 move |input, output, notificator| {

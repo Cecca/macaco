@@ -141,6 +141,16 @@ do_plot_param_influence <- function(plotdata) {
 }
 
 do_plot_time <- function(data) {
+    assertthat::assert_that(
+        count(distinct(data, rank)) == 1,
+        msg = str_c(
+            "Should have a single rank in do_plot_tradeoff: ",
+            pull(distinct(data, rank))
+        )
+    )
+
+    title <- str_c("Rank ", distinct(data, rank) %>% pull())
+
     coresets <- filter(data, str_detect(algorithm, "Coreset")) %>%
         mutate(
             algorithm_params = map(
@@ -168,7 +178,6 @@ do_plot_time <- function(data) {
 
     times <- select(coresets, rank, algorithm, final_tau, dataset, outliers_spec, solution=solution_time, coreset=coreset_time) %>%
         pivot_longer(solution:coreset, names_to="component", values_to="time") %>%
-        filter(component == "coreset") %>%
         mutate(time = set_units(time, "s") %>% drop_units())
 
     sizes <- coresets %>%
@@ -188,12 +197,10 @@ do_plot_time <- function(data) {
             inherit.aes=F,
             hjust=0
         ) +
-        facet_grid(vars(final_tau), vars(dataset, rank, outliers_spec), scales="free") +
+        facet_grid(vars(final_tau), vars(dataset, outliers_spec), scales="free") +
+        labs(title = title) +
         coord_flip() +
         theme_paper()
 }
 
-ragg::agg_png("test.png", width = 1000, height = 1000, res = 144)
-do_plot_time(drake::readd(data_result))
-invisible(dev.off())
 

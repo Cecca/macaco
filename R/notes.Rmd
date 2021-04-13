@@ -83,3 +83,12 @@ As for the coreset-based approaches, we have that `SeqCoreset` and `MRCoreset` p
 One could also think about drawing some random independent sets on the coresets and compare their radius with the
 one obtained with `ChenEtAl`, keeping the best.
 
+## Time breakdown
+
+```{r}
+drake::readd(plot_time_10)
+```
+
+```{r}
+drake::readd(plot_time_100)
+```

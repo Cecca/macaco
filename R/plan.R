@@ -9,6 +9,12 @@ plan <- drake_plan(
             rank_value = c(10, 100)
         )
     ),
+    plot_time = target(
+        do_plot_time(filter(data_result, rank == rank_value)),
+        transform = cross(
+            rank_value = c(10, 100)
+        )
+    ),
     plot_param_influence = do_plot_param_influence(data_result),
     notes = rmarkdown::render(
         knitr_in("R/notes.Rmd"),
