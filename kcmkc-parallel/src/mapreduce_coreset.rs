@@ -138,6 +138,7 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
 
         let start = Instant::now();
         let solution = if worker.index() == 0 {
+            info!("Running robust matroid center on {} points", coreset.len());
             let s = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
             assert!(matroid.is_maximal(&s, &dataset));
             s
