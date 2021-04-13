@@ -197,7 +197,6 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
 ) -> Vec<(T, u32)> {
-    let mut input: InputHandle<(), (u64, T)> = InputHandle::new();
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
@@ -206,10 +205,6 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
         let mut stash = Vec::new();
         local_dataset
             .to_stream(scope)
-            // scope
-            //     // Hook the input in the dataflow
-            //     .input_from(&mut input)
-            // Exchange the vectors randomly, and then build the coreset in each partition
             .unary_notify(
                 ExchangePact::new(|x: &(u64, T)| x.0),
                 "coreset_builder",
