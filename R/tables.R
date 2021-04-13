@@ -18,9 +18,9 @@ table_result <- function() {
         replace_na(list(threads = 1)) %>%
         filter(dataset %in% c(
             "Wikipedia-sample-10000",
-            "Wikipedia-euclidean-sample-10000",
-            "Wikipedia",
-            "Wikipedia-euclidean"
+            # "Wikipedia-euclidean-sample-10000",
+            "Wikipedia"
+            # "Wikipedia-euclidean"
         )) %>%
         mutate(
             distance = if_else(str_detect(dataset, "euclidean"), "euclidean", "cosine"),
@@ -29,8 +29,12 @@ table_result <- function() {
         ) %>%
         unnest(rank) %>%
         filter(outliers_spec %in% c("Percentage(0.01)")) %>%
-        mutate(total_time = set_units(total_time_ms, "ms")) %>%
-        select(-total_time_ms)
+        mutate(
+            total_time = set_units(total_time_ms, "ms"),
+            coreset_time = set_units(coreset_time_ms, "ms"),
+            solution_time = set_units(solution_time_ms, "ms")
+        ) %>%
+        select(-ends_with("_ms"))
     DBI::dbDisconnect(conn)
     results
 }
