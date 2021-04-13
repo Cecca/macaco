@@ -9,6 +9,7 @@ use kcmkc_sequential::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
 };
+use log::*;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -79,8 +80,50 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         matroid: Rc<dyn Matroid<T>>,
         p: usize,
     ) -> anyhow::Result<Vec<T>> {
+        // First distributed the dataset
+        let mut input: InputHandle<(), (u64, T)> = InputHandle::new();
+        let mut probe = ProbeHandle::new();
+        let local_dataset: Rc<RefCell<Vec<(u64, T)>>> = Rc::new(RefCell::new(Vec::new()));
+        let local_dataset_handle = Rc::clone(&local_dataset);
+        worker.dataflow(|scope| {
+            scope
+                .input_from(&mut input)
+                .exchange(|x| x.0)
+                .unary(ExchangePact::new(|_| 0), "output_collector", |_, _| {
+                    move |input, output| {
+                        input.for_each(|t, data| {
+                            local_dataset
+                                .deref()
+                                .borrow_mut()
+                                .extend(data.replace(Vec::new()).into_iter());
+                            output.session(&t).give(());
+                        });
+                    }
+                })
+                .probe_with(&mut probe);
+        });
+        if worker.index() == 0 {
+            for (i, v) in dataset.iter().enumerate() {
+                input.send((i as u64, v.clone()));
+            }
+        }
+        input.close();
+        worker.step_while(|| !probe.done());
+
+        // Wait for everybody
+        let mut barrier = timely::synchronization::Barrier::new(worker);
+        debug!("Waiting on the barrier");
+        barrier.wait();
+        debug!("Passed the barrier!");
+
+        // then build the coreset, and start measuring time from there
         let start = Instant::now();
-        let coreset = mapreduce_coreset(worker, dataset, Rc::clone(&matroid), self.tau);
+        let coreset = mapreduce_coreset(
+            worker,
+            local_dataset_handle.replace_with(|_| Vec::new()),
+            Rc::clone(&matroid),
+            self.tau,
+        );
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<T> = coreset.into_iter().map(|p| p.0).collect();
@@ -150,7 +193,7 @@ fn collect_counters(worker: &mut Worker<Allocator>) -> (u64, u64) {
 
 fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     worker: &mut Worker<A>,
-    dataset: &[T],
+    local_dataset: Vec<(u64, T)>,
     matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
 ) -> Vec<(T, u32)> {
@@ -159,12 +202,13 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
 
-    worker.dataflow(|scope| {
+    worker.dataflow::<(), _, _>(|scope| {
         let mut stash = Vec::new();
-
-        scope
-            // Hook the input in the dataflow
-            .input_from(&mut input)
+        local_dataset
+            .to_stream(scope)
+            // scope
+            //     // Hook the input in the dataflow
+            //     .input_from(&mut input)
             // Exchange the vectors randomly, and then build the coreset in each partition
             .unary_notify(
                 ExchangePact::new(|x: &(u64, T)| x.0),
@@ -227,20 +271,6 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
             .probe_with(&mut probe);
     });
 
-    // Populate the input, only with worker 0 that will
-    // distribute all the input to the other workers
-    if worker.index() == 0 {
-        let mut cnt = 0;
-        for x in dataset {
-            input.send((cnt, x.clone()));
-            if cnt % 10000 == 0 {
-                // Do some work in order not to exhaust the buffers
-                worker.step();
-            }
-            cnt += 1;
-        }
-    }
-    input.close();
     // do all the work in the dataflow
     worker.step_while(|| !probe.done());
 
