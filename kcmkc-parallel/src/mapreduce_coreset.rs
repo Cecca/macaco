@@ -200,6 +200,7 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
 ) -> Vec<(T, u32)> {
+    assert!(local_dataset.len() > 0);
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
