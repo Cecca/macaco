@@ -153,7 +153,7 @@ impl<T: Clone + Distance> StreamingState<T> {
                 // The node is covered by the existing centers, we should just check
                 // if we should add it to the independent sets or if we just need to increase
                 // the counter of an existing element
-                // cluster.push(x.clone());
+                cluster.push(x.clone());
                 if self.matroid.is_independent(&cluster) {
                     weights.push(1);
                 } else {
@@ -161,6 +161,12 @@ impl<T: Clone + Distance> StreamingState<T> {
                     // add to the weight of the one with minimum weight
                     *weights.iter_mut().min().unwrap() += 1;
                 }
+            }
+            #[cfg(debug_assertions)]
+            {
+                self.clusters.iter().for_each(|(_c, cluster, weights)| {
+                    debug_assert!(cluster.len() == weights.len());
+                });
             }
             if self.clusters.len() == self.k + 1 {
                 self.merge();
