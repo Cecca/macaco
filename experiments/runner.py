@@ -50,6 +50,7 @@ def run_wiki():
         shuffle_seeds, datasets, constraints, frac_outliers
     ):
         # Run the naive baseline
+        print("Run random")
         for seed in [1458, 345, 65623]:
             run(
                 {
@@ -61,22 +62,23 @@ def run_wiki():
                 }
             )
 
-        if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
+        # if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
             # Run the baseline algorithm
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
-                    "algorithm": "ChenEtAl",
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
+            # run(
+            #     {
+            #         "shuffle_seed": shuffle_seed,
+            #         "outliers": {"Percentage": frac_out},
+            #         "algorithm": "ChenEtAl",
+            #         "dataset": DATASETS[dataset].get_path(),
+            #         "constraint": {"transversal": {"topics": constr}},
+            #     }
+            # )
 
         # # Run coreset algorithms
-        taus = [2 ** x for x in [5, 6, 7, 8]]
+        taus = [2 ** x for x in [3, 4, 5, 6]]
         print(taus)
         for tau in taus:
+            print("Run SeqCoreset", tau)
             run(
                 {
                     "shuffle_seed": shuffle_seed,
@@ -86,6 +88,7 @@ def run_wiki():
                     "constraint": {"transversal": {"topics": constr}},
                 }
             )
+            print("Run StreamCoreset", tau)
             run(
                 {
                     "shuffle_seed": shuffle_seed,
@@ -96,6 +99,7 @@ def run_wiki():
                 }
             )
             for threads in [2, 4, 8, 16]:
+                print("Run MRCoreset", tau, threads)
                 # Keep the size of the final coreset constant across thread counts
                 rescaled_tau = int(math.ceil(tau / threads))
                 print("tau", tau, "threads", threads, "rescaled", rescaled_tau)
@@ -151,4 +155,4 @@ def check():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    check()
+    run_wiki()
