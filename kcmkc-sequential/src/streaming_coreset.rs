@@ -153,7 +153,7 @@ impl<T: Clone + Distance> StreamingState<T> {
                 // The node is covered by the existing centers, we should just check
                 // if we should add it to the independent sets or if we just need to increase
                 // the counter of an existing element
-                // cluster.push(x.clone());
+                cluster.push(x.clone());
                 if self.matroid.is_independent(&cluster) {
                     weights.push(1);
                 } else {
