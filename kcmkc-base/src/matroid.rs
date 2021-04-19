@@ -84,12 +84,12 @@ impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
         perf_counters::inc_matroid_oracle_count();
         // FIXME: find a way to remove this allocation, if it is a bottleneck
         let set: Vec<&T> = set.iter().collect();
-        set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
+        set.len() < self.topics.len() && self.maximum_matching_size2(&set) == set.len()
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
         perf_counters::inc_matroid_oracle_count();
-        set.len() < self.topics.len() && self.maximum_matching_size(set) == set.len()
+        set.len() < self.topics.len() && self.maximum_matching_size2(set) == set.len()
     }
 }
 
@@ -100,6 +100,107 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             _marker: PhantomData,
             scratch_visited: ThreadLocal::new(),
             scratch_representatives: ThreadLocal::new(),
+        }
+    }
+
+    fn maximum_matching_size2(&self, set: &[&T]) -> usize {
+        let mut pairing_set: Vec<Option<usize>> = vec![None; set.len()];
+        let mut pairing_topic: Vec<Option<usize>> = vec![None; self.topics.len()];
+        let mut distances = vec![std::usize::MAX; set.len() + 1];
+        let mut matching_size = 0;
+
+        while self.bfs(set, &mut pairing_set, &mut pairing_topic, &mut distances) {
+            for u in 0..pairing_set.len() {
+                if pairing_set[u].is_none() {
+                    if self.dfs(u, set, &mut pairing_set, &mut pairing_topic, &mut distances) {
+                        matching_size += 1;
+                    }
+                }
+            }
+        }
+
+        matching_size
+    }
+
+    fn topic_index(&self, topic: u32) -> Option<usize> {
+        for (i, t) in self.topics.iter().enumerate() {
+            if *t == topic {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    fn bfs(
+        &self,
+        set: &[&T],
+        pairing_set: &mut [Option<usize>],
+        pairing_topic: &mut [Option<usize>],
+        // the last element is the special dummy vertex
+        distances: &mut [usize],
+    ) -> bool {
+        let dummy = distances.len() - 1;
+        let infty = std::usize::MAX;
+
+        let mut queue = std::collections::VecDeque::with_capacity(pairing_set.len());
+        for u in 0..pairing_set.len() {
+            if pairing_set[u].is_none() {
+                queue.push_back(u);
+                distances[u] = 0;
+            } else {
+                distances[u] = infty;
+            }
+        }
+        distances[dummy] = infty;
+
+        while let Some(u) = queue.pop_front() {
+            if distances[u] < distances[dummy] && u != dummy {
+                for topic in set[u].topics() {
+                    if let Some(v) = self.topic_index(*topic) {
+                        let pair_v = pairing_topic[v].unwrap_or(dummy);
+                        if distances[pair_v] == infty {
+                            distances[pair_v] = distances[u] + 1;
+                            queue.push_back(pair_v);
+                        }
+                    }
+                }
+            }
+        }
+
+        distances[dummy] < std::usize::MAX
+    }
+
+    fn dfs(
+        &self,
+        root: usize,
+        set: &[&T],
+        pairing_set: &mut [Option<usize>],
+        pairing_topic: &mut [Option<usize>],
+        // the last element is the special dummy vertex
+        distances: &mut [usize],
+    ) -> bool {
+        let dummy = distances.len() - 1;
+        let infty = std::usize::MAX;
+        let u = root;
+
+        // TODO make iterative with a stack
+        if u != dummy {
+            for topic in set[u].topics() {
+                if let Some(v) = self.topic_index(*topic) {
+                    let pair_v = pairing_topic[v].unwrap_or(dummy);
+                    if distances[pair_v] == distances[u] + 1 {
+                        if self.dfs(pair_v, set, pairing_set, pairing_topic, distances) {
+                            pairing_set[u].replace(v);
+                            pairing_topic[v].replace(u);
+                            return true;
+                        }
+                    }
+                }
+            }
+            distances[u] = infty;
+            return false;
+        } else {
+            true
         }
     }
 
@@ -137,6 +238,7 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             self.topics.iter().copied(),
             set[idx].topics().iter().copied(),
         ) {
+            // FIXME: This is a bug if there are gaps in the IDs of the allowed topics!
             if !visited[topic as usize] {
                 visited[topic as usize] = true;
                 let can_set = if let Some(displacing_idx) = representatives[topic as usize] {
