@@ -126,6 +126,15 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
         representatives.iter().filter(|opt| opt.is_some()).count()
     }
 
+    fn topic_idx(&self, topic: u32) -> Option<usize> {
+        for (i, t) in self.topics.iter().enumerate() {
+            if topic == *t {
+                return Some(i);
+            }
+        }
+        None
+    }
+
     fn find_matching_for(
         &self,
         set: &[&T],
@@ -137,18 +146,20 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             self.topics.iter().copied(),
             set[idx].topics().iter().copied(),
         ) {
-            if !visited[topic as usize] {
-                visited[topic as usize] = true;
-                let can_set = if let Some(displacing_idx) = representatives[topic as usize] {
-                    // try to move the representative to another set
-                    self.find_matching_for(set, displacing_idx, representatives, visited)
-                } else {
-                    true
-                };
+            if let Some(topic) = self.topic_idx(topic) {
+                if !visited[topic as usize] {
+                    visited[topic as usize] = true;
+                    let can_set = if let Some(displacing_idx) = representatives[topic as usize] {
+                        // try to move the representative to another set
+                        self.find_matching_for(set, displacing_idx, representatives, visited)
+                    } else {
+                        true
+                    };
 
-                if can_set {
-                    representatives[topic as usize].replace(idx);
-                    return true;
+                    if can_set {
+                        representatives[topic as usize].replace(idx);
+                        return true;
+                    }
                 }
             }
         }
