@@ -1,7 +1,7 @@
 use log::*;
-use std::time::Instant;
 use std::{cell::RefCell, rc::Rc};
 use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::VecDeque, time::Instant};
 use thread_local::ThreadLocal;
 
 use crate::perf_counters;
@@ -71,8 +71,14 @@ pub trait TransversalMatroidElement {
 pub struct TransversalMatroid<T> {
     topics: Vec<u32>,
     _marker: PhantomData<T>,
+    // Temporary storage to be reused across invocations, prior to cleaning
     scratch_visited: ThreadLocal<RefCell<Vec<bool>>>,
     scratch_representatives: ThreadLocal<RefCell<Vec<Option<usize>>>>,
+    scratch_pairing_set: ThreadLocal<RefCell<Vec<Option<usize>>>>,
+    scratch_pairing_topic: ThreadLocal<RefCell<Vec<Option<usize>>>>,
+    scratch_distances: ThreadLocal<RefCell<Vec<usize>>>,
+    scratch_queue: ThreadLocal<RefCell<VecDeque<usize>>>,
+    scratch_stack: ThreadLocal<RefCell<Vec<usize>>>,
 }
 
 impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
@@ -84,12 +90,16 @@ impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
         perf_counters::inc_matroid_oracle_count();
         // FIXME: find a way to remove this allocation, if it is a bottleneck
         let set: Vec<&T> = set.iter().collect();
-        set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
+        let mm_size = self.maximum_matching_size(&set);
+        debug_assert!(mm_size == self.maximum_matching_size2(&set));
+        set.len() < self.topics.len() && mm_size == set.len()
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
         perf_counters::inc_matroid_oracle_count();
-        set.len() < self.topics.len() && self.maximum_matching_size(set) == set.len()
+        let mm_size = self.maximum_matching_size(set);
+        debug_assert!(mm_size == self.maximum_matching_size2(&set));
+        set.len() < self.topics.len() && mm_size == set.len()
     }
 }
 
@@ -100,6 +110,133 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             _marker: PhantomData,
             scratch_visited: ThreadLocal::new(),
             scratch_representatives: ThreadLocal::new(),
+            scratch_pairing_set: ThreadLocal::new(),
+            scratch_pairing_topic: ThreadLocal::new(),
+            scratch_distances: ThreadLocal::new(),
+            scratch_queue: ThreadLocal::new(),
+            scratch_stack: ThreadLocal::new(),
+        }
+    }
+
+    fn maximum_matching_size2(&self, set: &[&T]) -> usize {
+        // Clear the thread local temporary storage
+        let mut pairing_set = self
+            .scratch_pairing_set
+            .get_or(|| RefCell::new(Vec::new()))
+            .borrow_mut();
+        let mut pairing_topic = self
+            .scratch_pairing_topic
+            .get_or(|| RefCell::new(Vec::new()))
+            .borrow_mut();
+        let mut distances = self
+            .scratch_distances
+            .get_or(|| RefCell::new(Vec::new()))
+            .borrow_mut();
+        pairing_set.clear();
+        pairing_set.resize(set.len(), None);
+        pairing_topic.clear();
+        pairing_topic.resize(self.topics.len(), None);
+        distances.clear();
+        distances.resize(set.len() + 1, std::usize::MAX);
+
+        let mut matching_size = 0;
+
+        while self.bfs(set, &mut pairing_set, &mut pairing_topic, &mut distances) {
+            for u in 0..pairing_set.len() {
+                if pairing_set[u].is_none() {
+                    if self.dfs(u, set, &mut pairing_set, &mut pairing_topic, &mut distances) {
+                        matching_size += 1;
+                    }
+                }
+            }
+        }
+
+        matching_size
+    }
+
+    fn topic_index(&self, topic: u32) -> Option<usize> {
+        for (i, t) in self.topics.iter().enumerate() {
+            if *t == topic {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    fn bfs(
+        &self,
+        set: &[&T],
+        pairing_set: &mut [Option<usize>],
+        pairing_topic: &mut [Option<usize>],
+        // the last element is the special dummy vertex
+        distances: &mut [usize],
+    ) -> bool {
+        let dummy = distances.len() - 1;
+        let infty = std::usize::MAX;
+
+        let mut queue = self
+            .scratch_queue
+            .get_or(|| RefCell::new(VecDeque::new()))
+            .borrow_mut();
+        queue.clear();
+
+        for u in 0..pairing_set.len() {
+            if pairing_set[u].is_none() {
+                queue.push_back(u);
+                distances[u] = 0;
+            } else {
+                distances[u] = infty;
+            }
+        }
+        distances[dummy] = infty;
+
+        while let Some(u) = queue.pop_front() {
+            if distances[u] < distances[dummy] && u != dummy {
+                for topic in set[u].topics() {
+                    if let Some(v) = self.topic_index(*topic) {
+                        let pair_v = pairing_topic[v].unwrap_or(dummy);
+                        if distances[pair_v] == infty {
+                            distances[pair_v] = distances[u] + 1;
+                            queue.push_back(pair_v);
+                        }
+                    }
+                }
+            }
+        }
+
+        distances[dummy] < std::usize::MAX
+    }
+
+    fn dfs(
+        &self,
+        root: usize,
+        set: &[&T],
+        pairing_set: &mut [Option<usize>],
+        pairing_topic: &mut [Option<usize>],
+        // the last element is the special dummy vertex
+        distances: &mut [usize],
+    ) -> bool {
+        let dummy = distances.len() - 1;
+        let infty = std::usize::MAX;
+        let u = root;
+
+        if u != dummy {
+            for topic in set[u].topics() {
+                if let Some(v) = self.topic_index(*topic) {
+                    let pair_v = pairing_topic[v].unwrap_or(dummy);
+                    if distances[pair_v] == distances[u] + 1 {
+                        if self.dfs(pair_v, set, pairing_set, pairing_topic, distances) {
+                            pairing_set[u].replace(v);
+                            pairing_topic[v].replace(u);
+                            return true;
+                        }
+                    }
+                }
+            }
+            distances[u] = infty;
+            return false;
+        } else {
+            return true;
         }
     }
 

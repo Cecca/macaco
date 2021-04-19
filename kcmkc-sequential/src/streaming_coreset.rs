@@ -162,6 +162,12 @@ impl<T: Clone + Distance> StreamingState<T> {
                     *weights.iter_mut().min().unwrap() += 1;
                 }
             }
+            #[cfg(debug_assertions)]
+            {
+                self.clusters.iter().for_each(|(_c, cluster, weights)| {
+                    debug_assert!(cluster.len() == weights.len());
+                });
+            }
             if self.clusters.len() == self.k + 1 {
                 self.merge();
                 debug!("New bound {}", self.distance_bound.unwrap());
