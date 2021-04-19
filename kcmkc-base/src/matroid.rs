@@ -71,6 +71,7 @@ pub trait TransversalMatroidElement {
 pub struct TransversalMatroid<T> {
     topics: Vec<u32>,
     _marker: PhantomData<T>,
+    // Temporary storage to be reused across invocations, prior to cleaning
     scratch_visited: ThreadLocal<RefCell<Vec<bool>>>,
     scratch_representatives: ThreadLocal<RefCell<Vec<Option<usize>>>>,
     scratch_pairing_set: ThreadLocal<RefCell<Vec<Option<usize>>>>,
@@ -110,6 +111,7 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
     }
 
     fn maximum_matching_size2(&self, set: &[&T]) -> usize {
+        // Clear the thread local temporary storage
         let mut pairing_set = self
             .scratch_pairing_set
             .get_or(|| RefCell::new(Vec::new()))
