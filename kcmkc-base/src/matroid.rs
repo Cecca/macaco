@@ -73,6 +73,9 @@ pub struct TransversalMatroid<T> {
     _marker: PhantomData<T>,
     scratch_visited: ThreadLocal<RefCell<Vec<bool>>>,
     scratch_representatives: ThreadLocal<RefCell<Vec<Option<usize>>>>,
+    scratch_pairing_set: ThreadLocal<RefCell<Vec<Option<usize>>>>,
+    scratch_pairing_topic: ThreadLocal<RefCell<Vec<Option<usize>>>>,
+    scratch_distances: ThreadLocal<RefCell<Vec<usize>>>,
 }
 
 impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
@@ -100,13 +103,32 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             _marker: PhantomData,
             scratch_visited: ThreadLocal::new(),
             scratch_representatives: ThreadLocal::new(),
+            scratch_pairing_set: ThreadLocal::new(),
+            scratch_pairing_topic: ThreadLocal::new(),
+            scratch_distances: ThreadLocal::new(),
         }
     }
 
     fn maximum_matching_size2(&self, set: &[&T]) -> usize {
-        let mut pairing_set: Vec<Option<usize>> = vec![None; set.len()];
-        let mut pairing_topic: Vec<Option<usize>> = vec![None; self.topics.len()];
-        let mut distances = vec![std::usize::MAX; set.len() + 1];
+        let mut pairing_set = self
+            .scratch_pairing_set
+            .get_or(|| RefCell::new(Vec::new()))
+            .borrow_mut();
+        let mut pairing_topic = self
+            .scratch_pairing_topic
+            .get_or(|| RefCell::new(Vec::new()))
+            .borrow_mut();
+        let mut distances = self
+            .scratch_distances
+            .get_or(|| RefCell::new(Vec::new()))
+            .borrow_mut();
+        pairing_set.clear();
+        pairing_set.resize(set.len(), None);
+        pairing_topic.clear();
+        pairing_topic.resize(self.topics.len(), None);
+        distances.clear();
+        distances.resize(set.len() + 1, std::usize::MAX);
+
         let mut matching_size = 0;
 
         while self.bfs(set, &mut pairing_set, &mut pairing_topic, &mut distances) {
