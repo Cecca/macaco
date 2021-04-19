@@ -23,8 +23,7 @@ CREATE TABLE result_raw (
     oracle_cnt INTEGER NOT NULL,
     radius REAL NOT NULL,
     num_centers INTEGER NOT NULL,
-    coreset_size INTEGER,
-    proxy_radius REAL
+    coreset_size INTEGER
 );
 
 CREATE VIEW recent_algorithm AS

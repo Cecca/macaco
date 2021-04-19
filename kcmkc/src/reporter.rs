@@ -18,7 +18,6 @@ struct Outcome {
 
 struct CoresetInfo {
     pub size: usize,
-    pub proxy_radius: f32,
 }
 
 struct Counters {
@@ -72,9 +71,8 @@ impl Reporter {
         self.profile.replace(profile);
     }
 
-    pub fn set_coreset_info(&mut self, size: usize, proxy_radius: f32) {
-        self.coreset_info
-            .replace(CoresetInfo { size, proxy_radius });
+    pub fn set_coreset_info(&mut self, size: usize) {
+        self.coreset_info.replace(CoresetInfo { size });
     }
 
     fn get_conn(&self) -> Result<Connection> {
@@ -151,8 +149,7 @@ impl Reporter {
                     oracle_cnt,
                     radius,
                     num_centers,
-                    coreset_size,
-                    proxy_radius
+                    coreset_size
                 ) VALUES (
                     :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -166,8 +163,7 @@ impl Reporter {
                     :oracle_cnt,
                     :radius,
                     :num_centers,
-                    :coreset_size,
-                    :proxy_radius
+                    :coreset_size
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
@@ -192,7 +188,6 @@ impl Reporter {
                     ":radius": outcome.radius as f64,
                     ":num_centers": outcome.num_centers,
                     ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),
-                    ":proxy_radius": self.coreset_info.as_ref().map(|ci| ci.proxy_radius as f64),
                 },
             )?;
 

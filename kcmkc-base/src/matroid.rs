@@ -78,7 +78,6 @@ pub struct TransversalMatroid<T> {
     scratch_pairing_topic: ThreadLocal<RefCell<Vec<Option<usize>>>>,
     scratch_distances: ThreadLocal<RefCell<Vec<usize>>>,
     scratch_queue: ThreadLocal<RefCell<VecDeque<usize>>>,
-    scratch_stack: ThreadLocal<RefCell<Vec<usize>>>,
 }
 
 impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
@@ -114,7 +113,6 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             scratch_pairing_topic: ThreadLocal::new(),
             scratch_distances: ThreadLocal::new(),
             scratch_queue: ThreadLocal::new(),
-            scratch_stack: ThreadLocal::new(),
         }
     }
 

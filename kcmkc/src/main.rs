@@ -3,7 +3,6 @@ use anyhow::{Context, Result};
 use kcmkc::configuration::*;
 use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
-use rayon::prelude::*;
 use serde::Deserialize;
 use std::sync::{Arc, Barrier, RwLock};
 use std::{collections::BTreeSet, fmt::Debug, time::Instant};
@@ -28,7 +27,7 @@ where
     let centers = algorithm.sequential_run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
 
-    let (radius_no_outliers, radius_all_points) =
+    let (radius_no_outliers, _radius_all_points) =
         compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
     println!(
         "Found clustering with {} centers in {:?}, with radius {}",
@@ -38,9 +37,7 @@ where
     );
 
     if let Some(coreset) = algorithm.coreset() {
-        let proxy_radius = compute_radius(&dataset.to_vec(None)?, &coreset);
-        assert!(proxy_radius <= radius_all_points);
-        reporter.set_coreset_info(coreset.len(), proxy_radius)
+        reporter.set_coreset_info(coreset.len())
     }
 
     reporter.set_outcome(elapsed, radius_no_outliers, centers.len() as u32);
@@ -86,7 +83,7 @@ where
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
-        let (radius_no_outliers, radius_all_points) =
+        let (radius_no_outliers, _radius_all_points) =
             compute_radius_outliers(items.read().unwrap().as_ref().unwrap(), &centers, outliers);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
@@ -96,10 +93,7 @@ where
         );
 
         if let Some(coreset) = algorithm.coreset() {
-            println!("Computing proxy points radius");
-            let proxy_radius = compute_radius(items.read().unwrap().as_ref().unwrap(), &coreset);
-            assert!(proxy_radius <= radius_all_points);
-            reporter.set_coreset_info(coreset.len(), proxy_radius)
+            reporter.set_coreset_info(coreset.len())
         }
 
         println!("Reporting result");
@@ -201,30 +195,6 @@ fn compute_radius_outliers<T: Distance>(
         topk.insert(closest);
     }
     (topk.kth(), topk.max())
-}
-
-fn compute_radius<T: Distance + Sync>(dataset: &[T], centers: &[T]) -> f32 {
-    log::info!("Computing radius with no outliers");
-    // let mut maxdist = OrderedF32(0.0);
-    // let mut pl = ProgressLogger::builder()
-    //     .with_expected_updates(dataset.len() as u64)
-    //     .with_items_name("distances")
-    //     .start();
-    // for x in dataset {
-    //     let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
-    //     maxdist = maxdist.max(closest);
-    //     pl.update(1u64);
-    // }
-    // pl.stop();
-    let maxdist = dataset
-        .into_par_iter()
-        .map(|x| {
-            let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
-            closest
-        })
-        .max()
-        .unwrap();
-    maxdist.into()
 }
 
 #[derive(Debug)]
