@@ -1,7 +1,7 @@
 use log::*;
-use std::time::Instant;
 use std::{cell::RefCell, rc::Rc};
 use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::VecDeque, time::Instant};
 use thread_local::ThreadLocal;
 
 use crate::perf_counters;
@@ -77,6 +77,8 @@ pub struct TransversalMatroid<T> {
     scratch_pairing_set: ThreadLocal<RefCell<Vec<Option<usize>>>>,
     scratch_pairing_topic: ThreadLocal<RefCell<Vec<Option<usize>>>>,
     scratch_distances: ThreadLocal<RefCell<Vec<usize>>>,
+    scratch_queue: ThreadLocal<RefCell<VecDeque<usize>>>,
+    scratch_stack: ThreadLocal<RefCell<Vec<usize>>>,
 }
 
 impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
@@ -107,6 +109,8 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             scratch_pairing_set: ThreadLocal::new(),
             scratch_pairing_topic: ThreadLocal::new(),
             scratch_distances: ThreadLocal::new(),
+            scratch_queue: ThreadLocal::new(),
+            scratch_stack: ThreadLocal::new(),
         }
     }
 
@@ -166,7 +170,12 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
         let dummy = distances.len() - 1;
         let infty = std::usize::MAX;
 
-        let mut queue = std::collections::VecDeque::with_capacity(pairing_set.len());
+        let mut queue = self
+            .scratch_queue
+            .get_or(|| RefCell::new(VecDeque::new()))
+            .borrow_mut();
+        queue.clear();
+
         for u in 0..pairing_set.len() {
             if pairing_set[u].is_none() {
                 queue.push_back(u);
@@ -207,7 +216,6 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
         let infty = std::usize::MAX;
         let u = root;
 
-        // TODO make iterative with a stack
         if u != dummy {
             for topic in set[u].topics() {
                 if let Some(v) = self.topic_index(*topic) {
@@ -224,7 +232,7 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
             distances[u] = infty;
             return false;
         } else {
-            true
+            return true;
         }
     }
 
