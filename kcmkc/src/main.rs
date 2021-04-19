@@ -3,9 +3,10 @@ use anyhow::{Context, Result};
 use kcmkc::configuration::*;
 use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
+use rayon::prelude::*;
 use serde::Deserialize;
 use std::sync::{Arc, Barrier, RwLock};
-use std::{collections::BTreeSet, fmt::Debug, time::Instant};
+use std::{fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
 
 fn run_seq<V: Distance + Clone + Debug + Configure + Sync>(config: &Configuration) -> Result<()>
@@ -29,6 +30,7 @@ where
 
     let (radius_no_outliers, _radius_all_points) =
         compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
+    assert!(radius_no_outliers < _radius_all_points);
     println!(
         "Found clustering with {} centers in {:?}, with radius {}",
         centers.len(),
@@ -85,6 +87,7 @@ where
     if worker.index() == 0 {
         let (radius_no_outliers, _radius_all_points) =
             compute_radius_outliers(items.read().unwrap().as_ref().unwrap(), &centers, outliers);
+        assert!(radius_no_outliers < _radius_all_points);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
             centers.len(),
@@ -184,43 +187,21 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn compute_radius_outliers<T: Distance>(
+fn compute_radius_outliers<T: Distance + Sync>(
     dataset: &[T],
     centers: &[T],
     outliers: usize,
 ) -> (f32, f32) {
-    let mut topk = TopK::new(outliers);
-    for x in dataset {
-        let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
-        topk.insert(closest);
-    }
-    (topk.kth(), topk.max())
-}
-
-#[derive(Debug)]
-struct TopK {
-    k: usize,
-    topk: BTreeSet<OrderedF32>,
-}
-
-impl TopK {
-    fn new(k: usize) -> Self {
-        Self {
-            k,
-            topk: BTreeSet::new(),
-        }
-    }
-    fn insert<I: Into<OrderedF32>>(&mut self, x: I) {
-        self.topk.insert(x.into());
-        if self.topk.len() == self.k {
-            let min = *self.topk.iter().next().unwrap();
-            self.topk.remove(&min);
-        }
-    }
-    fn kth(&self) -> f32 {
-        (*self.topk.iter().next().unwrap()).into()
-    }
-    fn max(&self) -> f32 {
-        (*self.topk.iter().last().unwrap()).into()
-    }
+    let mut distances: Vec<OrderedF32> = dataset
+        .par_iter()
+        .map(|x| {
+            let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
+            closest
+        })
+        .collect();
+    distances.par_sort_unstable();
+    (
+        distances[distances.len() - outliers - 1].into(),
+        distances[distances.len() - 1].into(),
+    )
 }
