@@ -8,6 +8,7 @@ use kcmkc_base::{
     perf_counters,
     types::{Distance, OrderedF32},
 };
+use log::*;
 use std::{
     rc::Rc,
     time::{Duration, Instant},
@@ -76,7 +77,11 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V>
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
         let elapsed_coreset = start.elapsed();
-        println!("Coreset of size {}", coreset.len());
+        println!(
+            "Coreset of size {} computed in {:?}",
+            coreset.len(),
+            elapsed_coreset
+        );
 
         let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
@@ -142,12 +147,13 @@ impl<T: Clone + Distance> StreamingState<T> {
                 .min_by_key(|pair| pair.0)
                 .unwrap();
             if d.0 > distance_bound {
+                debug!("new center, current centers {}", self.clusters.len());
                 self.clusters.push((x.clone(), vec![x.clone()], vec![1]));
             } else {
                 // The node is covered by the existing centers, we should just check
                 // if we should add it to the independent sets or if we just need to increase
                 // the counter of an existing element
-                cluster.push(x.clone());
+                // cluster.push(x.clone());
                 if self.matroid.is_independent(&cluster) {
                     weights.push(1);
                 } else {
@@ -158,8 +164,10 @@ impl<T: Clone + Distance> StreamingState<T> {
             }
             if self.clusters.len() == self.k + 1 {
                 self.merge();
+                debug!("New bound {}", self.distance_bound.unwrap());
             }
         } else {
+            debug!("Initialization");
             self.clusters.push((x.clone(), vec![x.clone()], vec![1]));
             if self.clusters.len() == self.k + 1 {
                 // define the distance bound, and merge the clusters
@@ -187,6 +195,7 @@ impl<T: Clone + Distance> StreamingState<T> {
     /// from each other
     fn merge(&mut self) {
         while self.clusters.len() > self.k {
+            debug!("Merge");
             self.distance_bound
                 .replace(self.distance_bound.unwrap() * 2.0);
             let mut i = 0;

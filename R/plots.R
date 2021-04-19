@@ -140,7 +140,7 @@ do_plot_param_influence <- function(plotdata) {
         theme_paper()
 }
 
-do_plot_time <- function(data) {
+do_plot_time <- function(data, coreset_only=F) {
     assertthat::assert_that(
         count(distinct(data, rank)) == 1,
         msg = str_c(
@@ -179,6 +179,10 @@ do_plot_time <- function(data) {
     times <- select(coresets, rank, algorithm, final_tau, dataset, outliers_spec, solution=solution_time, coreset=coreset_time) %>%
         pivot_longer(solution:coreset, names_to="component", values_to="time") %>%
         mutate(time = set_units(time, "s") %>% drop_units())
+
+    if (coreset_only) {
+        times <- filter(times, component == "coreset")
+    }
 
     sizes <- coresets %>%
         group_by(dataset, rank, algorithm, final_tau, outliers_spec) %>%

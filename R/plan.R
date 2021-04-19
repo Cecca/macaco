@@ -10,7 +10,13 @@ plan <- drake_plan(
         )
     ),
     plot_time = target(
-        do_plot_time(filter(data_result, rank == rank_value)),
+        do_plot_time(filter(data_result, rank == rank_value), coreset_only = F),
+        transform = cross(
+            rank_value = c(10, 100)
+        )
+    ),
+    plot_time_coreset = target(
+        do_plot_time(filter(data_result, rank == rank_value), coreset_only = T),
         transform = cross(
             rank_value = c(10, 100)
         )

@@ -528,6 +528,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "kcmkc-base",
+ "log",
  "rand",
  "rand_xorshift",
  "rayon",

@@ -111,6 +111,44 @@ def run_wiki():
                 )
 
 
+def check():
+    datasets = [
+        # "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
+        "wiki-d50-c100",  # <- The full wikipedia dataset
+    ]
+    for dataset in datasets:
+        DATASETS[dataset].try_download_preprocessed()
+        DATASETS[dataset].preprocess()
+    constraints = [
+        # The original matroid constraint, using all the categories
+        list(range(0, 100)),
+        # # Very constrained solution
+        # list(range(0, 10)),
+    ]
+    # Fraction of allowed outliers
+    frac_outliers = [0.01]
+    # These seeds also define the number of repetitions
+    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    shuffle_seeds = [43234]
+
+    for shuffle_seed, dataset, constr, frac_out in itertools.product(
+        shuffle_seeds, datasets, constraints, frac_outliers
+    ):
+        # Run coreset algorithms
+        taus = [16, 512]
+        print(taus)
+        for tau in taus:
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"StreamingCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": constr}},
+                }
+            )
+
+
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    run_wiki()
+    check()
