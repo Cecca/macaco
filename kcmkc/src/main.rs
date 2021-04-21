@@ -192,6 +192,7 @@ fn compute_radius_outliers<T: Distance + Sync>(
     centers: &[T],
     outliers: usize,
 ) -> (f32, f32) {
+    info!("[radius computation] computing distances to centers");
     let mut distances: Vec<OrderedF32> = dataset
         .par_iter()
         .map(|x| {
@@ -199,6 +200,7 @@ fn compute_radius_outliers<T: Distance + Sync>(
             closest
         })
         .collect();
+    info!("[radius computation] sorting distances");
     distances.par_sort_unstable();
     (
         distances[distances.len() - outliers - 1].into(),
