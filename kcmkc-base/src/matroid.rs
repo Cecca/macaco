@@ -89,16 +89,14 @@ impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
         perf_counters::inc_matroid_oracle_count();
         // FIXME: find a way to remove this allocation, if it is a bottleneck
         let set: Vec<&T> = set.iter().collect();
-        let mm_size = self.maximum_matching_size(&set);
-        debug_assert!(mm_size == self.maximum_matching_size2(&set));
-        set.len() < self.topics.len() && mm_size == set.len()
+        debug_assert!(self.maximum_matching_size(&set) == self.maximum_matching_size2(&set));
+        set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
         perf_counters::inc_matroid_oracle_count();
-        let mm_size = self.maximum_matching_size(set);
-        debug_assert!(mm_size == self.maximum_matching_size2(&set));
-        set.len() < self.topics.len() && mm_size == set.len()
+        debug_assert!(self.maximum_matching_size(&set) == self.maximum_matching_size2(&set));
+        set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
     }
 }
 
@@ -263,12 +261,6 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
 
     fn topic_idx(&self, topic: u32) -> Option<usize> {
         self.topics.binary_search(&topic).ok()
-        // for (i, t) in self.topics.iter().enumerate() {
-        //     if topic == *t {
-        //         return Some(i);
-        //     }
-        // }
-        // None
     }
 
     fn find_matching_for(
