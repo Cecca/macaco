@@ -56,6 +56,7 @@ impl<T: Distance + Clone + Debug + PartialEq + Sync> SequentialAlgorithm<T> for 
         let start = Instant::now();
         let solution = robust_matroid_center(dataset, matroid, p, &UnitWeightMap);
         let elapsed = start.elapsed();
+        info!("centers computed in {:?}", elapsed);
         self.profile.replace((Duration::from_secs(0), elapsed));
         self.counters.replace((
             perf_counters::distance_count(),
