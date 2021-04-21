@@ -4,8 +4,8 @@ use kcmkc_base::{
     perf_counters,
 };
 use kcmkc_base::{matroid::augment, types::Distance};
+use log::*;
 use rayon::prelude::*;
-use std::iter::FromIterator;
 use std::rc::Rc;
 use std::{
     fmt::Debug,
@@ -77,13 +77,18 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: Weig
         run_robust_matroid_center(points, Rc::clone(&matroid), d, p, &distances, weight_map)
     });
 
-    // Sort points by decreasing distance from the centers.
-    // By doing this, the greedy algorithm that augments the independent set
-    // will include first the points farthest from the current centers.
-    // Of course this is just a heuristic.
-    let mut points = Vec::from_iter(points.iter());
-    points.sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
-    augment(Rc::clone(&matroid), &centers, &points)
+    if !matroid.is_maximal(&centers, points) {
+        info!("the returned set of centers is not maximal: extend it to maximality");
+        // Sort points by decreasing distance from the centers.
+        // By doing this, the greedy algorithm that augments the independent set
+        // will include first the points farthest from the current centers.
+        // Of course this is just a heuristic.
+        // let mut points = Vec::from_iter(points.iter());
+        // points.parallel_sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
+        augment(Rc::clone(&matroid), &centers, points)
+    } else {
+        centers
+    }
 }
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
@@ -107,7 +112,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     // The following invariant should hold in any iteration
     debug_assert!(n_uncovered == assignment.iter().filter(|a| a.is_none()).count());
 
-    // println!("  Build disks");
+    // debug!("  Build disks");
     while n_uncovered > 0 {
         // Get the center covering the most uncovered points
         let c = (0..n)
@@ -138,8 +143,8 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         centers.push((c, expanded_disk));
     }
 
-    // println!("  Enforce matroid constraints");
-    // println!("    Building vertex disk pairs");
+    // debug!("  Enforce matroid constraints");
+    // debug!("    Building vertex disk pairs");
     // Build the candidate center/disk pairs. Disks are references
     // to the original ones, to avoind wasting space by duplicating them
     let vertex_disk_pairs: Vec<ExpandedDisk<W>> = (0..n)
@@ -158,7 +163,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         })
         .collect();
 
-    // println!("    Compute weighted matroid intersection");
+    // debug!("    Compute weighted matroid intersection");
     let m1 = DiskMatroid1::new(Rc::clone(&matroid), points);
     let m2 = DiskMatroid2;
     let solution: Vec<&ExpandedDisk<W>> =
@@ -167,7 +172,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     assert!(m2.is_independent_ref(&solution));
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
-        println!("    Covered nodes {} < {}", covered_nodes, p);
+        info!("    Covered nodes {} < {}", covered_nodes, p);
         return Err(covered_nodes);
     }
 

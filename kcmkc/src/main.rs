@@ -1,15 +1,15 @@
 use abomonation::Abomonation;
 use anyhow::{Context, Result};
+use indicatif::ParallelProgressIterator;
 use kcmkc::configuration::*;
 use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
+use log::*;
 use rayon::prelude::*;
 use serde::Deserialize;
 use std::sync::{Arc, Barrier, RwLock};
 use std::{fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
-use indicatif::{ProgressBar, ParallelProgressIterator};
-use log::*;
 
 fn run_seq<V: Distance + Clone + Debug + Configure + Sync>(config: &Configuration) -> Result<()>
 where

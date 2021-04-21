@@ -47,7 +47,7 @@ pub trait Matroid<T> {
 pub fn augment<T: Clone + PartialEq>(
     matroid: Rc<dyn Matroid<T>>,
     independent_set: &[T],
-    set: &[&T],
+    set: &[T],
 ) -> Vec<T> {
     use std::iter::FromIterator;
     let mut is = Vec::from_iter(independent_set.iter());
