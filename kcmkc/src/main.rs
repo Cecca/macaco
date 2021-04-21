@@ -197,10 +197,11 @@ fn compute_radius_outliers<T: Distance + Sync>(
 ) -> (f32, f32) {
     info!("[radius computation] computing distances to centers");
     let style = ProgressStyle::default_bar().template(
-        "{spinner:.orange} [{elapsed_precise}] [{wide_bar:.orange/red}] {pos}/{total} ({eta})",
+        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{total} ({eta})",
     );
     let pb = ProgressBar::new(dataset.len() as u64);
     pb.set_style(style);
+    pb.set_draw_delta(10000);
     pb.set_message("Computing radius");
     let mut distances: Vec<OrderedF32> = dataset
         .par_iter()
