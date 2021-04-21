@@ -262,12 +262,13 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
     }
 
     fn topic_idx(&self, topic: u32) -> Option<usize> {
-        for (i, t) in self.topics.iter().enumerate() {
-            if topic == *t {
-                return Some(i);
-            }
-        }
-        None
+        self.topics.binary_search(&topic).ok()
+        // for (i, t) in self.topics.iter().enumerate() {
+        //     if topic == *t {
+        //         return Some(i);
+        //     }
+        // }
+        // None
     }
 
     fn find_matching_for(
