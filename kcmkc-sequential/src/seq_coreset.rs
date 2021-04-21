@@ -89,7 +89,12 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
                 assert!(disk.len() > 0);
                 let timer = Instant::now();
                 let is = matroid.maximal_independent_set(&disk);
-                println!("  [{:?}] independent set of size {} out of {} computed", timer.elapsed(), is.len(), disk.len());
+                println!(
+                    "  [{:?}] independent set of size {} out of {} computed",
+                    timer.elapsed(),
+                    is.len(),
+                    disk.len()
+                );
                 // There might be no independent set in this disk
                 // In this case, no point in the disk can be part of the solution, but they do
                 // still count towards the radius.

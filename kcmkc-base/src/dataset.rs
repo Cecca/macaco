@@ -1,6 +1,6 @@
-use indicatif::{ProgressBar, ProgressStyle};
 use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
+use indicatif::{ProgressBar, ProgressStyle};
 use rand::{prelude::SliceRandom, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rmp_serde::decode::Error;
@@ -140,7 +140,13 @@ impl Dataset {
     where
         for<'de> T: Deserialize<'de>,
     {
-        let file = BufReader::new(std::fs::File::open(&self.path)?);
+        let file = std::fs::File::open(&self.path)?;
+        let bar = ProgressBar::new(file.metadata()?.len());
+        bar.set_style(
+            ProgressStyle::default_bar()
+                .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})"));
+        bar.set_message("Reading compressed data file");
+        let file = bar.wrap_read(BufReader::new(file));
         let mut input = GzDecoder::new(file);
         // Skip metadata
         let _meta: Metadata = rmp_serde::from_read(&mut input).context("reading metadata")?;
@@ -148,7 +154,10 @@ impl Dataset {
         loop {
             match rmp_serde::from_read::<_, T>(&mut input) {
                 Ok(item) => f(cnt, item),
-                Err(Error::InvalidDataRead(_)) | Err(Error::InvalidMarkerRead(_)) => return Ok(()),
+                Err(Error::InvalidDataRead(_)) | Err(Error::InvalidMarkerRead(_)) => {
+                    bar.finish_and_clear();
+                    return Ok(());
+                }
                 Err(e) => bail!(e),
             }
             cnt += 1;
@@ -169,17 +178,16 @@ impl Dataset {
         for<'de> T: Deserialize<'de>,
     {
         let mut result = Vec::new();
-        let spinner_style = ProgressStyle::default_spinner()
-            .template("{spinner} {pos} {wide_msg}");
-        let bar = ProgressBar::new_spinner();
-        bar.set_style(spinner_style);
-        bar.set_message("Loading dataset");
-        bar.set_draw_delta(10000);
+        // let spinner_style = ProgressStyle::default_spinner().template("{spinner} {pos} {wide_msg}");
+        // let bar = ProgressBar::new_spinner();
+        // bar.set_style(spinner_style);
+        // bar.set_message("Loading dataset");
+        // bar.set_draw_delta(10000);
         self.for_each(|_, item| {
             result.push(item);
-            bar.inc(1);
+            // bar.inc(1);
         })?;
-        bar.finish_and_clear();
+        // bar.finish_and_clear();
         if let Some(seed) = shuffle_seed {
             let mut rng = XorShiftRng::seed_from_u64(seed);
             result.shuffle(&mut rng);

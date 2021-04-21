@@ -47,8 +47,11 @@ pub fn kcenter<'a, V: Distance>(
                 farthest = j;
             }
         }
-        println!("Updated {} assignments out of {} points",
-            update_cnt, points.len());
+        println!(
+            "Updated {} assignments out of {} points",
+            update_cnt,
+            points.len()
+        );
 
         if i < k - 1 {
             // Set up the center for the next iteration
@@ -56,7 +59,13 @@ pub fn kcenter<'a, V: Distance>(
         }
     }
 
-    println!("Radius of clustering is {}", min_dist.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap());
+    println!(
+        "Radius of clustering is {}",
+        min_dist
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    );
     assert!(
         centers.len() == k,
         "expected centers.len() == k == {}, but got {} != {}",
