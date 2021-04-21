@@ -8,6 +8,8 @@ use serde::Deserialize;
 use std::sync::{Arc, Barrier, RwLock};
 use std::{fmt::Debug, time::Instant};
 use timely::{communication::Allocator, worker::Worker};
+use indicatif::{ProgressBar, ParallelProgressIterator};
+use log::*;
 
 fn run_seq<V: Distance + Clone + Debug + Configure + Sync>(config: &Configuration) -> Result<()>
 where
@@ -195,6 +197,7 @@ fn compute_radius_outliers<T: Distance + Sync>(
     info!("[radius computation] computing distances to centers");
     let mut distances: Vec<OrderedF32> = dataset
         .par_iter()
+        .progress()
         .map(|x| {
             let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
             closest

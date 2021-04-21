@@ -28,6 +28,7 @@ sha2 = "0.8"
 base64 = "0.13"
 timely = "0.12"
 rayon = "1.5"
+indicatif = {version = "0.15", features=["rayon"]}
 
 [build-dependencies]
 vergen = "4"
