@@ -534,6 +534,7 @@ dependencies = [
  "abomonation_derive",
  "anyhow",
  "flate2",
+ "indicatif",
  "log",
  "progress-logger",
  "rand",

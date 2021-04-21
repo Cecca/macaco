@@ -72,12 +72,14 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
         // First find a clustering of tau centers minimizing the radius, with no
         // matroid constraints
         let (centers, assignments) = kcenter(dataset, self.tau);
+        println!("[{:?}] k-center completed", start.elapsed());
 
         // Build disks by assigning each center to the closest point
         let mut disks = vec![Vec::new(); centers.len()];
         for (v, i, _) in assignments {
             disks[i].push(v);
         }
+        println!("[{:?}] points assigned to closest center", start.elapsed());
 
         // Then, get a maximal independent set from each disk,
         // and make each of its points a proxy
@@ -85,7 +87,9 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
             .iter()
             .flat_map(|disk| {
                 assert!(disk.len() > 0);
+                let timer = Instant::now();
                 let is = matroid.maximal_independent_set(&disk);
+                println!("  [{:?}] independent set of size {} out of {} computed", timer.elapsed(), is.len(), disk.len());
                 // There might be no independent set in this disk
                 // In this case, no point in the disk can be part of the solution, but they do
                 // still count towards the radius.
@@ -109,10 +113,12 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
                             .0
                     })
                     .for_each(|i| weights[i] += 1);
+                println!("  [{:?}] assignments to proxies computed", timer.elapsed());
 
                 proxies.into_iter().cloned().zip(weights.into_iter())
             })
             .collect();
+        println!("[{:?}] coreset constructed", start.elapsed());
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
@@ -122,7 +128,8 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
         let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
         let elapsed_solution = start.elapsed();
-        assert!(matroid.is_maximal(&solution, &dataset));
+        println!("Solution found on coreset in {:.2?}", elapsed_solution);
+        debug_assert!(matroid.is_maximal(&solution, &dataset));
 
         self.coreset.replace(coreset);
         self.profile.replace((elapsed_coreset, elapsed_solution));
@@ -131,6 +138,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
             perf_counters::matroid_oracle_count(),
         ));
 
+        println!("Returning solution to main");
         Ok(solution)
     }
 }

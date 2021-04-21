@@ -56,7 +56,7 @@ impl<T: Distance + Clone + Debug + PartialEq + Sync> SequentialAlgorithm<T> for 
         let start = Instant::now();
         let solution = robust_matroid_center(dataset, matroid, p, &UnitWeightMap);
         let elapsed = start.elapsed();
-        info!("centers computed in {:?}", elapsed);
+        println!("centers computed in {:?}", elapsed);
         self.profile.replace((Duration::from_secs(0), elapsed));
         self.counters.replace((
             perf_counters::distance_count(),
@@ -77,9 +77,10 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: Weig
     let centers = distances.bynary_search_distances(|d| {
         run_robust_matroid_center(points, Rc::clone(&matroid), d, p, &distances, weight_map)
     });
+    println!("Found centers");
 
     if !matroid.is_maximal(&centers, points) {
-        info!("the returned set of centers is not maximal: extend it to maximality");
+        println!("the returned set of centers is not maximal: extend it to maximality");
         // Sort points by decreasing distance from the centers.
         // By doing this, the greedy algorithm that augments the independent set
         // will include first the points farthest from the current centers.
@@ -88,6 +89,7 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: Weig
         // points.parallel_sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
         augment(Rc::clone(&matroid), &centers, points)
     } else {
+        println!("Returning centers as is");
         centers
     }
 }
@@ -173,7 +175,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     assert!(m2.is_independent_ref(&solution));
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
-        info!("    Covered nodes {} < {}", covered_nodes, p);
+        error!("    Covered nodes {} < {}", covered_nodes, p);
         return Err(covered_nodes);
     }
 

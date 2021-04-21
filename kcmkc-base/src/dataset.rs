@@ -1,3 +1,4 @@
+use indicatif::{ProgressBar, ProgressStyle};
 use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
 use rand::{prelude::SliceRandom, SeedableRng};
@@ -167,16 +168,18 @@ impl Dataset {
     where
         for<'de> T: Deserialize<'de>,
     {
-        println!("Loading dataset into vector");
         let mut result = Vec::new();
-        let mut pl = progress_logger::ProgressLogger::builder()
-            .with_items_name("items")
-            .start();
+        let spinner_style = ProgressStyle::default_spinner()
+            .template("{spinner} {pos} {wide_msg}");
+        let bar = ProgressBar::new_spinner();
+        bar.set_style(spinner_style);
+        bar.set_message("Loading dataset");
+        bar.set_draw_delta(10000);
         self.for_each(|_, item| {
             result.push(item);
-            pl.update(1u64);
+            bar.inc(1);
         })?;
-        pl.stop();
+        bar.finish_and_clear();
         if let Some(seed) = shuffle_seed {
             let mut rng = XorShiftRng::seed_from_u64(seed);
             result.shuffle(&mut rng);

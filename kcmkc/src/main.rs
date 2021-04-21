@@ -29,6 +29,7 @@ where
     let timer = Instant::now();
     let centers = algorithm.sequential_run(&items[..], matroid, p)?;
     let elapsed = timer.elapsed();
+    println!("centers returned to main in {:?}", elapsed);
 
     let (radius_no_outliers, _radius_all_points) =
         compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);

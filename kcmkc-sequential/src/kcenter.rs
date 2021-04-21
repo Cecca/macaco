@@ -29,9 +29,10 @@ pub fn kcenter<'a, V: Distance>(
     for i in 0..k {
         let c = centers[i];
 
-        let mut farthest = 0;
+        let mut farthest = i;
         let mut farthest_dist = 0.0f32;
 
+        let mut update_cnt = 0;
         // Look for the farthest, updating distances on the go
         for (j, p) in points.iter().enumerate() {
             let d = c.distance(p);
@@ -39,12 +40,15 @@ pub fn kcenter<'a, V: Distance>(
             if d < min_dist[j] {
                 min_dist[j] = d;
                 assignments[j] = i;
+                update_cnt += 1;
             }
             if min_dist[j] > farthest_dist {
                 farthest_dist = min_dist[j];
                 farthest = j;
             }
         }
+        println!("Updated {} assignments out of {} points",
+            update_cnt, points.len());
 
         if i < k - 1 {
             // Set up the center for the next iteration
@@ -52,6 +56,7 @@ pub fn kcenter<'a, V: Distance>(
         }
     }
 
+    println!("Radius of clustering is {}", min_dist.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap());
     assert!(
         centers.len() == k,
         "expected centers.len() == k == {}, but got {} != {}",
