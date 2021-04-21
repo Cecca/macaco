@@ -32,7 +32,7 @@ where
     println!("centers returned to main in {:?}", elapsed);
 
     let (radius_no_outliers, _radius_all_points) =
-        compute_radius_outliers(&dataset.to_vec(None)?, &centers, outliers);
+        compute_radius_outliers(&items, &centers, outliers);
     assert!(radius_no_outliers < _radius_all_points);
     println!(
         "Found clustering with {} centers in {:?}, with radius {}",
