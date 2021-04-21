@@ -197,7 +197,7 @@ fn compute_radius_outliers<T: Distance + Sync>(
 ) -> (f32, f32) {
     info!("[radius computation] computing distances to centers");
     let style = ProgressStyle::default_bar().template(
-        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{total} ({eta})",
+        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
     );
     let pb = ProgressBar::new(dataset.len() as u64);
     pb.set_style(style);
