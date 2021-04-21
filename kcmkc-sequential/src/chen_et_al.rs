@@ -175,7 +175,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     assert!(m2.is_independent_ref(&solution));
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
-        error!("    Covered nodes {} < {}", covered_nodes, p);
+        println!("    Covered nodes {} < {}", covered_nodes, p);
         return Err(covered_nodes);
     }
 

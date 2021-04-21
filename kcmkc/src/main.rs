@@ -1,6 +1,6 @@
 use abomonation::Abomonation;
 use anyhow::{Context, Result};
-use indicatif::ParallelProgressIterator;
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use kcmkc::configuration::*;
 use kcmkc::reporter::Reporter;
 use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
@@ -196,9 +196,15 @@ fn compute_radius_outliers<T: Distance + Sync>(
     outliers: usize,
 ) -> (f32, f32) {
     info!("[radius computation] computing distances to centers");
+    let style = ProgressStyle::default_bar().template(
+        "{spinner:.orange} [{elapsed_precise}] [{wide_bar:.orange/red}] {pos}/{total} ({eta})",
+    );
+    let pb = ProgressBar::new(dataset.len() as u64);
+    pb.set_style(style);
+    pb.set_message("Computing radius");
     let mut distances: Vec<OrderedF32> = dataset
         .par_iter()
-        .progress()
+        .progress_with(pb)
         .map(|x| {
             let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
             closest
