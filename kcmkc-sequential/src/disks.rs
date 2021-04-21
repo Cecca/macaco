@@ -67,7 +67,7 @@ impl DiskBuilder {
         let dists: Vec<OrderedF32> = self.distinct_distances();
         assert!(dists.len() > 0);
         let max_distance = dists.last().unwrap().0;
-        let min_difference = 0.1 * max_distance;
+        let min_difference = 0.01 * max_distance;
         println!(
             "Max distance {}, min difference {}",
             max_distance, min_difference
