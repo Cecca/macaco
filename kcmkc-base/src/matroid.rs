@@ -39,6 +39,7 @@ pub trait Matroid<T> {
             if self.is_independent_ref(&is) {
                 return false;
             }
+            is.pop();
         }
         true
     }

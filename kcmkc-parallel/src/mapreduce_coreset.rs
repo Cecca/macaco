@@ -122,7 +122,13 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         debug!("Passed the barrier!");
         debug!("Input distributed in {:?}", timer.elapsed());
 
-        // then build the coreset, and start measuring time from there
+        // then build the coreset, and start measuring time from there.
+        //
+        // There is a bit of non-determinism here in the outcome:
+        // the order of the points in the coreset (which is the order with
+        // which they will be considered by greedy algorithm) depends on
+        // the execution time of the workers, which influences when the points
+        // are received by the main worker.
         let start = Instant::now();
         let coreset = mapreduce_coreset(
             worker,
@@ -134,13 +140,12 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<T> = coreset.into_iter().map(|p| p.0).collect();
         let elapsed_coreset = start.elapsed();
-        println!("Coreset of size {} ({:?})", coreset.len(), elapsed_coreset);
 
         let start = Instant::now();
         let solution = if worker.index() == 0 {
-            info!("Running robust matroid center on {} points", coreset.len());
+            println!("Coreset of size {} ({:?})", coreset.len(), elapsed_coreset);
             let s = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
-            assert!(matroid.is_maximal(&s, &dataset));
+            assert!(matroid.is_maximal(&s, &dataset), "size of the solution is {}", s.len());
             s
         } else {
             Vec::new()
@@ -205,6 +210,7 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     tau: usize,
 ) -> Vec<(T, u32)> {
     assert!(local_dataset.len() > 0);
+    let worker_idx = worker.index();
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
@@ -240,6 +246,7 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                         let coreset = disks.iter().flat_map(|disk| {
                             assert!(disk.len() > 0);
                             let is = matroid.maximal_independent_set(&disk);
+                            println!("(Worker {}) Independent set of size {}", worker_idx, is.len());
 
                             let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
                             let mut weights = vec![0u32; proxies.len()];

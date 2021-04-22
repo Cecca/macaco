@@ -77,16 +77,10 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: Weig
     let centers = distances.bynary_search_distances(|d| {
         run_robust_matroid_center(points, Rc::clone(&matroid), d, p, &distances, weight_map)
     });
-    println!("Found centers");
+    println!("Found {} centers", centers.len());
 
     if !matroid.is_maximal(&centers, points) {
         println!("the returned set of centers is not maximal: extend it to maximality");
-        // Sort points by decreasing distance from the centers.
-        // By doing this, the greedy algorithm that augments the independent set
-        // will include first the points farthest from the current centers.
-        // Of course this is just a heuristic.
-        // let mut points = Vec::from_iter(points.iter());
-        // points.parallel_sort_by_cached_key(|p| std::cmp::Reverse(p.set_distance(centers.iter())));
         augment(Rc::clone(&matroid), &centers, points)
     } else {
         println!("Returning centers as is");
@@ -145,9 +139,8 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
 
         centers.push((c, expanded_disk));
     }
+    println!(" . Disk centers: {}", centers.len());
 
-    // debug!("  Enforce matroid constraints");
-    // debug!("    Building vertex disk pairs");
     // Build the candidate center/disk pairs. Disks are references
     // to the original ones, to avoind wasting space by duplicating them
     let vertex_disk_pairs: Vec<ExpandedDisk<W>> = (0..n)
@@ -175,7 +168,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     assert!(m2.is_independent_ref(&solution));
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
-        println!("    Covered nodes {} < {}", covered_nodes, p);
+        println!("    Covered nodes {} < {}, solution with {} centers", covered_nodes, p, solution.len());
         return Err(covered_nodes);
     }
 
@@ -189,6 +182,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         .iter()
         .map(|disk| points[disk.center].clone())
         .collect();
+    assert!(matroid.is_independent(&centers));
 
     Ok(centers)
 }
