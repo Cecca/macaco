@@ -4,7 +4,6 @@ use kcmkc_base::{
     perf_counters,
 };
 use kcmkc_base::{matroid::augment, types::Distance};
-use log::*;
 use rayon::prelude::*;
 use std::rc::Rc;
 use std::{
@@ -168,7 +167,12 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     assert!(m2.is_independent_ref(&solution));
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
-        println!("    Covered nodes {} < {}, solution with {} centers", covered_nodes, p, solution.len());
+        println!(
+            "    Covered nodes {} < {}, solution with {} centers",
+            covered_nodes,
+            p,
+            solution.len()
+        );
         return Err(covered_nodes);
     }
 

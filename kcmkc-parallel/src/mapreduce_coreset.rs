@@ -145,7 +145,11 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         let solution = if worker.index() == 0 {
             println!("Coreset of size {} ({:?})", coreset.len(), elapsed_coreset);
             let s = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
-            assert!(matroid.is_maximal(&s, &dataset), "size of the solution is {}", s.len());
+            assert!(
+                matroid.is_maximal(&s, &dataset),
+                "size of the solution is {}",
+                s.len()
+            );
             s
         } else {
             Vec::new()
@@ -246,7 +250,11 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                         let coreset = disks.iter().flat_map(|disk| {
                             assert!(disk.len() > 0);
                             let is = matroid.maximal_independent_set(&disk);
-                            println!("(Worker {}) Independent set of size {}", worker_idx, is.len());
+                            println!(
+                                "(Worker {}) Independent set of size {}",
+                                worker_idx,
+                                is.len()
+                            );
 
                             let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
                             let mut weights = vec![0u32; proxies.len()];
