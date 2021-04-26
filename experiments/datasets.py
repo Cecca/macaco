@@ -561,8 +561,8 @@ for size in [100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["MusixMatch-easy-7000"]
+    dataset = DATASETS["MusixMatch"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
-    print(dataset.get_doubling_dimension())
+    print(dataset.metadata())
     print(dataset.get_path())

@@ -190,7 +190,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn compute_radius_outliers<T: Distance + Sync>(
+fn compute_radius_outliers<T: Distance + Sync + Debug>(
     dataset: &[T],
     centers: &[T],
     outliers: usize,
@@ -207,7 +207,15 @@ fn compute_radius_outliers<T: Distance + Sync>(
         .par_iter()
         .progress_with(pb)
         .map(|x| {
-            let closest: OrderedF32 = centers.iter().map(|c| x.distance(c).into()).min().unwrap();
+            let closest: OrderedF32 = centers
+                .iter()
+                .map(|c| {
+                    let d = x.distance(c);
+                    assert!(!d.is_nan(), "NaN distance between {:?} and {:?}", c, x);
+                    d.into()
+                })
+                .min()
+                .unwrap();
             closest
         })
         .collect();

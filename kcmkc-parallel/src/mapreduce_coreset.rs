@@ -249,16 +249,19 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
 
                         let coreset = disks.iter().flat_map(|disk| {
                             assert!(disk.len() > 0);
+                            let timer = Instant::now();
                             let is = matroid.maximal_independent_set(&disk);
                             println!(
-                                "(Worker {}) Independent set of size {}",
+                                "(Worker {}) Independent set of size {} ({:.2?})",
                                 worker_idx,
-                                is.len()
+                                is.len(),
+                                timer.elapsed()
                             );
 
                             let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
                             let mut weights = vec![0u32; proxies.len()];
 
+                            let timer = Instant::now();
                             // Fill-in weights by counting the assignments to proxies
                             disk.iter()
                                 .map(|p| {
@@ -271,6 +274,11 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                                         .0
                                 })
                                 .for_each(|i| weights[i] += 1);
+                            println!(
+                                "(Worker {}) assignment of points completed ({:.2?})",
+                                worker_idx,
+                                timer.elapsed()
+                            );
 
                             proxies.into_iter().cloned().zip(weights.into_iter())
                         });

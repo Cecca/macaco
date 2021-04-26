@@ -63,16 +63,16 @@ def run_wiki():
             )
 
         # if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
-            # Run the baseline algorithm
-            # run(
-            #     {
-            #         "shuffle_seed": shuffle_seed,
-            #         "outliers": {"Percentage": frac_out},
-            #         "algorithm": "ChenEtAl",
-            #         "dataset": DATASETS[dataset].get_path(),
-            #         "constraint": {"transversal": {"topics": constr}},
-            #     }
-            # )
+        # Run the baseline algorithm
+        # run(
+        #     {
+        #         "shuffle_seed": shuffle_seed,
+        #         "outliers": {"Percentage": frac_out},
+        #         "algorithm": "ChenEtAl",
+        #         "dataset": DATASETS[dataset].get_path(),
+        #         "constraint": {"transversal": {"topics": constr}},
+        #     }
+        # )
 
         # # Run coreset algorithms
         taus = [2 ** x for x in [3, 4, 5, 6]]
@@ -115,6 +115,93 @@ def run_wiki():
                 )
 
 
+def run_musixmatch():
+    genres = {
+        "Unknown": 6,
+        "Rock": 113150,
+        "Rap": 13272,
+        "Latin": 6444,
+        "Jazz": 17541,
+        "Electronic": 30922,
+        "Punk": 5652,
+        "Pop": 27756,
+        "New Age": 2787,
+        "Metal": 11222,
+        "RnB": 13208,
+        "Country": 10695,
+        "Reggae": 8910,
+        "Folk": 6377,
+        "Blues": 8125,
+        "World": 4770,
+    }
+    # matroid of rank 273, obtained by as the quotient of the genres count by 100
+    highrank_matroid = {
+        "Rock": 113,
+        "Rap": 13,
+        "Latin": 6,
+        "Jazz": 17,
+        "Electronic": 30,
+        "Punk": 5,
+        "Pop": 27,
+        "New Age": 2,
+        "Metal": 11,
+        "RnB": 13,
+        "Country": 10,
+        "Reggae": 8,
+        "Folk": 6,
+        "Blues": 8,
+        "World": 4,
+    }
+    # Half of the highrank matroid for each category
+    midrank_matroid = {
+        "Rock": 56,
+        "Rap": 6,
+        "Latin": 3,
+        "Jazz": 8,
+        "Electronic": 15,
+        "Punk": 2,
+        "Pop": 13,
+        "New Age": 1,
+        "Metal": 5,
+        "RnB": 6,
+        "Country": 5,
+        "Reggae": 4,
+        "Folk": 3,
+        "Blues": 4,
+        "World": 2,
+    }
+    lowrank_matroid = {
+        "Rock": 10,
+        "Pop": 10,
+    }
+
+    datasets = ["MusixMatch"]
+    for dataset in datasets:
+        DATASETS[dataset].try_download_preprocessed()
+        DATASETS[dataset].preprocess()
+    constraints = [midrank_matroid, lowrank_matroid]
+    # Fraction of allowed outliers
+    frac_outliers = [0.01]
+    # These seeds also define the number of repetitions
+    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+
+    for shuffle_seed, dataset, constr, frac_out in itertools.product(
+        shuffle_seeds, datasets, constraints, frac_outliers
+    ):
+        # Run the naive baseline
+        print("Run random")
+        for seed in [1458, 345, 65623]:
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"Random": {"seed": seed}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+
+
 def check():
     datasets = [
         # "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
@@ -155,4 +242,5 @@ def check():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    run_wiki()
+    # run_wiki()
+    run_musixmatch()

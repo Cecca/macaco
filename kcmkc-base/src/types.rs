@@ -115,8 +115,13 @@ impl SparseVector {
     }
 
     pub fn cosine_distance(&self, other: &Self) -> f32 {
-        (self.inner_product(other) / (self.norm() * other.norm())).acos()
-            * std::f32::consts::FRAC_1_PI
+        let angle = self.inner_product(other) / (self.norm() * other.norm());
+        if angle > 1.0 {
+            // hadle rounding errors
+            0.0
+        } else {
+            angle.acos() * std::f32::consts::FRAC_1_PI
+        }
     }
 }
 
@@ -241,7 +246,9 @@ impl Eq for OrderedF32 {}
 
 impl Ord for OrderedF32 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.partial_cmp(&other.0).unwrap()
+        self.0
+            .partial_cmp(&other.0)
+            .unwrap_or_else(|| panic!("self: {:?} other: {:?}", self, other))
     }
 }
 

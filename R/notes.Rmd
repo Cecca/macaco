@@ -11,9 +11,6 @@ knitr::opts_chunk$set(
 
 ## Execution time/quality tradeoff
 
-**Caveat**: the observations on the `Random` algorithm might hold only for this very low-rank
-matroid we are using. We should test with a higher-rank matroid.
-
 This set of experiments eaims at exploring the relationship between
 the running time of an algorithm and the radius of the returned clustering,
 under different parameterizations.
@@ -42,7 +39,8 @@ points, which is the largest size that can be handled by
 As for the matroid constraint, the points in the dataset belong to one or more
 of 100 categories, numbered from 0 to 99. 
 In this first set of experiments, we impose a transversal matroid constraint
-on the set of the first 10 categories.
+on either a set of the first 10 categories, or on all categories. These two constraints
+are denoted in the plots as `Rank10` and `Rank100`.
 
 The points in the dataset are derived from
 Wikipedia pages using [GloVe](https://nlp.stanford.edu/projects/glove/).
@@ -85,15 +83,31 @@ one obtained with `ChenEtAl`, keeping the best.
 
 ## Time breakdown
 
-```{r fig.height=4}
+The following plots break down the time in two components: time to build the
+coreset and time to compute the solution on it. The main takeaway is that
+computing the final solution dominates the running time, so much that it
+makes leveraging parallelism harmful. When running the MapReduce coreset, in
+fact, using more processors entails larger corsets (even if we keep the final
+$\tau$ constant) because each cluster will be represented by an independent set.
+
+The number at the base of each column is the coreset size, averaged across
+all the runs with the same parameters.
+
+```{r fig.height=6}
 drake::readd(plot_time_10)
 ```
 
-```{r fig.height=4}
+```{r fig.height=6}
 drake::readd(plot_time_100)
 ```
 
 ## Time for building the coreset only
+
+What is clear from the plots below, by comparing the coreset construction
+times on the full dataset and on the sample is that the cost of computing
+larger independent sets (rank 100 vs rank 10) as part of the coreset
+construction completely dwarfs the benefits of parallelism. Why is that the
+case?
 
 ```{r fig.height=6}
 drake::readd(plot_time_coreset_10)
@@ -103,3 +117,7 @@ drake::readd(plot_time_coreset_10)
 drake::readd(plot_time_coreset_100)
 ```
 
+## Follow ups
+
+- Can we just assign nodes to an arbitrary proxy in the same cluster? Or are
+  we bound to assign them to the closest one?

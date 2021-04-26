@@ -160,7 +160,7 @@ do_plot_time <- function(data, coreset_only=F) {
             ))
         )
 
-    times <- select(coresets, rank, algorithm, final_tau, dataset, outliers_spec, solution=solution_time, coreset=coreset_time) %>%
+    times <- select(coresets, rank, algorithm, tau, dataset, outliers_spec, solution=solution_time, coreset=coreset_time) %>%
         pivot_longer(solution:coreset, names_to="component", values_to="time") %>%
         mutate(time = set_units(time, "s") %>% drop_units())
 
@@ -169,7 +169,7 @@ do_plot_time <- function(data, coreset_only=F) {
     }
 
     sizes <- coresets %>%
-        group_by(dataset, rank, algorithm, final_tau, outliers_spec) %>%
+        group_by(dataset, rank, algorithm, tau, outliers_spec) %>%
         summarise(
             coreset_size = mean(coreset_size),
             total_time = mean(solution_time + coreset_time) %>% set_units("s") %>% drop_units()
@@ -185,7 +185,7 @@ do_plot_time <- function(data, coreset_only=F) {
             inherit.aes=F,
             hjust=0
         ) +
-        facet_grid(vars(final_tau), vars(dataset, outliers_spec), scales="free") +
+        facet_grid(vars(tau), vars(dataset, outliers_spec), scales="free") +
         labs(title = title) +
         coord_flip() +
         theme_paper()
