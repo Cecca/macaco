@@ -97,7 +97,6 @@ do_plot_param_influence <- function(plotdata) {
         group_by(dataset, algorithm, xval, tau, threads) %>%
         summarise(
             radius = mean(radius),
-            proxy_radius = mean(proxy_radius),
             coreset_size = mean(coreset_size)
         )
 
@@ -108,34 +107,19 @@ do_plot_param_influence <- function(plotdata) {
     pos <- position_dodge(0.9)
     ggplot(plotdata, aes(
         x = tau,
-        y = proxy_radius,
+        y = radius,
         fill = algorithm,
         color = algorithm,
         group = algorithm
     )) +
         geom_col(
-            aes(y = radius),
             position = position_dodge(),
             alpha = 0.2
-        ) +
-        geom_point(
-            aes(y = radius),
-            position = pos
-        ) +
-        geom_point(
-            aes(y = proxy_radius),
-            position = pos,
-            shape = 3
         ) +
         scale_color_algorithm() +
         labs(
             y = "radius",
-            x = "tau",
-            caption = str_wrap(
-                "Dots and bars denote the radius of the final clustering
-                (with outliers), whereas crosses denote the radius of
-                the proxies (without outliers)"
-            )
+            x = "tau"
         ) +
         theme_paper()
 }

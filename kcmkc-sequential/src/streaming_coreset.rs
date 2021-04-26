@@ -34,7 +34,7 @@ impl<V> StreamingCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset<V> {
     fn version(&self) -> u32 {
-        2
+        3
     }
 
     fn name(&self) -> String {
@@ -152,32 +152,26 @@ impl<T: Clone + Distance> StreamingState<T> {
             if d.0 > distance_bound {
                 debug!("new center, current centers {}", self.clusters.len());
                 self.clusters.push((x.clone(), vec![x.clone()], vec![1]));
+            } else if cluster.len() == 1 && !self.matroid.is_independent(&cluster) {
+                if self.matroid.is_independent(&[x.clone()]) {
+                    // replace the current center
+                    *_center = x.clone();
+                    cluster.pop();
+                    cluster.push(x.clone());
+                }
+                weights[0] += 1;
             } else {
-                match (cluster.len(), self.matroid.is_independent(&cluster)) {
-                    (1, false) => {
-                        if self.matroid.is_independent(&[x.clone()]) {
-                            // replace the current center
-                            *_center = x.clone();
-                            cluster.pop();
-                            cluster.push(x.clone());
-                        }
-                        weights[0] += 1;
-                    }
-                    (_, true) => {
-                        // The node is covered by the existing centers, we should just check
-                        // if we should add it to the independent sets or if we just need to increase
-                        // the counter of an existing element
-                        cluster.push(x.clone());
-                        if self.matroid.is_independent(&cluster) {
-                            debug!("  Adding point to the independent set");
-                            weights.push(1);
-                        } else {
-                            cluster.pop();
-                            // add to the weight of the one with minimum weight
-                            *weights.iter_mut().min().unwrap() += 1;
-                        }
-                    }
-                    (_, false) => panic!("Non-singleton cluster which is not an independent set"),
+                // The node is covered by the existing centers, we should just check
+                // if we should add it to the independent sets or if we just need to increase
+                // the counter of an existing element
+                cluster.push(x.clone());
+                if self.matroid.is_independent(&cluster) {
+                    debug!("  Adding point to the independent set");
+                    weights.push(1);
+                } else {
+                    cluster.pop();
+                    // add to the weight of the one with minimum weight
+                    *weights.iter_mut().min().unwrap() += 1;
                 }
             }
             #[cfg(debug_assertions)]

@@ -16,7 +16,7 @@ table_result <- function() {
     results <- tbl(conn, "result") %>%
         collect() %>%
         replace_na(list(threads = 1)) %>%
-        filter(algorithm != "MRCoreset") %>%
+        # filter(algorithm != "MRCoreset") %>%
         filter(dataset %in% c(
             "Wikipedia-sample-10000",
             # "Wikipedia-euclidean-sample-10000",

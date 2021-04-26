@@ -95,11 +95,11 @@ drake::readd(plot_time_100)
 
 ## Time for building the coreset only
 
-```{r fig.height=4}
+```{r fig.height=6}
 drake::readd(plot_time_coreset_10)
 ```
 
-```{r fig.height=4}
+```{r fig.height=6}
 drake::readd(plot_time_coreset_100)
 ```
 
