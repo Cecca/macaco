@@ -332,6 +332,7 @@ pub trait PartitionMatroidElement {
 
 pub struct PartitionMatroid<T: PartitionMatroidElement> {
     categories: HashMap<String, u32>,
+    scratch: ThreadLocal<RefCell<HashMap<String, u32>>>,
     _marker: PhantomData<T>,
 }
 
@@ -339,6 +340,7 @@ impl<T: PartitionMatroidElement> PartitionMatroid<T> {
     pub fn new(categories: HashMap<String, u32>) -> Self {
         Self {
             categories,
+            scratch: ThreadLocal::new(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -351,7 +353,14 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
 
     fn is_independent(&self, set: &[T]) -> bool {
         perf_counters::inc_matroid_oracle_count();
-        let mut counts = self.categories.clone();
+        let mut counts = self
+            .scratch
+            .get_or(|| RefCell::new(self.categories.clone()))
+            .borrow_mut();
+        // reset counters
+        for (k, c) in self.categories.iter() {
+            *counts.get_mut(k).unwrap() = *c;
+        }
         for x in set {
             let cat = x.category();
             // Categories not explicitly mentioned in the matroid
@@ -368,7 +377,14 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
         perf_counters::inc_matroid_oracle_count();
-        let mut counts = self.categories.clone();
+        let mut counts = self
+            .scratch
+            .get_or(|| RefCell::new(self.categories.clone()))
+            .borrow_mut();
+        // reset counters
+        for (k, c) in self.categories.iter() {
+            *counts.get_mut(k).unwrap() = *c;
+        }
         for x in set {
             let cat = x.category();
             // Categories not explicitly mentioned in the matroid

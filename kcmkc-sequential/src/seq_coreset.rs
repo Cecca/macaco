@@ -106,7 +106,12 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
 
                 let mut weights = vec![0u32; proxies.len()];
 
-                // Fill-in weights by counting the assignments to proxies
+                // Fill-in weights by counting the assignments to proxies.
+                // In the paper, we write that each point is assigned to the closest proxy in the
+                // disk, but then we use the disk's radius in the proof.
+                //
+                // In practice, this is a huge bottleneck, hence we just assign to arbitrary elements
+                // of the independent set so that the weights are balanced.
                 disk.iter()
                     .map(|p| {
                         proxies
