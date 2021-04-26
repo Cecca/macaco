@@ -47,7 +47,7 @@ impl<V> MapReduceCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset<V> {
     fn version(&self) -> u32 {
-        4
+        5
     }
 
     fn name(&self) -> String {
@@ -259,21 +259,30 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                             );
 
                             let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
-                            let mut weights = vec![0u32; proxies.len()];
+                            let n_proxies = proxies.len();
+                            let mut weights = vec![0u32; n_proxies];
 
                             let timer = Instant::now();
-                            // Fill-in weights by counting the assignments to proxies
-                            disk.iter()
-                                .map(|p| {
-                                    proxies
-                                        .iter()
-                                        .enumerate()
-                                        .map(|(i, c)| (i, p.distance(c)))
-                                        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-                                        .unwrap()
-                                        .0
-                                })
-                                .for_each(|i| weights[i] += 1);
+                            // Fill-in weights by counting the assignments to proxies.
+                            // In the paper, we write that each point is assigned to the closest proxy in the
+                            // disk, but then we use the disk's radius in the proof.
+                            //
+                            // In practice, this is a huge bottleneck, hence we just assign to arbitrary elements
+                            // of the independent set so that the weights are balanced.
+                            for (i, _p) in disk.into_iter().enumerate() {
+                                weights[i % n_proxies] += 1;
+                            }
+                            // disk.iter()
+                            //     .map(|p| {
+                            //         proxies
+                            //             .iter()
+                            //             .enumerate()
+                            //             .map(|(i, c)| (i, p.distance(c)))
+                            //             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                            //             .unwrap()
+                            //             .0
+                            //     })
+                            //     .for_each(|i| weights[i] += 1);
                             println!(
                                 "(Worker {}) assignment of points completed ({:.2?})",
                                 worker_idx,
