@@ -4,11 +4,11 @@ pub static GLOBAL_DISTANCE_COUNT: AtomicU64 = AtomicU64::new(0);
 pub static GLOBAL_MATROID_ORACLE_COUNT: AtomicU64 = AtomicU64::new(0);
 
 pub fn inc_distance_count() {
-    GLOBAL_DISTANCE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    // GLOBAL_DISTANCE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 }
 
 pub fn inc_matroid_oracle_count() {
-    GLOBAL_MATROID_ORACLE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    // GLOBAL_MATROID_ORACLE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 }
 
 /// gets the value of the counter, and sets the value to 0.

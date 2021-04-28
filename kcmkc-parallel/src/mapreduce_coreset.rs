@@ -247,7 +247,15 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                         for (v, i, _) in assignments {
                             disks[i].push(v);
                         }
-                        println!("Disks built in {:?}", timer.elapsed());
+                        let elapsed = timer.elapsed();
+                        println!(
+                            "(Worker {}) {} disks built in {:?} out of {} points ({:?} per distcomp)",
+                            worker_idx,
+                            disks.len(),
+                            elapsed,
+                            stash.len(),
+                            elapsed / (stash.len() * tau) as u32
+                        );
 
                         let coreset = disks.iter().flat_map(|disk| {
                             assert!(disk.len() > 0);
@@ -256,9 +264,10 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                             let elapsed = timer.elapsed();
                             if elapsed > Duration::from_secs(3) {
                                 println!(
-                                    "(Worker {}) Independent set of size {} ({:.2?})",
+                                    "(Worker {}) Independent set of size {}/{} ({:.2?})",
                                     worker_idx,
                                     is.len(),
+                                    disk.len(),
                                     timer.elapsed()
                                 );
                             } else {

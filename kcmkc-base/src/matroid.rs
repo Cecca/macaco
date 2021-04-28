@@ -91,7 +91,7 @@ impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
     }
 
     fn is_independent(&self, set: &[T]) -> bool {
-        perf_counters::inc_matroid_oracle_count();
+        // perf_counters::inc_matroid_oracle_count();
         // FIXME: find a way to remove this allocation, if it is a bottleneck
         let set: Vec<&T> = set.iter().collect();
         debug_assert!(self.maximum_matching_size(&set) == self.maximum_matching_size2(&set));
@@ -99,7 +99,7 @@ impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
-        perf_counters::inc_matroid_oracle_count();
+        // perf_counters::inc_matroid_oracle_count();
         debug_assert!(self.maximum_matching_size(&set) == self.maximum_matching_size2(&set));
         set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
     }
@@ -356,7 +356,7 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
     }
 
     fn is_independent(&self, set: &[T]) -> bool {
-        perf_counters::inc_matroid_oracle_count();
+        // perf_counters::inc_matroid_oracle_count();
         let mut counts = self
             .scratch
             .get_or(|| RefCell::new(self.categories.clone()))
@@ -380,7 +380,7 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
     }
 
     fn is_independent_ref(&self, set: &[&T]) -> bool {
-        perf_counters::inc_matroid_oracle_count();
+        // perf_counters::inc_matroid_oracle_count();
         let mut counts = self
             .scratch
             .get_or(|| RefCell::new(self.categories.clone()))

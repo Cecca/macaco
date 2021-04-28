@@ -44,11 +44,17 @@ impl Vector {
 
     /// Compute the inner product between two vectors.
     pub fn inner_product(&self, other: &Self) -> f32 {
-        self.data
-            .iter()
-            .zip(other.data.iter())
-            .map(|(x, y)| x * y)
-            .sum()
+        let n = self.data.len();
+        let mut sum = 0.0;
+        for i in 0..n {
+            sum += unsafe { self.data.get_unchecked(i) * other.data.get_unchecked(i) };
+        }
+        sum
+        // self.data
+        //     .iter()
+        //     .zip(other.data.iter())
+        //     .map(|(x, y)| x * y)
+        //     .sum()
     }
 
     pub fn cosine_distance(&self, other: &Self) -> f32 {
@@ -197,7 +203,7 @@ impl Weight for WikiPageEuclidean {
 
 impl Distance for WikiPageEuclidean {
     fn distance(&self, other: &Self) -> f32 {
-        perf_counters::inc_distance_count();
+        // perf_counters::inc_distance_count();
         self.vector.squared_euclidean_distance(&other.vector)
     }
 }
@@ -213,14 +219,14 @@ pub struct Song {
 
 impl Distance for WikiPage {
     fn distance(&self, other: &Self) -> f32 {
-        perf_counters::inc_distance_count();
+        // perf_counters::inc_distance_count();
         self.vector.cosine_distance(&other.vector)
     }
 }
 
 impl Distance for Song {
     fn distance(&self, other: &Self) -> f32 {
-        perf_counters::inc_distance_count();
+        // perf_counters::inc_distance_count();
         self.vector.cosine_distance(&other.vector)
     }
 }

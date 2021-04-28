@@ -22,6 +22,8 @@ pub fn kcenter<'a, V: Distance>(
             Box::new(points.iter().enumerate().map(|(i, p)| (p, i, 0.0))),
         );
     }
+    let n = points.len();
+    let timer = std::time::Instant::now();
     let mut min_dist = vec![std::f32::INFINITY; points.len()];
     let mut assignments = vec![0usize; points.len()];
     let mut centers = Vec::with_capacity(k);
@@ -33,26 +35,30 @@ pub fn kcenter<'a, V: Distance>(
         let mut farthest = i;
         let mut farthest_dist = 0.0f32;
 
-        let mut update_cnt = 0;
+        // let timer = std::time::Instant::now();
         // Look for the farthest, updating distances on the go
-        for (j, p) in points.iter().enumerate() {
+        // for (j, p) in points.iter().enumerate() {
+        for j in 0..n {
+            let p = unsafe { &points.get_unchecked(j) };
             let d = c.distance(p);
-            assert!(d.is_finite());
+            // assert!(d.is_finite());
             if d < min_dist[j] {
                 min_dist[j] = d;
                 assignments[j] = i;
-                update_cnt += 1;
             }
             if min_dist[j] > farthest_dist {
                 farthest_dist = min_dist[j];
                 farthest = j;
             }
         }
-        debug!(
-            "Updated {} assignments out of {} points",
-            update_cnt,
-            points.len()
-        );
+        // let elapsed = timer.elapsed();
+        // println!(
+        //     "  [it {}] iterating over {} points {:?} ({:?} per point)",
+        //     i,
+        //     points.len(),
+        //     elapsed,
+        //     elapsed / points.len() as u32
+        // );
 
         if i < k - 1 {
             // Set up the center for the next iteration
@@ -61,11 +67,12 @@ pub fn kcenter<'a, V: Distance>(
     }
 
     println!(
-        "Radius of clustering is {}",
+        "Radius of clustering is {} ({:?})",
         min_dist
             .iter()
             .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap()
+            .unwrap(),
+        timer.elapsed()
     );
     assert!(
         centers.len() == k,

@@ -242,5 +242,5 @@ def check():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    # run_wiki()
-    run_musixmatch()
+    run_wiki()
+    # run_musixmatch()
