@@ -20,11 +20,15 @@ pub trait Matroid<T> {
     ///    - add the next element to the set if this keeps the set independent
     fn maximal_independent_set<'a>(&self, set: &[&'a T]) -> Vec<&'a T> {
         let mut is = Vec::new();
+        let rank = self.rank();
 
         for x in set {
             is.push(*x);
             if !self.is_independent_ref(&is) {
                 is.pop();
+            }
+            if is.len() == rank {
+                break;
             }
         }
 

@@ -241,22 +241,34 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
 
                     // When ready, compute the output and send it
                     notificator.for_each(|t, _, _| {
+                        let timer = Instant::now();
                         let (centers, assignments) = kcenter(&stash, tau);
                         let mut disks = vec![Vec::new(); centers.len()];
                         for (v, i, _) in assignments {
                             disks[i].push(v);
                         }
+                        println!("Disks built in {:?}", timer.elapsed());
 
                         let coreset = disks.iter().flat_map(|disk| {
                             assert!(disk.len() > 0);
                             let timer = Instant::now();
                             let is = matroid.maximal_independent_set(&disk);
-                            println!(
-                                "(Worker {}) Independent set of size {} ({:.2?})",
-                                worker_idx,
-                                is.len(),
-                                timer.elapsed()
-                            );
+                            let elapsed = timer.elapsed();
+                            if elapsed > Duration::from_secs(3) {
+                                println!(
+                                    "(Worker {}) Independent set of size {} ({:.2?})",
+                                    worker_idx,
+                                    is.len(),
+                                    timer.elapsed()
+                                );
+                            } else {
+                                debug!(
+                                    "(Worker {}) Independent set of size {} ({:.2?})",
+                                    worker_idx,
+                                    is.len(),
+                                    timer.elapsed()
+                                );
+                            }
 
                             let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
                             let n_proxies = proxies.len();
@@ -283,7 +295,7 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
                             //             .0
                             //     })
                             //     .for_each(|i| weights[i] += 1);
-                            println!(
+                            debug!(
                                 "(Worker {}) assignment of points completed ({:.2?})",
                                 worker_idx,
                                 timer.elapsed()

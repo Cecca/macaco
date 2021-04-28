@@ -1,4 +1,5 @@
 use kcmkc_base::types::Distance;
+use log::*;
 
 /// Solve the k-center clustering by means of the farthest-first heuristic.
 ///
@@ -47,7 +48,7 @@ pub fn kcenter<'a, V: Distance>(
                 farthest = j;
             }
         }
-        println!(
+        debug!(
             "Updated {} assignments out of {} points",
             update_cnt,
             points.len()
