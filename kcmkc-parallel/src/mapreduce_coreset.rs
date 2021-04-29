@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{cell::RefCell, time::Instant};
 use std::{ops::Deref, sync::atomic::AtomicU64};
-use timely::dataflow::operators::{aggregation::Aggregate, Exchange};
+use timely::dataflow::operators::{aggregation::Aggregate, generic::operator::source, Exchange};
 use timely::dataflow::{InputHandle, ProbeHandle};
 use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
@@ -85,7 +85,7 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         let timer = Instant::now();
         let mut input: InputHandle<(), (u64, T)> = InputHandle::new();
         let mut probe = ProbeHandle::new();
-        let local_dataset: Rc<RefCell<Vec<(u64, T)>>> = Rc::new(RefCell::new(Vec::new()));
+        let local_dataset: Rc<RefCell<Vec<T>>> = Rc::new(RefCell::new(Vec::new()));
         let local_dataset_handle = Rc::clone(&local_dataset);
         worker.dataflow(|scope| {
             scope
@@ -96,10 +96,9 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
                     |_, _| {
                         move |input, output| {
                             input.for_each(|t, data| {
-                                local_dataset
-                                    .deref()
-                                    .borrow_mut()
-                                    .extend(data.replace(Vec::new()).into_iter());
+                                local_dataset.deref().borrow_mut().extend(
+                                    data.replace(Vec::new()).into_iter().map(|pair| pair.1),
+                                );
                                 output.session(&t).give(());
                             });
                         }
@@ -209,7 +208,7 @@ fn collect_counters(worker: &mut Worker<Allocator>) -> (u64, u64) {
 
 fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     worker: &mut Worker<A>,
-    local_dataset: Vec<(u64, T)>,
+    local_dataset: Vec<T>,
     matroid: Rc<dyn Matroid<T> + 'static>,
     tau: usize,
 ) -> Vec<(T, u32)> {
@@ -218,118 +217,102 @@ fn mapreduce_coreset<'a, T: ExchangeData + Distance, A: Allocate>(
     let mut probe = ProbeHandle::new();
     let result1: Rc<RefCell<Vec<(T, u32)>>> = Rc::new(RefCell::new(Vec::new()));
     let result2 = Rc::clone(&result1);
-    debug!(
-        "Local chunk of dataset with {}, minimum key {}",
-        local_dataset.len(),
-        local_dataset.iter().map(|pair| pair.0).min().unwrap()
-    );
 
     worker.dataflow::<(), _, _>(|scope| {
-        let mut stash = Vec::new();
-        local_dataset
-            .to_stream(scope)
-            .unary_notify(
-                PipelinePact,
-                "coreset_builder",
-                None,
-                move |input, output, notificator| {
-                    // stash the input as it streams in
-                    input.for_each(|t, data| {
-                        stash.extend(data.replace(Vec::new()).into_iter().map(|pair| pair.1));
-                        notificator.notify_at(t.retain());
-                    });
+        source(scope, "Source", |capability, _| {
+            let mut cap = Some(capability);
 
-                    // When ready, compute the output and send it
-                    notificator.for_each(|t, _, _| {
+            move |output| {
+                if let Some(cap) = cap.take() {
+                    let timer = Instant::now();
+                    let (centers, assignments) = kcenter(&local_dataset, tau);
+                    let mut disks = vec![Vec::new(); centers.len()];
+                    for (v, i, _) in assignments {
+                        disks[i].push(v);
+                    }
+                    let elapsed = timer.elapsed();
+                    println!(
+                        "(Worker {}) {} disks built in {:?} out of {} points ({:?} per distcomp)",
+                        worker_idx,
+                        disks.len(),
+                        elapsed,
+                        local_dataset.len(),
+                        elapsed / (local_dataset.len() * tau) as u32
+                    );
+
+                    let coreset = disks.iter().flat_map(|disk| {
+                        assert!(disk.len() > 0);
                         let timer = Instant::now();
-                        let (centers, assignments) = kcenter(&stash, tau);
-                        let mut disks = vec![Vec::new(); centers.len()];
-                        for (v, i, _) in assignments {
-                            disks[i].push(v);
-                        }
+                        let is = matroid.maximal_independent_set(&disk);
                         let elapsed = timer.elapsed();
-                        println!(
-                            "(Worker {}) {} disks built in {:?} out of {} points ({:?} per distcomp)",
-                            worker_idx,
-                            disks.len(),
-                            elapsed,
-                            stash.len(),
-                            elapsed / (stash.len() * tau) as u32
-                        );
-
-                        let coreset = disks.iter().flat_map(|disk| {
-                            assert!(disk.len() > 0);
-                            let timer = Instant::now();
-                            let is = matroid.maximal_independent_set(&disk);
-                            let elapsed = timer.elapsed();
-                            if elapsed > Duration::from_secs(3) {
-                                println!(
-                                    "(Worker {}) Independent set of size {}/{} ({:.2?})",
-                                    worker_idx,
-                                    is.len(),
-                                    disk.len(),
-                                    timer.elapsed()
-                                );
-                            } else {
-                                debug!(
-                                    "(Worker {}) Independent set of size {} ({:.2?})",
-                                    worker_idx,
-                                    is.len(),
-                                    timer.elapsed()
-                                );
-                            }
-
-                            let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
-                            let n_proxies = proxies.len();
-                            let mut weights = vec![0u32; n_proxies];
-
-                            let timer = Instant::now();
-                            // Fill-in weights by counting the assignments to proxies.
-                            // In the paper, we write that each point is assigned to the closest proxy in the
-                            // disk, but then we use the disk's radius in the proof.
-                            //
-                            // In practice, this is a huge bottleneck, hence we just assign to arbitrary elements
-                            // of the independent set so that the weights are balanced.
-                            for (i, _p) in disk.into_iter().enumerate() {
-                                weights[i % n_proxies] += 1;
-                            }
-                            // disk.iter()
-                            //     .map(|p| {
-                            //         proxies
-                            //             .iter()
-                            //             .enumerate()
-                            //             .map(|(i, c)| (i, p.distance(c)))
-                            //             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-                            //             .unwrap()
-                            //             .0
-                            //     })
-                            //     .for_each(|i| weights[i] += 1);
-                            debug!(
-                                "(Worker {}) assignment of points completed ({:.2?})",
+                        if elapsed > Duration::from_secs(3) {
+                            println!(
+                                "(Worker {}) Independent set of size {}/{} ({:.2?})",
                                 worker_idx,
+                                is.len(),
+                                disk.len(),
                                 timer.elapsed()
                             );
+                        } else {
+                            debug!(
+                                "(Worker {}) Independent set of size {} ({:.2?})",
+                                worker_idx,
+                                is.len(),
+                                timer.elapsed()
+                            );
+                        }
 
-                            proxies.into_iter().cloned().zip(weights.into_iter())
-                        });
+                        let proxies = if is.len() > 0 { is } else { vec![disk[0]] };
+                        let n_proxies = proxies.len();
+                        let mut weights = vec![0u32; n_proxies];
 
-                        output.session(&t).give_iterator(coreset);
+                        let timer = Instant::now();
+                        // Fill-in weights by counting the assignments to proxies.
+                        // In the paper, we write that each point is assigned to the closest proxy in the
+                        // disk, but then we use the disk's radius in the proof.
+                        //
+                        // In practice, this is a huge bottleneck, hence we just assign to arbitrary elements
+                        // of the independent set so that the weights are balanced.
+                        for (i, _p) in disk.into_iter().enumerate() {
+                            weights[i % n_proxies] += 1;
+                        }
+                        // disk.iter()
+                        //     .map(|p| {
+                        //         proxies
+                        //             .iter()
+                        //             .enumerate()
+                        //             .map(|(i, c)| (i, p.distance(c)))
+                        //             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                        //             .unwrap()
+                        //             .0
+                        //     })
+                        //     .for_each(|i| weights[i] += 1);
+                        debug!(
+                            "(Worker {}) assignment of points completed ({:.2?})",
+                            worker_idx,
+                            timer.elapsed()
+                        );
+
+                        proxies.into_iter().cloned().zip(weights.into_iter())
                     });
-                },
-            )
-            // Collect all the data into the first worker and stash it into the output
-            .unary(ExchangePact::new(|_| 0), "output_collector", |_, _| {
-                move |input, output| {
-                    input.for_each(|t, data| {
-                        result1
-                            .deref()
-                            .borrow_mut()
-                            .extend(data.replace(Vec::new()).into_iter());
-                        output.session(&t).give(());
-                    });
+
+                    output.session(&cap).give_iterator(coreset);
                 }
-            })
-            .probe_with(&mut probe);
+            }
+        })
+        // Collect all the data into the first worker and stash it into the output
+        .unary(ExchangePact::new(|_| 0), "output_collector", |_, _| {
+            move |input, output| {
+                input.for_each(|t, data| {
+                    result1
+                        .deref()
+                        .borrow_mut()
+                        .extend(data.replace(Vec::new()).into_iter());
+                    output.session(&t).give(());
+                });
+            }
+        })
+        .probe_with(&mut probe);
     });
 
     // do all the work in the dataflow
