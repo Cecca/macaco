@@ -1,5 +1,4 @@
 use kcmkc_base::types::Distance;
-use log::*;
 
 /// Solve the k-center clustering by means of the farthest-first heuristic.
 ///

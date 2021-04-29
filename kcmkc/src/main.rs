@@ -7,8 +7,9 @@ use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
 use log::*;
 use rayon::prelude::*;
 use serde::Deserialize;
-use std::sync::{Arc, Barrier, RwLock};
+use std::{cell::RefCell, rc::Rc};
 use std::{fmt::Debug, time::Instant};
+use timely::dataflow::operators::*;
 use timely::{communication::Allocator, worker::Worker};
 
 fn run_seq<V: Distance + Clone + Debug + Configure + Sync>(config: &Configuration) -> Result<()>
@@ -56,8 +57,6 @@ where
 fn run_par<V: Distance + Clone + Debug + Configure + Sync>(
     config: &Configuration,
     worker: &mut Worker<Allocator>,
-    items: Arc<RwLock<Option<Vec<V>>>>,
-    barrier: Arc<Barrier>,
 ) -> Result<()>
 where
     for<'de> V: Deserialize<'de> + Abomonation,
@@ -67,29 +66,40 @@ where
 
     let start = Instant::now();
     let dataset = Dataset::new(&config.dataset);
-    // let items: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
-    items
-        .write()
-        .unwrap()
-        .get_or_insert_with(|| dataset.to_vec(Some(config.shuffle_seed)).unwrap());
 
-    // Wait for all local threads
-    barrier.wait();
+    println!("read and exchange");
+    // read and exchange information about the size of the dataset
+    let n_handle = Rc::new(RefCell::new(0));
+    let n = Rc::clone(&n_handle);
+    let (mut input, probe) = worker.dataflow::<(), _, _>(move |scope| {
+        let (input, stream) = scope.new_input::<usize>();
+        let probe = stream.broadcast().map(move |n| n_handle.replace(n)).probe();
+        (input, probe)
+    });
+    let items = if worker.index() == 0 {
+        let data: Vec<V> = dataset.to_vec(Some(config.shuffle_seed))?;
+        let n = data.len();
+        input.send(n);
+        data
+    } else {
+        Vec::new()
+    };
+    input.close();
+    worker.step_while(|| !probe.done());
+    let n = n.take();
 
-    let n = items.read().unwrap().as_ref().unwrap().len();
     println!("loaded {} items in {:?}", n, start.elapsed());
     let outliers = config.outliers.num_outliers(n);
     let p = n - outliers;
 
     let mut algorithm = V::configure_parallel_algorithm(&config);
     let timer = Instant::now();
-    let centers =
-        algorithm.parallel_run(worker, items.read().unwrap().as_ref().unwrap(), matroid, p)?;
+    let centers = algorithm.parallel_run(worker, &items, matroid, p)?;
     let elapsed = timer.elapsed();
 
     if worker.index() == 0 {
         let (radius_no_outliers, _radius_all_points) =
-            compute_radius_outliers(items.read().unwrap().as_ref().unwrap(), &centers, outliers);
+            compute_radius_outliers(&items, &centers, outliers);
         assert!(radius_no_outliers < _radius_all_points);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
@@ -136,52 +146,23 @@ fn main() -> Result<()> {
             Datatype::Song => run_seq::<Song>(&config),
         }?;
     } else {
-        // config.clone().execute(move |worker| {
-        //     match config.datatype().unwrap() {
-        //         Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
-        //         Datatype::Song => run_par::<Song>(&config, worker),
-        //     }
-        //     .unwrap();
-        // })?;
-
-        let barrier = Arc::new(Barrier::new(config.clone().parallel.unwrap().threads));
         match config.datatype().unwrap() {
             Datatype::WikiPage => {
-                let items: Arc<RwLock<Option<Vec<WikiPage>>>> = Arc::new(RwLock::new(None));
                 config
                     .clone()
-                    .execute(move |worker| {
-                        run_par::<WikiPage>(
-                            &config,
-                            worker,
-                            Arc::clone(&items),
-                            Arc::clone(&barrier),
-                        )
-                    })
+                    .execute(move |worker| run_par::<WikiPage>(&config, worker))
                     .unwrap();
             }
             Datatype::WikiPageEuclidean => {
-                let items: Arc<RwLock<Option<Vec<WikiPageEuclidean>>>> =
-                    Arc::new(RwLock::new(None));
                 config
                     .clone()
-                    .execute(move |worker| {
-                        run_par::<WikiPageEuclidean>(
-                            &config,
-                            worker,
-                            Arc::clone(&items),
-                            Arc::clone(&barrier),
-                        )
-                    })
+                    .execute(move |worker| run_par::<WikiPageEuclidean>(&config, worker))
                     .unwrap();
             }
             Datatype::Song => {
-                let items: Arc<RwLock<Option<Vec<Song>>>> = Arc::new(RwLock::new(None));
                 config
                     .clone()
-                    .execute(move |worker| {
-                        run_par::<Song>(&config, worker, Arc::clone(&items), Arc::clone(&barrier))
-                    })
+                    .execute(move |worker| run_par::<Song>(&config, worker))
                     .unwrap();
             }
         }

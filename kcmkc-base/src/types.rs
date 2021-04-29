@@ -1,4 +1,4 @@
-use crate::{matroid::*, perf_counters};
+use crate::matroid::*;
 use abomonation_derive::Abomonation;
 use serde::Deserialize;
 

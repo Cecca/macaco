@@ -21,7 +21,6 @@ use timely::ExchangeData;
 use timely::{communication::Allocate, worker::Worker};
 use timely::{
     communication::Allocator,
-    dataflow::channels::pact::Pipeline as PipelinePact,
     dataflow::{channels::pact::Exchange as ExchangePact, operators::*},
 };
 

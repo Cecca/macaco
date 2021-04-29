@@ -219,14 +219,15 @@ impl Configuration {
             serde_json::from_str(&decoded_str)?
         };
 
-        // Validate the constraint against the input
-        let dataset_meta = Dataset::new(&config.dataset).metadata()?;
-        if !config
-            .constraint
-            .is_compatible_with(&dataset_meta.constraint)
-        {
-            anyhow::bail!("incompatible constraints");
-        };
+        // // Validate the constraint against the input
+        // this would break if not all the workers have a copy of the dataset
+        // let dataset_meta = Dataset::new(&config.dataset).metadata()?;
+        // if !config
+        //     .constraint
+        //     .is_compatible_with(&dataset_meta.constraint)
+        // {
+        //     anyhow::bail!("incompatible constraints");
+        // };
 
         Ok(config)
     }

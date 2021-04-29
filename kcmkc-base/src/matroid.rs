@@ -4,8 +4,6 @@ use std::{collections::HashMap, marker::PhantomData};
 use std::{collections::VecDeque, time::Instant};
 use thread_local::ThreadLocal;
 
-use crate::perf_counters;
-
 pub trait Matroid<T> {
     fn is_independent(&self, set: &[T]) -> bool;
     fn is_independent_ref(&self, set: &[&T]) -> bool;
