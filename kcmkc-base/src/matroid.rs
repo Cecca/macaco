@@ -156,8 +156,14 @@ impl<T: TransversalMatroidElement> TransversalMatroid<T> {
     }
 
     fn topic_index(&self, topic: u32) -> Option<usize> {
-        for (i, t) in self.topics.iter().enumerate() {
-            if *t == topic {
+        // for (i, t) in self.topics.iter().enumerate() {
+        //     if *t == topic {
+        //         return Some(i);
+        //     }
+        // }
+        // None
+        for i in 0..self.topics.len() {
+            if unsafe { *self.topics.get_unchecked(i) == topic } {
                 return Some(i);
             }
         }
