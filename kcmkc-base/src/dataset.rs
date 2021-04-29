@@ -1,3 +1,4 @@
+use abomonation_derive::Abomonation;
 use anyhow::{bail, Context, Result};
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -111,7 +112,7 @@ impl Metadata {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Abomonation, Clone, Hash)]
 pub enum Datatype {
     WikiPage,
     WikiPageEuclidean,

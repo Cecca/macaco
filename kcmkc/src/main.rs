@@ -146,26 +146,34 @@ fn main() -> Result<()> {
             Datatype::Song => run_seq::<Song>(&config),
         }?;
     } else {
-        match config.datatype().unwrap() {
-            Datatype::WikiPage => {
-                config
-                    .clone()
-                    .execute(move |worker| run_par::<WikiPage>(&config, worker))
-                    .unwrap();
-            }
-            Datatype::WikiPageEuclidean => {
-                config
-                    .clone()
-                    .execute(move |worker| run_par::<WikiPageEuclidean>(&config, worker))
-                    .unwrap();
-            }
-            Datatype::Song => {
-                config
-                    .clone()
-                    .execute(move |worker| run_par::<Song>(&config, worker))
-                    .unwrap();
-            }
-        }
+        config
+            .clone()
+            .execute(move |worker| {
+                // read and exchange information about the datatype
+                let datatype_handle = Rc::new(RefCell::new(None));
+                let datatype = Rc::clone(&datatype_handle);
+                let (mut input, probe) = worker.dataflow::<(), _, _>(move |scope| {
+                    let (input, stream) = scope.new_input::<Datatype>();
+                    let probe = stream
+                        .broadcast()
+                        .map(move |n| datatype_handle.borrow_mut().replace(n))
+                        .probe();
+                    (input, probe)
+                });
+                if worker.index() == 0 {
+                    let datatype = config.datatype()?;
+                    input.send(datatype);
+                }
+                input.close();
+                worker.step_while(|| !probe.done());
+                let datatype: Datatype = datatype.take().take().unwrap();
+                match datatype {
+                    Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
+                    Datatype::WikiPageEuclidean => run_par::<WikiPageEuclidean>(&config, worker),
+                    Datatype::Song => run_par::<Song>(&config, worker),
+                }
+            })
+            .unwrap();
     }
 
     Ok(())
