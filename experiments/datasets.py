@@ -50,39 +50,6 @@ class Dataset(object):
     def get_path(self):
         raise NotImplementedError()
 
-    def get_doubling_dimension(self):
-        """
-        Get an estimate of the doubling dimension for each vector in the
-        dataset.
-
-        returns: a list of pairs, with the first item being the vector name
-        """
-        import base64
-        import json
-        import sys
-        import pprint
-
-        outpath = self.get_path() + ".dd.csv"
-
-        if not os.path.isfile(outpath):
-            subprocess.run(["cargo", "build", "--release"])
-            configuration = {
-                "dataset": self.get_path(),
-                "output": outpath,
-                "parallel": {"threads": 4},
-            }
-            conf_str = base64.b64encode(json.dumps(configuration).encode("utf-8"))
-            sp = subprocess.run(["target/release/doubling_dimension", conf_str])
-            if sp.returncode != 0:
-                print("Error in invocation with the following configuration")
-                pprint.pprint(configuration)
-                sys.exit(1)
-        with open(outpath, "r") as fp:
-            reader = csv.reader(fp)
-            dims = [(int(idx), int(dim)) for idx, dim in reader]
-        dims.sort(key=lambda pair: pair[1])
-        return dims
-
     def metadata(self):
         current_metadata = self.build_metadata()
         if os.path.isfile(self.get_path()):
@@ -232,8 +199,10 @@ class Wikipedia(Dataset):
         self.out_fname = os.path.join(
             self.cache_dir,
             "wiki-d{}-c{}-v{}{}.msgpack.gz".format(
-                self.dimensions, self.topics, Wikipedia.version,
-                "euclidean" if distance == "euclidean" else ""
+                self.dimensions,
+                self.topics,
+                Wikipedia.version,
+                "euclidean" if distance == "euclidean" else "",
             ),
         )
 
@@ -246,7 +215,9 @@ class Wikipedia(Dataset):
     def build_metadata(self):
         datatype = "WikiPageEuclidean" if self.distance == "euclidean" else "WikiPage"
         meta = {
-            "name": "Wikipedia{}".format("-euclidean" if self.distance == "euclidean" else ""),
+            "name": "Wikipedia{}".format(
+                "-euclidean" if self.distance == "euclidean" else ""
+            ),
             "datatype": {datatype: None},
             "constraint": {"transversal": {"topics": list(range(0, self.topics))}},
             "version": Wikipedia.version,
@@ -543,7 +514,9 @@ class BoundedDifficultyDataset(Dataset):
 
 DATASETS = {
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
-    "wiki-d50-c100-eucl": Wikipedia("20210120", dimensions=50, topics=100, distance="euclidean"),
+    "wiki-d50-c100-eucl": Wikipedia(
+        "20210120", dimensions=50, topics=100, distance="euclidean"
+    ),
     "MusixMatch": MusixMatch(),
 }
 
