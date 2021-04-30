@@ -1,3 +1,4 @@
+import os
 import math
 import json
 import base64
@@ -6,6 +7,20 @@ import sys
 from datasets import DATASETS
 import pprint
 import itertools
+
+workers = [
+    {"name": name, "port": "2001"}
+    for name in [
+        "frontend",
+        "minion-1",
+        "minion-2",
+        "minion-3",
+        "minion-4",
+        "minion-5",
+        "minion-6",
+        "minion-7",
+    ]
+]
 
 
 EXECUTABLE = "target/release/kcmkc"
@@ -37,14 +52,15 @@ def run_wiki():
         DATASETS[dataset].preprocess()
     constraints = [
         # The original matroid constraint, using all the categories
-        list(range(0, 100)),
+        # list(range(0, 100)),
         # Very constrained solution
         list(range(0, 10)),
     ]
     # Fraction of allowed outliers
     frac_outliers = [0.01]
     # These seeds also define the number of repetitions
-    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    shuffle_seeds = [43234]
+    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
     for shuffle_seed, dataset, constr, frac_out in itertools.product(
         shuffle_seeds, datasets, constraints, frac_outliers
@@ -62,17 +78,17 @@ def run_wiki():
                 }
             )
 
-        # if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
-        # Run the baseline algorithm
-        # run(
-        #     {
-        #         "shuffle_seed": shuffle_seed,
-        #         "outliers": {"Percentage": frac_out},
-        #         "algorithm": "ChenEtAl",
-        #         "dataset": DATASETS[dataset].get_path(),
-        #         "constraint": {"transversal": {"topics": constr}},
-        #     }
-        # )
+        if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
+            # Run the baseline algorithm
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": "ChenEtAl",
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": constr}},
+                }
+            )
 
         # # Run coreset algorithms
         taus = [2 ** x for x in [3, 4, 5, 6]]
@@ -98,18 +114,17 @@ def run_wiki():
                     "constraint": {"transversal": {"topics": constr}},
                 }
             )
-            for threads in [2, 4, 8, 16]:
-                print("Run MRCoreset", tau, threads)
+        for tau in [1,2,4,8]:
+            for hosts in [workers[:i] for i in [2, 4, 8]]:
+                print("Run MRCoreset", tau, hosts)
                 # Keep the size of the final coreset constant across thread counts
-                rescaled_tau = int(math.ceil(tau / threads))
-                print("tau", tau, "threads", threads, "rescaled", rescaled_tau)
                 run(
                     {
-                        "parallel": {"threads": threads},
+                        "parallel": {"threads": 1, "hosts": hosts},
                         "shuffle_seed": shuffle_seed,
                         "outliers": {"Percentage": frac_out},
-                        "algorithm": {"MapReduceCoreset": {"tau": rescaled_tau}},
-                        "dataset": DATASETS[dataset].get_path(),
+                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
+                        "dataset": os.path.abspath(DATASETS[dataset].get_path()),
                         "constraint": {"transversal": {"topics": constr}},
                     }
                 )

@@ -1,12 +1,8 @@
 import subprocess
 import msgpack
 import gzip
-import numpy as np
 import zipfile
 import multiprocessing
-from gensim.models.ldamulticore import LdaMulticore
-from gensim.corpora.wikicorpus import WikiCorpus
-from gensim.corpora.dictionary import Dictionary
 import requests
 from tqdm import tqdm
 import os
@@ -253,6 +249,9 @@ class Wikipedia(Dataset):
             self.do_preprocessing()
 
     def do_preprocessing(self):
+        from gensim.models.ldamulticore import LdaMulticore
+        from gensim.corpora.wikicorpus import WikiCorpus
+        from gensim.corpora.dictionary import Dictionary
         cores = multiprocessing.cpu_count()
         download_file(self.url, self.dump_file)
         if not os.path.isfile(self.dictionary):
