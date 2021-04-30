@@ -117,9 +117,18 @@ girafe(ggobj=drake::readd(plot_time_coreset_10))
 girafe(ggobj=drake::readd(plot_time_coreset_100))
 ```
 
-The problem with the streaming algorithm, compared with the sequential
-algorithm, is that it needs to run the independent set oracle for each
-insertion that falls within radius. A simple solution is to stop trying to add
-as soon as we get a maximal independent set. However, this would require to
-inspect the entire set before running the streaming algorithm.
+## Discussion points
+
+- The problem with the streaming algorithm, compared with the sequential
+algorithm, is that it needs to run the independent set oracle for each insertion
+that falls within radius. A simple solution is to stop trying to add as soon as
+we get a maximal independent set. However, this would require to inspect the
+entire set before running the streaming algorithm.
+- The time to compute the independent set is also the dominating factor when running the
+MapReduce algorithm: after running k-center locally most of the time is spent in getting 
+maximal independent sets from each cluster
+- I think there was a bug in the Streaming, algorithm, which I corrected.
+It might be that a point which cannot take part in any independent set becomes a center
+when it is first considered by the algorithm. Then, we cannot simply try to add new points
+to it to augment the independent set, because it is not one to begin with.
 
