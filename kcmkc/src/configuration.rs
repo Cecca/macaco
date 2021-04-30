@@ -121,7 +121,7 @@ impl ParallelConfiguration {
                 h.wait().expect("problem waiting for the rsync process");
             }
 
-            println!("spawning executable {:?}", exec);
+            println!("spawning executable {:?}", remote_exec);
             // This is the top level invocation, which should spawn the processes with ssh
             let handles: Vec<std::process::Child> = self
                 .hosts
@@ -141,6 +141,7 @@ impl ParallelConfiguration {
                 })
                 .collect();
 
+            println!("waiting for the workers");
             for mut h in handles {
                 h.wait().expect("problem waiting for the ssh process");
             }
@@ -210,6 +211,14 @@ impl ConfEncode for Configuration {
 }
 
 impl Configuration {
+    pub fn is_remote(&self) -> bool {
+        if let Some(parallel) = &self.parallel {
+            parallel.process_id.is_some()
+        } else {
+            false
+        }
+    }
+
     pub fn load(spec: String) -> anyhow::Result<Self> {
         let path = PathBuf::from(&spec);
         let config: Configuration = if path.is_file() {
@@ -233,11 +242,11 @@ impl Configuration {
     }
 
     pub fn datatype(&self) -> anyhow::Result<Datatype> {
-        Ok(Dataset::new(&self.dataset).metadata()?.datatype)
+        Ok(Dataset::new(&self.dataset).metadata().context("reading datatype")?.datatype)
     }
 
     pub fn dataset_metadata(&self) -> anyhow::Result<Metadata> {
-        Dataset::new(&self.dataset).metadata()
+        Dataset::new(&self.dataset).metadata().context("reading metadata")
     }
 
     pub fn sha(&self) -> anyhow::Result<String> {

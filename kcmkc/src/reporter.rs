@@ -37,6 +37,7 @@ pub struct Reporter {
 
 impl Reporter {
     pub fn from_config(config: Configuration) -> Self {
+        println!("creating reporter from configuration");
         Self {
             db_path: Self::default_db_path(),
             date: Utc::now(),
@@ -50,7 +51,7 @@ impl Reporter {
 
     fn default_db_path() -> std::path::PathBuf {
         #[allow(deprecated)]
-        let mut path = PathBuf::new(); // std::env::home_dir().expect("unable to get home directory");
+        let mut path = std::env::home_dir().expect("unable to get home directory");
         path.push("kcmkc-results.sqlite");
         path
     }
@@ -78,12 +79,17 @@ impl Reporter {
     fn get_conn(&self) -> Result<Connection> {
         let dbpath = &self.db_path;
         let conn = Connection::open(dbpath).context("error connecting to the database")?;
-        db_migrate(&conn)?;
+        db_migrate(&conn).context("error running migrations")?;
+        if !dbpath.is_file() {
+            anyhow::bail!("migration did not setup database {:?}", dbpath);
+        }
         Ok(conn)
     }
 
     pub fn already_run(&self) -> Result<Option<i64>> {
-        let conn = self.get_conn()?;
+        println!("connecting to the database");
+        let conn = self.get_conn().context("error connecting to the database")?;
+        println!("running query");
         conn.query_row(
             "SELECT id FROM result WHERE params_sha == ?1",
             params![self.config.sha()?],

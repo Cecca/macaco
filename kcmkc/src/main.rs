@@ -134,10 +134,13 @@ fn main() -> Result<()> {
     let config = Configuration::load(config_spec)?;
 
     // Exit if the experiment has been already run
-    if let Some(id) = Reporter::from_config(config.clone()).already_run()? {
-        println!("Experiment already run ({})", id);
-        return Ok(());
+    if !config.is_remote() {
+        if let Some(id) = Reporter::from_config(config.clone()).already_run()? {
+            println!("Experiment already run ({})", id);
+            return Ok(());
+        }
     }
+    println!("Executing experiment");
 
     if config.algorithm.is_sequential() {
         match config.datatype()? {
@@ -161,12 +164,15 @@ fn main() -> Result<()> {
                     (input, probe)
                 });
                 if worker.index() == 0 {
+                    println!("reading datatype");
                     let datatype = config.datatype()?;
                     input.send(datatype);
+                    println!("datatype sent to buddies");
                 }
                 input.close();
                 worker.step_while(|| !probe.done());
                 let datatype: Datatype = datatype.take().take().unwrap();
+                println!("exchanged datatype {:?}", datatype);
                 match datatype {
                     Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
                     Datatype::WikiPageEuclidean => run_par::<WikiPageEuclidean>(&config, worker),
