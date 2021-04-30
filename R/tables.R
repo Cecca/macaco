@@ -26,7 +26,9 @@ table_result <- function() {
         mutate(
             distance = if_else(str_detect(dataset, "euclidean"), "euclidean", "cosine"),
             is_sample = str_detect(dataset, "sample"),
-            rank = matroid_rank(constraint_params)
+            rank = matroid_rank(constraint_params),
+            workers = threads * str_count(hosts, ":"),
+            workers = if_else(is.na(workers), 1, workers)
         ) %>%
         unnest(rank) %>%
         filter(outliers_spec %in% c("Percentage(0.01)")) %>%

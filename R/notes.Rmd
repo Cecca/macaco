@@ -94,11 +94,11 @@ The number at the base of each column is the coreset size, averaged across
 all the runs with the same parameters.
 
 ```{r fig.height=6}
-drake::readd(plot_time_10)
+girafe(ggobj=drake::readd(plot_time_10))
 ```
 
 ```{r fig.height=6}
-drake::readd(plot_time_100)
+girafe(ggobj=drake::readd(plot_time_100))
 ```
 
 ## Time for building the coreset only
@@ -110,14 +110,16 @@ construction completely dwarfs the benefits of parallelism. Why is that the
 case?
 
 ```{r fig.height=6}
-drake::readd(plot_time_coreset_10)
+girafe(ggobj=drake::readd(plot_time_coreset_10))
 ```
 
 ```{r fig.height=6}
-drake::readd(plot_time_coreset_100)
+girafe(ggobj=drake::readd(plot_time_coreset_100))
 ```
 
-## Follow ups
+The problem with the streaming algorithm, compared with the sequential
+algorithm, is that it needs to run the independent set oracle for each
+insertion that falls within radius. A simple solution is to stop trying to add
+as soon as we get a maximal independent set. However, this would require to
+inspect the entire set before running the streaming algorithm.
 
-- Can we just assign nodes to an arbitrary proxy in the same cluster? Or are
-  we bound to assign them to the closest one?

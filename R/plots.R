@@ -46,18 +46,21 @@ do_plot_tradeoff <- function(data) {
 
     averages <- plotdata %>%
         mutate(algorithm_params = if_else(algorithm == "Random", "", algorithm_params)) %>%
-        group_by(dataset, threads, outliers_spec, algorithm, algorithm_params) %>%
-        summarise(radius = mean(radius), total_time = mean(total_time))
-        # inner_join(random_radii)  %>%
-        # filter(radius <= 1.3 * random_radius)
+        group_by(dataset, workers, outliers_spec, algorithm, algorithm_params) %>%
+        summarise(radius = mean(radius), total_time = mean(total_time), coreset_size = mean(coreset_size))
     ggplot(plotdata, aes(
         x = radius, y = total_time, color = algorithm,
         tooltip = str_c(
             "time=", scales::number(total_time, accuracy = 0.01),
-            " radius=", scales::number(radius, accuracy = 0.1),
+            " radius=", scales::number(radius, accuracy = 0.001),
+            "\ncoreset size=", if_else(
+                algorithm %in% c("SeqCoreset", "StreamingCoreset", "MRCoreset"),
+                scales::number(coreset_size),
+                "-"
+            ),
             "\nparameters: ", if_else(
                 algorithm == "MRCoreset",
-                str_c(algorithm_params, " ", threads, " threads"),
+                str_c(algorithm_params, " ", workers, " workers"),
                 algorithm_params
             )
         )
@@ -73,54 +76,6 @@ do_plot_tradeoff <- function(data) {
         scale_color_algorithm() +
         labs(y = "total time (s)", x = "radius", title = title) +
         facet_wrap(vars(dataset, outliers_spec), scales = "free") +
-        theme_paper()
-}
-
-do_plot_param_influence <- function(plotdata) {
-    plotdata <- plotdata %>%
-        filter(
-            algorithm %in% c("MRCoreset", "StreamingCoreset", "SeqCoreset")
-        ) %>%
-        filter((algorithm != "MRCoreset") | (threads == 16)) %>%
-        mutate(
-            algorithm_params = map(
-                algorithm_params,
-                ~ jsonlite::fromJSON(.) %>% as.data.frame()
-            )
-        ) %>%
-        unnest(algorithm_params) %>%
-        mutate(
-            tau = tau * threads,
-            tau = factor(tau, ordered = T),
-            xval = rank(tau)
-        ) %>%
-        group_by(dataset, algorithm, xval, tau, threads) %>%
-        summarise(
-            radius = mean(radius),
-            coreset_size = mean(coreset_size)
-        )
-
-    labs <- plotdata %>% select(xval, tau)
-    labels <- pull(labs, tau)
-    breaks <- pull(labs, xval)
-
-    pos <- position_dodge(0.9)
-    ggplot(plotdata, aes(
-        x = tau,
-        y = radius,
-        fill = algorithm,
-        color = algorithm,
-        group = algorithm
-    )) +
-        geom_col(
-            position = position_dodge(),
-            alpha = 0.2
-        ) +
-        scale_color_algorithm() +
-        labs(
-            y = "radius",
-            x = "tau"
-        ) +
         theme_paper()
 }
 
@@ -143,16 +98,17 @@ do_plot_time <- function(data, coreset_only=F) {
             )
         ) %>%
         unnest(algorithm_params) %>%
-        mutate(final_tau = tau * threads) %>%
+        mutate(final_tau = tau * workers) %>%
         mutate(algorithm = if_else(
             algorithm == "MRCoreset",
-            str_c(algorithm, "-", threads),
+            str_c(algorithm, "-", workers),
             algorithm
         )) %>%
         mutate(
             algorithm = factor(algorithm, ordered = T, levels = c(
                 "SeqCoreset",
                 "StreamingCoreset",
+                "MRCoreset-1",
                 "MRCoreset-2",
                 "MRCoreset-4",
                 "MRCoreset-8",
@@ -171,20 +127,22 @@ do_plot_time <- function(data, coreset_only=F) {
     sizes <- coresets %>%
         group_by(dataset, rank, algorithm, tau, outliers_spec) %>%
         summarise(
-            coreset_size = mean(coreset_size),
-            total_time = mean(solution_time + coreset_time) %>% set_units("s") %>% drop_units()
+            coreset_size = mean(coreset_size)
         )
     
-    ggplot(times, aes(x=algorithm, y=time, fill=component)) +
-        geom_bar(stat="summary") +
-        geom_text(
-            aes(label=coreset_size, x=algorithm),
-            y=0,
-            size=2,
-            data=sizes,
-            inherit.aes=F,
-            hjust=0
-        ) +
+    inner_join(times, sizes) %>%
+    ggplot(aes(x=algorithm, y=time, fill=component)) +
+        geom_bar_interactive(aes(
+            tooltip = str_c(
+                "*", component, "*\n",
+                "time=", scales::number(time, accuracy = 0.01),
+                "\ncoreset size=", if_else(
+                    is.na(coreset_size),
+                    "-",
+                    scales::number(coreset_size)
+                )
+            )
+        ), stat="summary") +
         facet_grid(vars(tau), vars(dataset, outliers_spec), scales="free") +
         labs(title = title) +
         coord_flip() +
