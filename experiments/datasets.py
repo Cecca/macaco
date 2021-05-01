@@ -240,6 +240,8 @@ class Wikipedia(Dataset):
         return meta
 
     def load_lda(self, docs, dictionary):
+        from gensim.models.ldamulticore import LdaMulticore
+
         cores = multiprocessing.cpu_count()
         if not os.path.exists(self.lda_model_path):
             logging.info("Training LDA")
