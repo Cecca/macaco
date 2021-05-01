@@ -100,21 +100,29 @@ class Dataset(object):
         return cnt
 
 
-class GloveMap(object):
+class WordEmbeddingMap(object):
     URL = "http://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
     CACHE = os.path.join(CACHE_DIR, "glove", os.path.basename(URL))
 
-    def __init__(self, dimensions):
-        assert dimensions in [50, 100, 200, 300]
+    def __init__(self, dimensions, wiki=None):
         self.mapping = {}
+        if dimensions in [50, 100, 200, 300]:
+            file_dimensions = dimensions
+        elif dimensions < 50:
+            # and then truncate
+            file_dimensions = 50
+        else:
+            raise ValueError
         self.dimension = dimensions
-        if not os.path.isfile(GloveMap.CACHE):
-            download_file(GloveMap.URL, GloveMap.CACHE)
-        with zipfile.ZipFile(GloveMap.CACHE) as zipfp:
-            with zipfp.open("glove.6B.{}d.txt".format(dimensions)) as fp:
+        if not os.path.isfile(WordEmbeddingMap.CACHE):
+            download_file(WordEmbeddingMap.URL, WordEmbeddingMap.CACHE)
+        with zipfile.ZipFile(WordEmbeddingMap.CACHE) as zipfp:
+            with zipfp.open("glove.6B.{}d.txt".format(file_dimensions)) as fp:
                 for line in fp.readlines():
                     tokens = line.decode("utf-8").split()
-                    self.mapping[tokens[0]] = np.array([float(t) for t in tokens[1:]])
+                    self.mapping[tokens[0]] = np.array(
+                        [float(t) for t in tokens[1 : self.dimension]]
+                    )
                     assert self.dimension == len(tokens) - 1
         logging.info("Glove map with {} entries".format(len(self.mapping)))
 
@@ -264,7 +272,7 @@ class Wikipedia(Dataset):
         wiki.metadata = True
 
         logging.info("Loading word embeddings")
-        glove = GloveMap(self.dimensions)
+        glove = WordEmbeddingMap(self.dimensions)
         logging.info("Setting up LDA")
         lda = self.load_lda(
             CachedBowsCorpus(wiki, self.bow_cache, meta=False), dictionary
