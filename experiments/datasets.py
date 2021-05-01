@@ -105,6 +105,8 @@ class WordEmbeddingMap(object):
     CACHE = os.path.join(CACHE_DIR, "glove", os.path.basename(URL))
 
     def __init__(self, dimensions, wiki=None):
+        import numpy as np
+
         self.mapping = {}
         if dimensions in [50, 100, 200, 300]:
             file_dimensions = dimensions
