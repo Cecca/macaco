@@ -133,6 +133,8 @@ class WordEmbeddingMap(object):
         return self.mapping.get(word)
 
     def map_bow(self, mapping, bow):
+        import numpy as np
+
         vec = np.zeros(self.dimension)
         cnt = 0
         for (word_idx, count) in bow:
