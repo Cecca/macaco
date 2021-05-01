@@ -122,7 +122,7 @@ class WordEmbeddingMap(object):
             with zipfp.open("glove.6B.{}d.txt".format(file_dimensions)) as fp:
                 for line in fp.readlines():
                     tokens = line.decode("utf-8").split()
-                    v = np.array([float(t) for t in tokens[1 : self.dimension]])
+                    v = np.array([float(t) for t in tokens[1 : self.dimension + 1]])
                     self.mapping[tokens[0]] = v
                     assert self.dimension == len(
                         v
