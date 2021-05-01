@@ -252,6 +252,7 @@ class Wikipedia(Dataset):
         from gensim.models.ldamulticore import LdaMulticore
         from gensim.corpora.wikicorpus import WikiCorpus
         from gensim.corpora.dictionary import Dictionary
+
         cores = multiprocessing.cpu_count()
         download_file(self.url, self.dump_file)
         if not os.path.isfile(self.dictionary):
@@ -513,6 +514,7 @@ class BoundedDifficultyDataset(Dataset):
 
 DATASETS = {
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
+    "wiki-d10-c50": Wikipedia("20210120", dimensions=10, topics=50),
     "wiki-d50-c100-eucl": Wikipedia(
         "20210120", dimensions=50, topics=100, distance="euclidean"
     ),
@@ -524,6 +526,9 @@ for size in [100000, 50000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100"], size=size, seed=12341245
     )
+    DATASETS["wiki-d10-c50-s{}".format(size)] = SampledDataset(
+        base=DATASETS["wiki-d10-c50"], size=size, seed=12341245
+    )
     DATASETS["wiki-d50-c100-s{}-eucl".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100-eucl"], size=size, seed=12341245
     )
@@ -533,7 +538,7 @@ for size in [100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["MusixMatch"]
+    dataset = DATASETS["wiki-d10-c50"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())
