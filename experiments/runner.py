@@ -42,9 +42,11 @@ def run_wiki():
     Run experiments on the Wikipedia dataset and its samples
     """
     datasets = [
-        "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
+        "wiki-d10-c50",
+        "wiki-d10-c50-s10000"
+        # "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
         # "wiki-d50-c100-s10000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
-        "wiki-d50-c100",  # <- The full wikipedia dataset
+        # "wiki-d50-c100",  # <- The full wikipedia dataset
         # "wiki-d50-c100-eucl",  # <- The full wikipedia dataset, euclidean distance
     ]
     for dataset in datasets:
@@ -52,7 +54,7 @@ def run_wiki():
         DATASETS[dataset].preprocess()
     constraints = [
         # The original matroid constraint, using all the categories
-        # list(range(0, 100)),
+        list(range(0, 50)),
         # Very constrained solution
         list(range(0, 10)),
     ]
@@ -114,7 +116,7 @@ def run_wiki():
                     "constraint": {"transversal": {"topics": constr}},
                 }
             )
-        for tau in [1,2,4,8]:
+        for tau in [1, 2, 4, 8]:
             for hosts in [workers[:i] for i in [2, 4, 8]]:
                 print("Run MRCoreset", tau, hosts)
                 # Keep the size of the final coreset constant across thread counts
