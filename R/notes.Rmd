@@ -56,13 +56,7 @@ On top we have datasets using the euclidean distance, at the bottom those using 
 
 ```{r}
 girafe(
-    ggobj = drake::readd(plot_tradeoff_10)
-)
-```
-
-```{r}
-girafe(
-    ggobj = drake::readd(plot_tradeoff_100)
+    ggobj = drake::readd(plot_tradeoff)
 )
 ```
 
@@ -93,12 +87,8 @@ $\tau$ constant) because each cluster will be represented by an independent set.
 The number at the base of each column is the coreset size, averaged across
 all the runs with the same parameters.
 
-```{r fig.height=6}
-girafe(ggobj=drake::readd(plot_time_10))
-```
-
-```{r fig.height=6}
-girafe(ggobj=drake::readd(plot_time_100))
+```{r fig.height=8}
+girafe(ggobj=drake::readd(plot_time))
 ```
 
 ## Time for building the coreset only
@@ -109,12 +99,8 @@ larger independent sets (rank 100 vs rank 10) as part of the coreset
 construction completely dwarfs the benefits of parallelism. Why is that the
 case?
 
-```{r fig.height=6}
-girafe(ggobj=drake::readd(plot_time_coreset_10))
-```
-
-```{r fig.height=6}
-girafe(ggobj=drake::readd(plot_time_coreset_100))
+```{r fig.height=8}
+girafe(ggobj=drake::readd(plot_time_coreset))
 ```
 
 ## Discussion points

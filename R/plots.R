@@ -23,16 +23,6 @@ scale_color_algorithm <- function() {
 }
 
 do_plot_tradeoff <- function(data) {
-    assertthat::assert_that(
-        count(distinct(data, rank)) == 1,
-        msg = str_c(
-            "Should have a single rank in do_plot_tradeoff: ",
-            pull(distinct(data, rank))
-        )
-    )
-
-    title <- str_c("Rank ", distinct(data, rank) %>% pull())
-
     plotdata <- data %>%
         mutate(total_time = set_units(total_time, "s") %>% drop_units()) %>%
         mutate(dataset = fct_reorder2(dataset, is_sample, distance))
@@ -41,12 +31,12 @@ do_plot_tradeoff <- function(data) {
         filter(algorithm == "Random")
 
     random_radii <- random %>%
-        group_by(dataset, outliers_spec) %>%
+        group_by(dataset, rank, outliers_spec) %>%
         summarise(random_radius = mean(radius))
 
     averages <- plotdata %>%
         mutate(algorithm_params = if_else(algorithm == "Random", "", algorithm_params)) %>%
-        group_by(dataset, workers, outliers_spec, algorithm, algorithm_params) %>%
+        group_by(dataset, rank, workers, outliers_spec, algorithm, algorithm_params) %>%
         summarise(radius = mean(radius), total_time = mean(total_time), coreset_size = mean(coreset_size))
     ggplot(plotdata, aes(
         x = radius, y = total_time, color = algorithm,
@@ -74,31 +64,17 @@ do_plot_tradeoff <- function(data) {
         geom_point_interactive(data = averages, size = 1.2) +
         scale_y_continuous(trans = "log10") +
         scale_color_algorithm() +
-        labs(y = "total time (s)", x = "radius", title = title) +
-        facet_wrap(vars(dataset, outliers_spec), scales = "free") +
+        labs(y = "total time (s)", x = "radius") +
+        facet_grid(vars(dataset), vars(rank), scales = "free") +
+        # facet_wrap(vars(dataset, rank), scales = "free") +
         theme_paper()
 }
 
 do_plot_time <- function(data, coreset_only=F) {
-    assertthat::assert_that(
-        count(distinct(data, rank)) == 1,
-        msg = str_c(
-            "Should have a single rank in do_plot_tradeoff: ",
-            pull(distinct(data, rank))
-        )
-    )
-
-    title <- str_c("Rank ", distinct(data, rank) %>% pull())
-
     coresets <- filter(data, str_detect(algorithm, "Coreset")) %>%
-        mutate(
-            algorithm_params = map(
-                algorithm_params,
-                ~ jsonlite::fromJSON(.) %>% as.data.frame()
-            )
-        ) %>%
-        unnest(algorithm_params) %>%
-        mutate(final_tau = tau * workers) %>%
+        rowwise() %>%
+        mutate(tau = access_json(algorithm_params, "tau")) %>%
+        ungroup() %>%
         mutate(algorithm = if_else(
             algorithm == "MRCoreset",
             str_c(algorithm, "-", workers),
@@ -114,37 +90,31 @@ do_plot_time <- function(data, coreset_only=F) {
                 "MRCoreset-8",
                 "MRCoreset-16"
             ))
-        )
+        ) %>%
+        group_by(dataset, rank, algorithm, tau) %>%
+        summarise(solution_time=mean(solution_time), coreset_time=mean(coreset_time))
 
-    times <- select(coresets, rank, algorithm, tau, dataset, outliers_spec, solution=solution_time, coreset=coreset_time) %>%
+    times <- select(
+            coresets, rank, algorithm, tau, dataset, 
+            solution=solution_time, coreset=coreset_time
+        ) %>%
         pivot_longer(solution:coreset, names_to="component", values_to="time") %>%
         mutate(time = set_units(time, "s") %>% drop_units())
+    assertthat::assert_that(2*nrow(coresets) == nrow(times))
 
     if (coreset_only) {
         times <- filter(times, component == "coreset")
     }
 
-    sizes <- coresets %>%
-        group_by(dataset, rank, algorithm, tau, outliers_spec) %>%
-        summarise(
-            coreset_size = mean(coreset_size)
-        )
-    
-    inner_join(times, sizes) %>%
+    times %>%
     ggplot(aes(x=algorithm, y=time, fill=component)) +
         geom_bar_interactive(aes(
             tooltip = str_c(
                 "*", component, "*\n",
-                "time=", scales::number(time, accuracy = 0.01),
-                "\ncoreset size=", if_else(
-                    is.na(coreset_size),
-                    "-",
-                    scales::number(coreset_size)
-                )
+                "time=", scales::number(time, accuracy = 0.01)
             )
-        ), stat="summary") +
-        facet_grid(vars(tau), vars(dataset, outliers_spec), scales="free") +
-        labs(title = title) +
+        ), stat="summary", fun.data=mean_se) +
+        facet_grid(vars(tau), vars(dataset, rank), scales="free") +
         coord_flip() +
         theme_paper()
 }
