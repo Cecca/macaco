@@ -192,10 +192,7 @@ def run_musixmatch():
         "Pop": 10,
     }
 
-    datasets = [
-        "MusixMatch",
-        "MusixMatch-s10000"
-    ]
+    datasets = ["MusixMatch", "MusixMatch-s10000"]
     for dataset in datasets:
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
@@ -222,7 +219,7 @@ def run_musixmatch():
             )
 
         # # Run the baseline algorithm
-        if dataset == 'MusixMatch-s10000':
+        if dataset == "MusixMatch-s10000":
             run(
                 {
                     "shuffle_seed": shuffle_seed,
@@ -232,7 +229,99 @@ def run_musixmatch():
                     "constraint": {"partition": {"categories": constr}},
                 }
             )
-        
+
+        # # Run coreset algorithms
+        taus = [2 ** x for x in [3, 4, 5, 6]]
+        print(taus)
+        for tau in taus:
+            print("Run SeqCoreset", tau)
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"SeqCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+            print("Run StreamCoreset", tau)
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"StreamingCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+        for tau in [1, 2, 4, 8]:
+            for hosts in [workers[:i] for i in [2, 4, 8]]:
+                print("Run MRCoreset", tau, hosts)
+                # Keep the size of the final coreset constant across thread counts
+                run(
+                    {
+                        "parallel": {"threads": 1, "hosts": hosts},
+                        "shuffle_seed": shuffle_seed,
+                        "outliers": {"Percentage": frac_out},
+                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
+                        "dataset": os.path.abspath(DATASETS[dataset].get_path()),
+                        "constraint": {"partition": {"categories": constr}},
+                    }
+                )
+
+
+def run_random():
+    highrank_matroid = {
+        "0": 5,
+        "1": 5,
+        "2": 5,
+        "3": 5,
+        "4": 5,
+        "5": 5,
+        "6": 5,
+        "7": 5,
+        "8": 5,
+        "9": 5,
+    }
+
+    datasets = ["random-10000"]
+    for dataset in datasets:
+        DATASETS[dataset].try_download_preprocessed()
+        DATASETS[dataset].preprocess()
+    constraints = [highrank_matroid]
+    # Fraction of allowed outliers
+    frac_outliers = [0.01]
+    # These seeds also define the number of repetitions
+    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+
+    for shuffle_seed, dataset, constr, frac_out in itertools.product(
+        shuffle_seeds, datasets, constraints, frac_outliers
+    ):
+        # Run the naive baseline
+        print("Run random")
+        for seed in [1458, 345, 65623]:
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"Random": {"seed": seed}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+
+        # # Run the baseline algorithm
+        if dataset == "random-s10000":
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": "ChenEtAl",
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+
         # # Run coreset algorithms
         taus = [2 ** x for x in [3, 4, 5, 6]]
         print(taus)
