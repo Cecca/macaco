@@ -40,38 +40,52 @@ do_plot_tradeoff <- function(data) {
     averages <- plotdata %>%
         mutate(algorithm_params = if_else(algorithm == "Random", "", algorithm_params)) %>%
         group_by(dataset, rank, workers, outliers_spec, algorithm, algorithm_params) %>%
-        summarise(radius = mean(radius), ratio_to_best = mean(ratio_to_best), total_time = mean(total_time), coreset_size = mean(coreset_size))
-    ggplot(plotdata, aes(
-        x = ratio_to_best, y = total_time, color = algorithm,
-        tooltip = str_c(
-            "time=", scales::number(total_time, accuracy = 0.01),
-            " radius=", scales::number(radius, accuracy = 0.001),
-            " ratio to best=", scales::number(ratio_to_best, accuracy = 0.001),
-            "\ncoreset size=", if_else(
-                algorithm %in% c("SeqCoreset", "StreamingCoreset", "MRCoreset"),
-                scales::number(coreset_size),
-                "-"
-            ),
-            "\nparameters: ", if_else(
-                algorithm == "MRCoreset",
-                str_c(algorithm_params, " ", workers, " workers"),
-                algorithm_params
+        summarise(radius = mean(radius), ratio_to_best = mean(ratio_to_best), total_time = mean(total_time), coreset_size = mean(coreset_size)) %>%
+        ungroup()
+
+    draw <- function(data) {
+        data %>% distinct(dataset, rank) %>% print()
+        title <- data %>% distinct(dataset) %>% pull()
+        random <- semi_join(random, data)
+        random_radii <- semi_join(random_radii, data)
+        ggplot(data, aes(
+            x = ratio_to_best, y = total_time, color = algorithm,
+            tooltip = str_c(
+                "time=", scales::number(total_time, accuracy = 0.01),
+                " radius=", scales::number(radius, accuracy = 0.001),
+                " ratio to best=", scales::number(ratio_to_best, accuracy = 0.001),
+                "\ncoreset size=", if_else(
+                    algorithm %in% c("SeqCoreset", "StreamingCoreset", "MRCoreset"),
+                    scales::number(coreset_size),
+                    "-"
+                ),
+                "\nparameters: ", if_else(
+                    algorithm == "MRCoreset",
+                    str_c(algorithm_params, " ", workers, " workers"),
+                    algorithm_params
+                )
             )
-        )
-    )) +
-        geom_vline(
-            aes(xintercept=random_ratio_to_best),
-            data = random_radii,
-            color = algopalette["Random"]
-        ) +
-        geom_point(data = random, alpha = 0.5, size = 0.5) +
-        geom_point_interactive(data = averages, size = 1.2) +
-        scale_y_continuous(trans = "log10") +
-        scale_color_algorithm() +
-        labs(y = "total time (s)", x = "radius") +
-        facet_grid(vars(dataset), vars(rank), scales = "free") +
-        # facet_wrap(vars(dataset, rank), scales = "free") +
-        theme_paper()
+        )) +
+            geom_vline(
+                aes(xintercept=random_ratio_to_best),
+                data = random_radii,
+                color = algopalette["Random"]
+            ) +
+            # geom_point(data = random, alpha = 0.5, size = 0.5) +
+            geom_point_interactive(size = 1.2) +
+            scale_y_continuous(trans = "log10") +
+            scale_color_algorithm() +
+            labs(y = "total time (s)", x = "radius", title=title) +
+            # facet_grid(vars(dataset), vars(rank), scales = "free") +
+            facet_wrap(vars(rank), scales = "free") +
+            theme_paper()
+    }
+
+    p_musixmatch <- averages %>% filter(dataset == "MusixMatch") %>% draw()
+    p_wiki <- averages %>% filter(dataset == "Wikipedia") %>% draw()
+    p_wiki_sample <- averages %>% filter(dataset == "Wikipedia-sample-10000") %>% draw()
+    (p_musixmatch / p_wiki / p_wiki_sample / guide_area()) +
+        plot_layout(guides = 'collect')
 }
 
 do_plot_time <- function(data, coreset_only=F) {

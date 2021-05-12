@@ -31,6 +31,7 @@ table_result <- function() {
         # filter(algorithm != "MRCoreset") %>%
         filter(dataset %in% c(
             "MusixMatch",
+            "MusixMatch-sample-10000",
             "Wikipedia-sample-10000",
             # "Wikipedia-euclidean-sample-10000",
             "Wikipedia"
@@ -50,7 +51,7 @@ table_result <- function() {
         ) %>%
         unnest(rank) %>%
         filter(outliers_spec %in% c("Percentage(0.01)")) %>%
-        filter(dimensions %in% c(5000, 50)) %>%
+        filter(dimensions %in% c(5000, 10)) %>%
         filter(!(str_detect(dataset, "Wikipedia") & (rank == 100))) %>%
         mutate(
             total_time = set_units(total_time_ms, "ms"),
