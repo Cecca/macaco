@@ -147,6 +147,34 @@ fn unit_weight() -> u32 {
     1
 }
 
+#[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]
+pub struct ColorVector {
+    pub color: String,
+    pub vector: Vector,
+    #[serde(skip, default = "unit_weight")]
+    pub weight: u32,
+}
+
+impl Distance for ColorVector {
+    /// ColorVectors use the euclidean distance
+    fn distance(&self, other: &Self) -> f32 {
+        self.vector.norm_squared + other.vector.norm_squared
+            - 2.0 * self.vector.inner_product(&other.vector)
+    }
+}
+
+impl PartitionMatroidElement for ColorVector {
+    fn category(&self) -> &String {
+        &self.color
+    }
+}
+
+impl Weight for ColorVector {
+    fn weight(&self) -> u32 {
+        self.weight
+    }
+}
+
 /// A page of wikipedia, represented as a d-dimensional vector,
 /// with a set of topics.
 #[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]

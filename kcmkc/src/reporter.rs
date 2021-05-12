@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use chrono::prelude::*;
 use kcmkc_base::{
     dataset::Datatype,
-    types::{Song, WikiPage, WikiPageEuclidean},
+    types::{ColorVector, Song, WikiPage, WikiPageEuclidean},
 };
 use rusqlite::*;
 use std::path::PathBuf;
@@ -88,7 +88,9 @@ impl Reporter {
 
     pub fn already_run(&self) -> Result<Option<i64>> {
         println!("connecting to the database");
-        let conn = self.get_conn().context("error connecting to the database")?;
+        let conn = self
+            .get_conn()
+            .context("error connecting to the database")?;
         println!("running query");
         conn.query_row(
             "SELECT id FROM result WHERE params_sha == ?1",
@@ -114,6 +116,10 @@ impl Reporter {
             }
             Datatype::Song => {
                 let algo = Song::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version(), algo.parameters())
+            }
+            Datatype::ColorVector => {
+                let algo = ColorVector::configure_algorithm_info(&self.config);
                 (algo.name(), algo.version(), algo.parameters())
             }
         };

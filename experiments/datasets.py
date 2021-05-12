@@ -369,6 +369,75 @@ class SampledDataset(Dataset):
             progress_bar.close()
 
 
+class RandomGaussian(Dataset):
+    version = 1
+
+    def __init__(self, size, num_centers, num_colors, rank, dimensions, seed):
+        self.size = size
+        self.num_centers = num_centers
+        self.num_colors = num_colors
+        self.seed = seed
+        self.rank = rank
+        self.dimensions = dimensions
+        self.cache = os.path.join(CACHE_DIR, "gaussian")
+        self.file_name = os.path.join(
+            self.cache,
+            f"random-size{size}-centers{num_centers}-dimensions{dimensions}-colors{num_colors}-rank{rank}-seed{seed}-v{RandomGaussian.version}.msgpack.gz",
+        )
+
+    def get_cache_dir(self):
+        return self.cache
+
+    def get_path(self):
+        return self.file_name
+
+    def get_colors(self):
+        color_rank = self.rank // self.num_colors
+        colors = dict()
+        for i in range(self.num_colors):
+            colors[str(i)] = color_rank
+        return colors
+
+    def build_metadata(self):
+        meta = {
+            "name": "Random",
+            "datatype": {"ColorVector": None},
+            "constraint": {"partition": {"categories": self.get_colors()}},
+            "version": RandomGaussian.version,
+            "parameters": {
+                "size": self.size,
+                "seed": self.seed,
+                "num_centers": self.num_centers,
+                "num_colors": self.num_colors,
+                "dimensions": self.dimensions,
+                "rank": self.rank,
+            },
+        }
+        return meta
+
+    def preprocess(self):
+        import numpy as np
+
+        if not os.path.isfile(self.file_name):
+            np.random.seed(self.seed)
+            # get the centers from a (hyper)cube of side 100
+            repeats = self.size // self.num_centers
+            centers = np.repeat(
+                np.random.rand(self.num_centers, self.dimensions) * 100, repeats, axis=0
+            )
+
+            points = np.random.randn(self.size, self.dimensions) * 10 + centers
+            colors = np.random.randint(low=0, high=self.num_colors, size=self.size)
+
+            with gzip.open(self.file_name, "wb") as fp:
+                self.write_metadata(fp)
+                for point, color in tqdm(
+                    zip(points, colors), leave=False, unit="points"
+                ):
+                    vec = {"vector": list(point), "color": str(color)}
+                    msgpack.pack(vec, fp)
+
+
 class MusixMatch(Dataset):
     version = 1
 
@@ -528,6 +597,9 @@ class BoundedDifficultyDataset(Dataset):
 
 
 DATASETS = {
+    "random-10000": RandomGaussian(
+        size=10000, num_centers=50, num_colors=10, rank=50, dimensions=3, seed=134
+    ),
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
     "wiki-d10-c50": Wikipedia("20210120", dimensions=10, topics=50),
     "wiki-d50-c100-eucl": Wikipedia(
@@ -553,7 +625,7 @@ for size in [100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["wiki-d10-c50"]
+    dataset = DATASETS["random-10000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())

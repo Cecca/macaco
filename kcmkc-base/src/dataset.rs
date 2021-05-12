@@ -117,6 +117,7 @@ pub enum Datatype {
     WikiPage,
     WikiPageEuclidean,
     Song,
+    ColorVector,
 }
 
 #[derive(Deserialize, Debug)]

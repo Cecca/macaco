@@ -147,6 +147,7 @@ fn main() -> Result<()> {
             Datatype::WikiPage => run_seq::<WikiPage>(&config),
             Datatype::WikiPageEuclidean => run_seq::<WikiPageEuclidean>(&config),
             Datatype::Song => run_seq::<Song>(&config),
+            Datatype::ColorVector => run_seq::<ColorVector>(&config),
         }?;
     } else {
         config
@@ -177,6 +178,7 @@ fn main() -> Result<()> {
                     Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
                     Datatype::WikiPageEuclidean => run_par::<WikiPageEuclidean>(&config, worker),
                     Datatype::Song => run_par::<Song>(&config, worker),
+                    Datatype::ColorVector => run_par::<ColorVector>(&config, worker),
                 }
             })
             .unwrap();
