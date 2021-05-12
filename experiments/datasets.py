@@ -124,9 +124,9 @@ class WordEmbeddingMap(object):
                     tokens = line.decode("utf-8").split()
                     v = np.array([float(t) for t in tokens[1 : self.dimension + 1]])
                     self.mapping[tokens[0]] = v
-                    assert self.dimension == len(
-                        v
-                    ), f"Expect {self.dimension}, got {len(v)}"
+                    # assert self.dimension == len(
+                    #     v
+                    # ), f"Expect {self.dimension}, got {len(v)}"
         logging.info("Glove map with {} entries".format(len(self.mapping)))
 
     def get(self, word):
@@ -619,9 +619,9 @@ for size in [100000, 50000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}-eucl".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100-eucl"], size=size, seed=12341245
     )
-    # DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
-    #     base=DATASETS["MusixMatch"], size=size, seed=12341245
-    # )
+    DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
+        base=DATASETS["MusixMatch"], size=size, seed=12341245
+    )
 
 
 if __name__ == "__main__":

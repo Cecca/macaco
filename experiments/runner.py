@@ -192,7 +192,10 @@ def run_musixmatch():
         "Pop": 10,
     }
 
-    datasets = ["MusixMatch"]
+    datasets = [
+        "MusixMatch",
+        "MusixMatch-s10000"
+    ]
     for dataset in datasets:
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
@@ -217,6 +220,57 @@ def run_musixmatch():
                     "constraint": {"partition": {"categories": constr}},
                 }
             )
+
+        # # Run the baseline algorithm
+        if dataset == 'MusixMatch-s10000':
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": "ChenEtAl",
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+        
+        # # Run coreset algorithms
+        taus = [2 ** x for x in [3, 4, 5, 6]]
+        print(taus)
+        for tau in taus:
+            print("Run SeqCoreset", tau)
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"SeqCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+            print("Run StreamCoreset", tau)
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": frac_out},
+                    "algorithm": {"StreamingCoreset": {"tau": tau}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"partition": {"categories": constr}},
+                }
+            )
+        for tau in [1, 2, 4, 8]:
+            for hosts in [workers[:i] for i in [2, 4, 8]]:
+                print("Run MRCoreset", tau, hosts)
+                # Keep the size of the final coreset constant across thread counts
+                run(
+                    {
+                        "parallel": {"threads": 1, "hosts": hosts},
+                        "shuffle_seed": shuffle_seed,
+                        "outliers": {"Percentage": frac_out},
+                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
+                        "dataset": os.path.abspath(DATASETS[dataset].get_path()),
+                        "constraint": {"partition": {"categories": constr}},
+                    }
+                )
 
 
 def check():
@@ -259,5 +313,5 @@ def check():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    run_wiki()
-    # run_musixmatch()
+    # run_wiki()
+    run_musixmatch()
