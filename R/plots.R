@@ -32,17 +32,21 @@ do_plot_tradeoff <- function(data) {
 
     random_radii <- random %>%
         group_by(dataset, rank, outliers_spec) %>%
-        summarise(random_radius = mean(radius))
+        summarise(
+            random_radius = mean(radius),
+            random_ratio_to_best = mean(ratio_to_best)
+        )
 
     averages <- plotdata %>%
         mutate(algorithm_params = if_else(algorithm == "Random", "", algorithm_params)) %>%
         group_by(dataset, rank, workers, outliers_spec, algorithm, algorithm_params) %>%
-        summarise(radius = mean(radius), total_time = mean(total_time), coreset_size = mean(coreset_size))
+        summarise(radius = mean(radius), ratio_to_best = mean(ratio_to_best), total_time = mean(total_time), coreset_size = mean(coreset_size))
     ggplot(plotdata, aes(
-        x = radius, y = total_time, color = algorithm,
+        x = ratio_to_best, y = total_time, color = algorithm,
         tooltip = str_c(
             "time=", scales::number(total_time, accuracy = 0.01),
             " radius=", scales::number(radius, accuracy = 0.001),
+            " ratio to best=", scales::number(ratio_to_best, accuracy = 0.001),
             "\ncoreset size=", if_else(
                 algorithm %in% c("SeqCoreset", "StreamingCoreset", "MRCoreset"),
                 scales::number(coreset_size),
@@ -56,7 +60,7 @@ do_plot_tradeoff <- function(data) {
         )
     )) +
         geom_vline(
-            aes(xintercept=random_radius),
+            aes(xintercept=random_ratio_to_best),
             data = random_radii,
             color = algopalette["Random"]
         ) +

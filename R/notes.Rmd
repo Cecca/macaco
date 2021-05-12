@@ -54,7 +54,7 @@ on the right we have the samples.
 Hovering with the mouse on the dots shows the radius, time and parameter configuration.
 On top we have datasets using the euclidean distance, at the bottom those using the cosine distance.
 
-```{r}
+```{r fig.width=20, fig.height=5}
 girafe(
     ggobj = drake::readd(plot_tradeoff)
 )

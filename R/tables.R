@@ -58,6 +58,14 @@ table_result <- function() {
             solution_time = set_units(solution_time_ms, "ms")
         ) %>%
         select(-ends_with("_ms"))
+
+    best <- results %>%
+        group_by(dataset, rank) %>%
+        summarise(best_radius = min(radius))
+
+    results <- inner_join(results, best) %>%
+        mutate(ratio_to_best = radius / best_radius)
+    
     DBI::dbDisconnect(conn)
     results
 }
