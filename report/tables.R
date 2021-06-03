@@ -15,6 +15,9 @@ matroid_rank <- function(constraint_params) {
 }
 
 access_json <- function(jstr, name) {
+    if (str_length(jstr) == 0) {
+        return(NA)
+    }
     v <- jsonlite::fromJSON(jstr)[[name]]
     if (is.null(v)) {
         NA
@@ -47,6 +50,7 @@ table_result <- function() {
             distance = if_else(str_detect(dataset, "euclidean"), "euclidean", "cosine"),
             is_sample = str_detect(dataset, "sample"),
             rank = matroid_rank(constraint_params),
+            tau = access_json(algorithm_params, "tau"),
             workers = threads * str_count(hosts, ":"),
             workers = if_else(is.na(workers), 1, workers)
         ) %>%

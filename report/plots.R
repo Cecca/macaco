@@ -147,3 +147,23 @@ do_plot_time <- function(data, coreset_only=F) {
 }
 
 
+do_plot_samples <- function(data) {
+    data %>% 
+        filter(algorithm != "Random") %>%
+        filter(outliers_spec == "Percentage(0.01)") %>%
+        filter(dataset %in% c("MusixMatch-sample-10000", "Wikipedia-sample-10000", "Random")) %>%
+        filter(rank %in% c(20, 10)) %>%
+        group_by(dataset, algorithm, rank, dataset_params, algorithm_params, tau, workers) %>%
+        summarise(
+            total_time = mean(total_time),
+            ratio_to_best = mean(ratio_to_best)
+        ) %>%
+        mutate(flabel = str_c(dataset, " (rank ", rank, ")")) %>%
+        ggplot(aes(ratio_to_best, total_time, color=algorithm)) +
+        geom_point() +
+        geom_text_repel(aes(label = tau), show.legend=F) +
+        scale_y_unit(trans="log10", labels=scales::number_format()) +
+        scale_color_algorithm() +
+        facet_wrap(vars(flabel), scales="free") +
+        theme_paper()
+}

@@ -24,10 +24,17 @@ plan <- drake_plan(
         #     rank_value = c(10, 50)
         # )
     ),
-    notes = rmarkdown::render(
-        knitr_in("R/notes.Rmd"),
-        output_file = file_out("notes.html"),
-        output_dir = "R",
-        quiet = TRUE
+    figure_samples = ggsave(
+        "imgs/radius-vs-time.png",
+        do_plot_samples(data_result),
+        width = 10,
+        height = 5,
+        dpi = 300
     )
+    # notes = rmarkdown::render(
+    #     knitr_in("R/notes.Rmd"),
+    #     output_file = file_out("notes.html"),
+    #     output_dir = "R",
+    #     quiet = TRUE
+    # )
 )

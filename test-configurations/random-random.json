@@ -1,7 +1,7 @@
 {
     "shuffle_seed": 345345,
     "outliers": {
-        "Fixed": 10
+        "Percentage": 0.01
     },
     "algorithm": {
         "Random": {

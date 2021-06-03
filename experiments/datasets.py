@@ -640,6 +640,15 @@ DATASETS = {
         dimensions=3,
         seed=134,
     ),
+    "random-100000": Random(
+        size=100000,
+        num_clusters=10,
+        side=1,
+        num_colors=10,
+        rank=10,
+        dimensions=3,
+        seed=134,
+    ),
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
     "wiki-d10-c50": Wikipedia("20210120", dimensions=10, topics=50),
     "wiki-d50-c100-eucl": Wikipedia(

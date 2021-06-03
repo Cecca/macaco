@@ -6,5 +6,6 @@ suppressWarnings({
     library(ggforce)
     library(units)
     library(ggiraph)
+    library(ggrepel)
     library(cowplot)
 })
