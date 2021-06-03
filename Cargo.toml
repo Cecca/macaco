@@ -1,3 +1,6 @@
 [workspace]
 members = ["kcmkc", "kcmkc-base", "kcmkc-sequential", "kcmkc-parallel"]
 
+[profile.release]
+lto = "off"
+

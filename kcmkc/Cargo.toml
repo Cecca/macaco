@@ -32,3 +32,4 @@ indicatif = {version = "0.15", features=["rayon"]}
 
 [build-dependencies]
 vergen = "4"
+

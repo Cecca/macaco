@@ -17,8 +17,15 @@ algopalette <- list(
     # "#000000"
 )
 
+algopalette <- list(
+    "ChenEtAl" = "#4e79a7",
+    "MRCoreset" = "#59a14f",
+    "SeqCoreset" = "#f28e2b",
+    "StreamingCoreset" = "#edc948",
+    "Random" = "#76b7b2"
+)
+
 scale_color_algorithm <- function() {
-    # Okaibe-Ito palette
     scale_color_manual(values = algopalette, aesthetics = c("fill", "color"))
 }
 
@@ -72,8 +79,8 @@ do_plot_tradeoff <- function(data) {
                 color = algopalette["Random"]
             ) +
             # geom_point(data = random, alpha = 0.5, size = 0.5) +
-            geom_point_interactive(size = 1.2) +
-            scale_y_continuous(trans = "log10") +
+            geom_point_interactive(size = 1.2, stat="summary", fun.data=mean_se) +
+            # scale_y_continuous(trans = "log10") +
             scale_color_algorithm() +
             labs(y = "total time (s)", x = "radius", title=title) +
             # facet_grid(vars(dataset), vars(rank), scales = "free") +
@@ -82,9 +89,11 @@ do_plot_tradeoff <- function(data) {
     }
 
     p_musixmatch <- averages %>% filter(dataset == "MusixMatch") %>% draw()
+    p_musixmatch_sample <- averages %>% filter(dataset == "MusixMatch-sample-10000") %>% draw()
     p_wiki <- averages %>% filter(dataset == "Wikipedia") %>% draw()
     p_wiki_sample <- averages %>% filter(dataset == "Wikipedia-sample-10000") %>% draw()
-    (p_musixmatch / p_wiki / p_wiki_sample / guide_area()) +
+    p_random <- averages %>% filter(dataset == "Random") %>% draw()
+    (p_musixmatch /p_musixmatch_sample / p_wiki / p_wiki_sample / p_random / guide_area()) +
         plot_layout(guides = 'collect')
 }
 

@@ -30,6 +30,7 @@ table_result <- function() {
         replace_na(list(threads = 1)) %>%
         # filter(algorithm != "MRCoreset") %>%
         filter(dataset %in% c(
+            "Random",
             "MusixMatch",
             "MusixMatch-sample-10000",
             "Wikipedia-sample-10000",
@@ -40,7 +41,7 @@ table_result <- function() {
         rowwise() %>%
         mutate(
             dimensions = access_json(dataset_params, "dimensions") %>% as.numeric(),
-            dimensions = if_else(dataset == "MusixMatch", 5000, dimensions)
+            dimensions = if_else(str_detect(dataset, "MusixMatch"), 5000, dimensions)
         ) %>% 
         mutate(
             distance = if_else(str_detect(dataset, "euclidean"), "euclidean", "cosine"),
@@ -51,13 +52,14 @@ table_result <- function() {
         ) %>%
         unnest(rank) %>%
         filter(outliers_spec %in% c("Percentage(0.01)")) %>%
-        filter(dimensions %in% c(5000, 10)) %>%
+        filter(dimensions %in% c(5000, 10, 3)) %>%
         filter(!(str_detect(dataset, "Wikipedia") & (rank == 100))) %>%
         mutate(
             total_time = set_units(total_time_ms, "ms"),
             coreset_time = set_units(coreset_time_ms, "ms"),
             solution_time = set_units(solution_time_ms, "ms")
         ) %>%
+        # filter(algorithm == "ChenEtAl") %>% distinct(dataset, dimensions) %>% print()
         select(-ends_with("_ms"))
 
     best <- results %>%

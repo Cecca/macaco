@@ -369,12 +369,15 @@ class SampledDataset(Dataset):
             progress_bar.close()
 
 
-class RandomGaussian(Dataset):
+class Random(Dataset):
     version = 1
 
-    def __init__(self, size, num_centers, num_colors, rank, dimensions, seed):
+    def __init__(self, size, num_clusters, side, num_colors, rank, dimensions, seed):
+        if num_clusters < 2:
+            raise ValueError("too few clusters specified")
         self.size = size
-        self.num_centers = num_centers
+        self.num_clusters = num_clusters
+        self.side = side
         self.num_colors = num_colors
         self.seed = seed
         self.rank = rank
@@ -382,7 +385,7 @@ class RandomGaussian(Dataset):
         self.cache = os.path.join(CACHE_DIR, "gaussian")
         self.file_name = os.path.join(
             self.cache,
-            f"random-size{size}-centers{num_centers}-dimensions{dimensions}-colors{num_colors}-rank{rank}-seed{seed}-v{RandomGaussian.version}.msgpack.gz",
+            f"random-size{size}-nclusters{num_clusters}-side{side}-dimensions{dimensions}-colors{num_colors}-rank{rank}-seed{seed}-v{Random.version}.msgpack.gz",
         )
 
     def get_cache_dir(self):
@@ -403,11 +406,12 @@ class RandomGaussian(Dataset):
             "name": "Random",
             "datatype": {"ColorVector": None},
             "constraint": {"partition": {"categories": self.get_colors()}},
-            "version": RandomGaussian.version,
+            "version": Random.version,
             "parameters": {
                 "size": self.size,
+                "num_clusters": self.num_clusters,
+                "side": self.side,
                 "seed": self.seed,
-                "num_centers": self.num_centers,
                 "num_colors": self.num_colors,
                 "dimensions": self.dimensions,
                 "rank": self.rank,
@@ -418,24 +422,54 @@ class RandomGaussian(Dataset):
     def preprocess(self):
         import numpy as np
 
-        if not os.path.isfile(self.file_name):
-            np.random.seed(self.seed)
-            # get the centers from a (hyper)cube of side 100
-            repeats = self.size // self.num_centers
-            centers = np.repeat(
-                np.random.rand(self.num_centers, self.dimensions) * 100, repeats, axis=0
+        if os.path.isfile(self.file_name):
+            return
+
+        np.random.seed(self.seed)
+        # Create the first dense cluster
+        n = int(np.ceil(self.size - np.sqrt(size)))
+        clusters = [
+            (
+                np.random.rand(n, self.dimensions) * self.side,
+                np.random.randint(low=0, high=self.num_colors, size=n),
+            )
+        ]
+        for i in range(1, self.num_clusters):
+            n = int(np.ceil(np.sqrt(size) / (self.num_clusters - 1)))
+            offset = np.zeros(self.dimensions)
+            offset[0] = i * 10 * self.side
+            clusters.append(
+                (
+                    np.random.rand(n, self.dimensions) * self.side + offset,
+                    np.random.randint(low=0, high=self.num_colors, size=n),
+                )
             )
 
-            points = np.random.randn(self.size, self.dimensions) * 10 + centers
-            colors = np.random.randint(low=0, high=self.num_colors, size=self.size)
-
-            with gzip.open(self.file_name, "wb") as fp:
-                self.write_metadata(fp)
-                for point, color in tqdm(
-                    zip(points, colors), leave=False, unit="points"
-                ):
+        with gzip.open(self.file_name, "wb") as fp:
+            self.write_metadata(fp)
+            for points, colors in clusters:
+                for point, color in zip(points, colors):
                     vec = {"vector": list(point), "color": str(color)}
                     msgpack.pack(vec, fp)
+
+        # if not os.path.isfile(self.file_name):
+        #     np.random.seed(self.seed)
+        #     # get the centers from a (hyper)cube of side 100
+        #     repeats = self.size // self.num_centers
+        #     centers = np.repeat(
+        #         np.random.rand(self.num_centers, self.dimensions) * 100, repeats, axis=0
+        #     )
+
+        #     points = np.random.randn(self.size, self.dimensions) * 10 + centers
+        #     colors = np.random.randint(low=0, high=self.num_colors, size=self.size)
+
+        #     with gzip.open(self.file_name, "wb") as fp:
+        #         self.write_metadata(fp)
+        #         for point, color in tqdm(
+        #             zip(points, colors), leave=False, unit="points"
+        #         ):
+        #             vec = {"vector": list(point), "color": str(color)}
+        #             msgpack.pack(vec, fp)
 
 
 class MusixMatch(Dataset):
@@ -597,8 +631,14 @@ class BoundedDifficultyDataset(Dataset):
 
 
 DATASETS = {
-    "random-10000": RandomGaussian(
-        size=10000, num_centers=50, num_colors=10, rank=50, dimensions=3, seed=134
+    "random-10000": Random(
+        size=10000,
+        num_clusters=10,
+        side=1,
+        num_colors=10,
+        rank=10,
+        dimensions=3,
+        seed=134,
     ),
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
     "wiki-d10-c50": Wikipedia("20210120", dimensions=10, topics=50),
