@@ -42,7 +42,7 @@ def run_wiki():
     Run experiments on the Wikipedia dataset and its samples
     """
     datasets = [
-        "wiki-d10-c50",
+        # "wiki-d10-c50",
         "wiki-d10-c50-s10000"
         # "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
         # "wiki-d50-c100-s10000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
@@ -54,12 +54,12 @@ def run_wiki():
         DATASETS[dataset].preprocess()
     constraints = [
         # The original matroid constraint, using all the categories
-        list(range(0, 50)),
+        # list(range(0, 50)),
         # Very constrained solution
         list(range(0, 10)),
     ]
     # Fraction of allowed outliers
-    frac_outliers = [0.01]
+    frac_outliers = [10]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
@@ -73,19 +73,19 @@ def run_wiki():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"Random": {"seed": seed}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": constr}},
                 }
             )
 
-        if dataset in {"wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
+        if dataset in {"wiki-d10-c50-s10000", "wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
             # Run the baseline algorithm
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": "ChenEtAl",
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": constr}},
@@ -100,7 +100,7 @@ def run_wiki():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": constr}},
@@ -110,7 +110,7 @@ def run_wiki():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"StreamingCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": constr}},
@@ -124,7 +124,7 @@ def run_wiki():
                     {
                         "parallel": {"threads": 1, "hosts": hosts},
                         "shuffle_seed": shuffle_seed,
-                        "outliers": {"Percentage": frac_out},
+                        "outliers": {"Fixed": frac_out},
                         "algorithm": {"MapReduceCoreset": {"tau": tau}},
                         "dataset": os.path.abspath(DATASETS[dataset].get_path()),
                         "constraint": {"transversal": {"topics": constr}},
@@ -198,7 +198,7 @@ def run_musixmatch():
         DATASETS[dataset].preprocess()
     constraints = [midrank_matroid, lowrank_matroid]
     # Fraction of allowed outliers
-    frac_outliers = [0.01]
+    frac_outliers = [10]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
@@ -211,7 +211,7 @@ def run_musixmatch():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"Random": {"seed": seed}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -223,7 +223,7 @@ def run_musixmatch():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": "ChenEtAl",
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -238,7 +238,7 @@ def run_musixmatch():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -248,7 +248,7 @@ def run_musixmatch():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"StreamingCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -262,7 +262,7 @@ def run_musixmatch():
                     {
                         "parallel": {"threads": 1, "hosts": hosts},
                         "shuffle_seed": shuffle_seed,
-                        "outliers": {"Percentage": frac_out},
+                        "outliers": {"Fixed": frac_out},
                         "algorithm": {"MapReduceCoreset": {"tau": tau}},
                         "dataset": os.path.abspath(DATASETS[dataset].get_path()),
                         "constraint": {"partition": {"categories": constr}},
@@ -272,16 +272,16 @@ def run_musixmatch():
 
 def run_random():
     highrank_matroid = {
-        "0": 5,
-        "1": 5,
-        "2": 5,
-        "3": 5,
-        "4": 5,
-        "5": 5,
-        "6": 5,
-        "7": 5,
-        "8": 5,
-        "9": 5,
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
     }
 
     datasets = ["random-10000"]
@@ -289,13 +289,13 @@ def run_random():
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
     constraints = [highrank_matroid]
-    # Fraction of allowed outliers
-    frac_outliers = [0.01]
+    # number of allowed outliers
+    num_outliers = [10]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
-    for shuffle_seed, dataset, constr, frac_out in itertools.product(
-        shuffle_seeds, datasets, constraints, frac_outliers
+    for shuffle_seed, dataset, constr, num_outliers in itertools.product(
+        shuffle_seeds, datasets, constraints, num_outliers
     ):
         # Run the naive baseline
         print("Run random")
@@ -303,7 +303,7 @@ def run_random():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": num_outliers},
                     "algorithm": {"Random": {"seed": seed}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -311,26 +311,26 @@ def run_random():
             )
 
         # # Run the baseline algorithm
-        if dataset == "random-s10000":
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
-                    "algorithm": "ChenEtAl",
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"partition": {"categories": constr}},
-                }
-            )
+        # if dataset == "random-s10000":
+        run(
+            {
+                "shuffle_seed": shuffle_seed,
+                "outliers": {"Fixed": num_outliers},
+                "algorithm": "ChenEtAl",
+                "dataset": DATASETS[dataset].get_path(),
+                "constraint": {"partition": {"categories": constr}},
+            }
+        )
 
         # # Run coreset algorithms
-        taus = [2 ** x for x in [3, 4, 5, 6]]
+        taus = [2 ** x for x in [2, 3, 4, 5, 6]]
         print(taus)
         for tau in taus:
             print("Run SeqCoreset", tau)
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": num_outliers},
                     "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -340,7 +340,7 @@ def run_random():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": num_outliers},
                     "algorithm": {"StreamingCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"partition": {"categories": constr}},
@@ -354,7 +354,7 @@ def run_random():
                     {
                         "parallel": {"threads": 1, "hosts": hosts},
                         "shuffle_seed": shuffle_seed,
-                        "outliers": {"Percentage": frac_out},
+                        "outliers": {"Fixed": num_outliers},
                         "algorithm": {"MapReduceCoreset": {"tau": tau}},
                         "dataset": os.path.abspath(DATASETS[dataset].get_path()),
                         "constraint": {"partition": {"categories": constr}},
@@ -377,7 +377,7 @@ def check():
         # list(range(0, 10)),
     ]
     # Fraction of allowed outliers
-    frac_outliers = [0.01]
+    frac_outliers = [10]
     # These seeds also define the number of repetitions
     # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
     shuffle_seeds = [43234]
@@ -392,7 +392,7 @@ def check():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": frac_out},
+                    "outliers": {"Fixed": frac_out},
                     "algorithm": {"StreamingCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": constr}},
@@ -402,5 +402,6 @@ def check():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    # run_wiki()
+    run_wiki()
     run_musixmatch()
+    # run_random()
