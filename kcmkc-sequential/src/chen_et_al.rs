@@ -2,6 +2,7 @@ use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
     perf_counters,
+    types::OrderedF32,
 };
 use kcmkc_base::{matroid::augment, types::Distance};
 use rayon::prelude::*;
@@ -73,6 +74,9 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: Weig
 ) -> Vec<V> {
     let distances = DiskBuilder::new(points);
 
+    #[cfg(debug_assertions)]
+    println!("Weights are {:?}", weight_map);
+
     let centers = distances.bynary_search_distances(|d| {
         run_robust_matroid_center(points, Rc::clone(&matroid), d, p, &distances, weight_map)
     });
@@ -104,20 +108,33 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     // intersection matroid, along with their expanded disks
     let mut centers: Vec<(usize, Vec<usize>)> = Vec::new();
     // The number of uncovered nodes
-    let mut n_uncovered = n;
+    let mut weight_uncovered: u32 = points
+        .iter()
+        .enumerate()
+        .map(|(i, _)| weight_map.weight_of(i))
+        .sum();
     // The following invariant should hold in any iteration
-    debug_assert!(n_uncovered == assignment.iter().filter(|a| a.is_none()).count());
+    assert!(
+        weight_uncovered
+            == assignment
+                .iter()
+                .enumerate()
+                .filter(|(_i, a)| a.is_none())
+                .map(|(i, _)| weight_map.weight_of(i))
+                .sum()
+    );
 
     // debug!("  Build disks");
-    while n_uncovered > 0 {
-        // Get the center covering the most uncovered points
+    while weight_uncovered > 0 {
+        // Get the center covering the largest weight
         let c = (0..n)
             .into_par_iter()
             .max_by_key(|i| {
                 distances
                     .disk(*i, r)
                     .filter(|j| assignment[*j].is_none())
-                    .count()
+                    .map(|j| weight_map.weight_of(j))
+                    .sum::<u32>()
             })
             .expect("max on an empty iterator");
         let mut expanded_disk: Vec<usize> = distances
@@ -129,16 +146,36 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
 
         // Mark the nodes as covered
         for j in expanded_disk.iter() {
-            debug_assert!(assignment[*j].is_none());
+            assert!(assignment[*j].is_none());
             assignment[*j].replace(c);
-            n_uncovered -= 1;
+            weight_uncovered -= weight_map.weight_of(*j);
         }
         // Check the invariant
-        debug_assert!(n_uncovered == assignment.iter().filter(|a| a.is_none()).count());
+        assert!(
+            weight_uncovered
+                == assignment
+                    .iter()
+                    .enumerate()
+                    .filter(|(_i, a)| a.is_none())
+                    .map(|(i, _)| weight_map.weight_of(i))
+                    .sum()
+        );
 
         centers.push((c, expanded_disk));
     }
-    println!(" . Disk centers: {}", centers.len());
+
+    #[cfg(debug_assertions)]
+    {
+        let _centers: Vec<V> = centers.iter().map(|c| points[c.0].clone()).collect();
+        let (_radius_outliers, _radius_full) = radii(points, weight_map, &_centers, p as u32);
+        println!(
+            " . Disk centers: {}/{} radius outliers {} radius full {}",
+            centers.len(),
+            points.len(),
+            _radius_outliers,
+            _radius_full,
+        );
+    }
 
     // Build the candidate center/disk pairs. Disks are references
     // to the original ones, to avoind wasting space by duplicating them
@@ -168,12 +205,19 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
         println!(
-            "    Covered nodes {} < {}, solution with {} centers",
+            "    Covered nodes {} < {}, invalid solution with {} centers",
             covered_nodes,
             p,
             solution.len()
         );
         return Err(covered_nodes);
+    } else {
+        println!(
+            "    Covered nodes {} >= {}, valid solution with {} centers",
+            covered_nodes,
+            p,
+            solution.len()
+        );
     }
 
     assert!(
@@ -188,14 +232,65 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
         .collect();
     assert!(matroid.is_independent(&centers));
 
+    #[cfg(debug_assertions)]
+    {
+        let (_radius_outliers, _radius_full) = radii(points, weight_map, &centers, p as u32);
+        println!(
+            " -> radius adjusted: {}/{} radius outliers {} radius full {}",
+            centers.len(),
+            points.len(),
+            _radius_outliers,
+            _radius_full,
+        );
+        println!(
+            "centers: {:?}",
+            solution
+                .iter()
+                .map(|disk| disk.center)
+                .collect::<Vec<usize>>()
+        );
+    }
+
     Ok(centers)
 }
 
+fn radii<V: Distance, W: WeightMap>(
+    points: &[V],
+    weight_map: &W,
+    centers: &[V],
+    p: u32,
+) -> (f32, f32) {
+    let mut _dists: Vec<(OrderedF32, u32)> = points
+        .iter()
+        .enumerate()
+        .flat_map(|(i, p)| {
+            centers
+                .iter()
+                .map(move |c| (OrderedF32(c.distance(p)), weight_map.weight_of(i)))
+        })
+        .collect();
+    _dists.sort();
+    let mut cnt = 0;
+    let radius_outliers = _dists
+        .iter()
+        .skip_while(|(_, w)| {
+            cnt += w;
+            cnt < p
+        })
+        .next()
+        .unwrap()
+        .0;
+    let radius_full = _dists.last().unwrap().0;
+
+    (radius_outliers.0, radius_full.0)
+}
+
 /// Allows to attach arbitrary weights to points of set
-pub trait WeightMap {
+pub trait WeightMap: Debug + Send + Sync {
     fn weight_of(&self, i: usize) -> u32;
 }
 
+#[derive(Debug)]
 pub struct UnitWeightMap;
 
 impl WeightMap for UnitWeightMap {
@@ -217,6 +312,17 @@ impl WeightMap for VecWeightMap {
 impl VecWeightMap {
     pub fn new(weights: Vec<u32>) -> Self {
         Self { weights }
+    }
+}
+
+impl std::fmt::Debug for VecWeightMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let total: u32 = self.weights.iter().sum();
+        write!(
+            f,
+            "VecWeightMap {{ total: {}, weights: {:?} }}",
+            total, self.weights
+        )
     }
 }
 

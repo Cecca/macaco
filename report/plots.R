@@ -150,15 +150,15 @@ do_plot_time <- function(data, coreset_only=F) {
 do_plot_samples <- function(data) {
     data %>% 
         filter(algorithm != "Random") %>%
-        filter(outliers_spec == "Percentage(0.01)") %>%
+        # filter(outliers_spec == "Percentage(0.01)") %>%
         filter(dataset %in% c("MusixMatch-sample-10000", "Wikipedia-sample-10000", "Random")) %>%
         filter(rank %in% c(20, 10)) %>%
-        group_by(dataset, algorithm, rank, dataset_params, algorithm_params, tau, workers) %>%
+        group_by(dataset, algorithm, rank, dataset_params, algorithm_params, outliers_spec, tau, workers) %>%
         summarise(
             total_time = mean(total_time),
             ratio_to_best = mean(ratio_to_best)
         ) %>%
-        mutate(flabel = str_c(dataset, " (rank ", rank, ")")) %>%
+        mutate(flabel = str_c(dataset, " (rank ", rank, ", outliers ", outliers_spec, ")")) %>%
         ggplot(aes(ratio_to_best, total_time, color=algorithm)) +
         geom_point() +
         geom_text_repel(aes(label = tau), show.legend=F) +

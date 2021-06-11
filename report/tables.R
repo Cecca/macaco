@@ -55,7 +55,7 @@ table_result <- function() {
             workers = if_else(is.na(workers), 1, workers)
         ) %>%
         unnest(rank) %>%
-        filter(outliers_spec %in% c("Percentage(0.01)")) %>%
+        # filter(outliers_spec %in% c("Percentage(0.01)")) %>%
         filter(dimensions %in% c(5000, 10, 3)) %>%
         filter(!(str_detect(dataset, "Wikipedia") & (rank == 100))) %>%
         mutate(

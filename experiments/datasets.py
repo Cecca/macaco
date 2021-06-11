@@ -674,7 +674,7 @@ for size in [100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["random-10000"]
+    dataset = DATASETS["random-100000"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())

@@ -5,7 +5,7 @@
     },
     "algorithm": {
         "SeqCoreset": {
-            "tau": 512
+            "tau": 8
         }
     },
     "dataset": ".datasets/gaussian/random-size10000-nclusters10-side1-dimensions3-colors10-rank10-seed134-v1.msgpack.gz",

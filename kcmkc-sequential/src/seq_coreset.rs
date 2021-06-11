@@ -9,6 +9,7 @@ use kcmkc_base::{
     perf_counters,
     types::Distance,
 };
+use rayon::prelude::*;
 use std::{
     rc::Rc,
     time::{Duration, Instant},
@@ -87,14 +88,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
             .iter()
             .flat_map(|disk| {
                 assert!(disk.len() > 0);
-                let timer = Instant::now();
                 let is = matroid.maximal_independent_set(&disk);
-                println!(
-                    "  [{:?}] independent set of size {} out of {} computed",
-                    timer.elapsed(),
-                    is.len(),
-                    disk.len()
-                );
                 // There might be no independent set in this disk
                 // In this case, no point in the disk can be part of the solution, but they do
                 // still count towards the radius.
@@ -113,32 +107,29 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
                 //
                 // In practice, this is a huge bottleneck, hence we just assign to arbitrary elements
                 // of the independent set so that the weights are balanced.
-                let timer = Instant::now();
                 for (i, _p) in disk.into_iter().enumerate() {
                     weights[i % n_proxies] += 1;
                 }
-                // disk.iter()
-                //     .map(|p| {
-                //         proxies
-                //             .iter()
-                //             .enumerate()
-                //             .map(|(i, c)| (i, p.distance(c)))
-                //             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-                //             .unwrap()
-                //             .0
-                //     })
-                //     .for_each(|i| weights[i] += 1);
-                println!("  [{:?}] assignments to proxies computed", timer.elapsed());
 
                 proxies.into_iter().cloned().zip(weights.into_iter())
             })
             .collect();
-        println!("[{:?}] coreset constructed", start.elapsed());
+        // println!("[{:?}] coreset constructed", start.elapsed());
 
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
         let elapsed_coreset = start.elapsed();
-        println!("Coreset of size {}", coreset.len());
+        let coreset_radius: f32 = dataset
+            .par_iter()
+            .map(|p| p.set_distance(&coreset).1)
+            .max()
+            .unwrap()
+            .into();
+        println!(
+            "Coreset of size {}, and radius {}",
+            coreset.len(),
+            coreset_radius
+        );
 
         let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);

@@ -1,7 +1,7 @@
 {
     "shuffle_seed": 345345,
     "outliers": {
-        "Percentage": 0.01
+        "Fixed": 10
     },
     "algorithm": "ChenEtAl",
     "dataset": ".datasets/gaussian/random-size10000-nclusters10-side1-dimensions3-colors10-rank10-seed134-v1.msgpack.gz",
