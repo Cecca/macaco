@@ -80,7 +80,11 @@ def run_wiki():
                 }
             )
 
-        if dataset in {"wiki-d10-c50-s10000", "wiki-d50-c100-s10000", "wiki-d50-c100-s10000-eucl"}:
+        if dataset in {
+            "wiki-d10-c50-s10000",
+            "wiki-d50-c100-s10000",
+            "wiki-d50-c100-s10000-eucl",
+        }:
             # Run the baseline algorithm
             run(
                 {
@@ -364,44 +368,33 @@ def run_random():
 
 def check():
     datasets = [
-        # "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
         "wiki-d50-c100",  # <- The full wikipedia dataset
     ]
     for dataset in datasets:
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
-    constraints = [
-        # The original matroid constraint, using all the categories
-        list(range(0, 100)),
-        # # Very constrained solution
-        # list(range(0, 10)),
-    ]
-    # Fraction of allowed outliers
-    frac_outliers = [10]
     # These seeds also define the number of repetitions
-    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
-    shuffle_seeds = [43234]
+    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
-    for shuffle_seed, dataset, constr, frac_out in itertools.product(
-        shuffle_seeds, datasets, constraints, frac_outliers
-    ):
+    for shuffle_seed, dataset in itertools.product(shuffle_seeds, datasets):
         # Run coreset algorithms
-        taus = [16, 512]
+        taus = [2, 4, 8, 16, 32, 64, 128, 256]
         print(taus)
         for tau in taus:
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"StreamingCoreset": {"tau": tau}},
+                    "outliers": {"Percentage": 0.1},
+                    "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
+                    "constraint": {"transversal": {"topics": list(range(0, 10))}},
                 }
             )
 
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    run_wiki()
-    run_musixmatch()
+    check()
+    # run_wiki()
+    # run_musixmatch()
     # run_random()
