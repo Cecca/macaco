@@ -7,9 +7,8 @@ use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
     perf_counters,
-    types::Distance,
+    types::{Distance, OrderedF32},
 };
-use rayon::prelude::*;
 use std::{
     rc::Rc,
     time::{Duration, Instant},
@@ -110,6 +109,16 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
                 for (i, _p) in disk.into_iter().enumerate() {
                     weights[i % n_proxies] += 1;
                 }
+                // for p in disk.into_iter() {
+                //     let closest = proxies
+                //         .iter()
+                //         .enumerate()
+                //         .map(|(j, c)| (OrderedF32(p.distance(c)), j))
+                //         .min()
+                //         .unwrap()
+                //         .1;
+                //     weights[closest] += 1;
+                // }
 
                 proxies.into_iter().cloned().zip(weights.into_iter())
             })
@@ -119,17 +128,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
         let weights = VecWeightMap::new(coreset.iter().map(|p| p.1).collect());
         let coreset: Vec<V> = coreset.into_iter().map(|p| p.0).collect();
         let elapsed_coreset = start.elapsed();
-        let coreset_radius: f32 = dataset
-            .par_iter()
-            .map(|p| p.set_distance(&coreset).1)
-            .max()
-            .unwrap()
-            .into();
-        println!(
-            "Coreset of size {}, and radius {}",
-            coreset.len(),
-            coreset_radius
-        );
+        println!("Coreset of size {}", coreset.len(),);
 
         let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);

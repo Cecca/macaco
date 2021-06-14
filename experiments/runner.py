@@ -367,27 +367,55 @@ def run_random():
 
 
 def check():
-    datasets = [
-        "wiki-d50-c100",  # <- The full wikipedia dataset
-    ]
+    datasets = ["wiki-d10-c50-s1000000"]
     for dataset in datasets:
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
     # These seeds also define the number of repetitions
-    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    shuffle_seeds = [
+        43234,
+        23562,
+        12451,
+        445234,
+        234524,
+        2346,
+        3256209,
+        256,
+        2345609,
+        2309681,
+        356985,
+        897340,
+        3489238,
+        2398,
+        23986729358,
+        235687,
+    ]
 
     for shuffle_seed, dataset in itertools.product(shuffle_seeds, datasets):
+        for seed in [1458, 345, 65623]:
+            run(
+                {
+                    "shuffle_seed": shuffle_seed,
+                    "outliers": {"Percentage": 0.01},
+                    "algorithm": {"Random": {"seed": seed}},
+                    "dataset": DATASETS[dataset].get_path(),
+                    "constraint": {"transversal": {"topics": list(range(0, 10))}},
+                }
+            )
+
         # Run coreset algorithms
-        taus = [2, 4, 8, 16, 32, 64, 128, 256]
-        print(taus)
+        taus = [2, 4, 8, 16, 32]  # , 64, 128, 256]
         for tau in taus:
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": 0.1},
+                    "outliers": {"Percentage": 0.01},
                     "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": list(range(0, 10))}},
+                    "constraint": {"transversal": {"topics": list(range(0, 10))}}
+                    # "constraint": {
+                    # "partition": {"categories": {"Rock": 10, "Pop": 10}}
+                    # },
                 }
             )
 

@@ -18,6 +18,7 @@ struct Outcome {
 
 struct CoresetInfo {
     pub size: usize,
+    pub radius: f64,
 }
 
 struct Counters {
@@ -72,8 +73,8 @@ impl Reporter {
         self.profile.replace(profile);
     }
 
-    pub fn set_coreset_info(&mut self, size: usize) {
-        self.coreset_info.replace(CoresetInfo { size });
+    pub fn set_coreset_info(&mut self, size: usize, radius: f64) {
+        self.coreset_info.replace(CoresetInfo { size, radius });
     }
 
     fn get_conn(&self) -> Result<Connection> {
@@ -161,7 +162,8 @@ impl Reporter {
                     oracle_cnt,
                     radius,
                     num_centers,
-                    coreset_size
+                    coreset_size,
+                    coreset_radius
                 ) VALUES (
                     :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -175,7 +177,8 @@ impl Reporter {
                     :oracle_cnt,
                     :radius,
                     :num_centers,
-                    :coreset_size
+                    :coreset_size,
+                    :coreset_radius
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
@@ -200,6 +203,7 @@ impl Reporter {
                     ":radius": outcome.radius as f64,
                     ":num_centers": outcome.num_centers,
                     ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),
+                    ":coreset_radius": self.coreset_info.as_ref().map(|ci| ci.radius),
                 },
             )?;
 
@@ -224,6 +228,10 @@ fn db_migrate(conn: &Connection) -> Result<()> {
     if version < 1 {
         conn.execute_batch(include_str!("migrations/v1.sql"))
             .context("error applying version 1")?;
+    }
+    if version < 2 {
+        conn.execute_batch(include_str!("migrations/v2.sql"))
+            .context("error applying version 2")?;
     }
 
     Ok(())

@@ -5,7 +5,7 @@
     },
     "algorithm": {
         "SeqCoreset": {
-            "tau": 100
+            "tau": 64
         }
     },
     "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",

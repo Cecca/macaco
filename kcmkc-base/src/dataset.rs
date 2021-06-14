@@ -146,7 +146,8 @@ impl Dataset {
         let bar = ProgressBar::new(file.metadata()?.len());
         bar.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})"));
+                .template("{msg} {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})"));
+        bar.set_draw_delta(1000);
         bar.set_message("Reading compressed data file");
         let file = bar.wrap_read(BufReader::new(file));
         let mut input = GzDecoder::new(file);

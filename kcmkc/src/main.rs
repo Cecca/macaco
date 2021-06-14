@@ -43,7 +43,19 @@ where
     );
 
     if let Some(coreset) = algorithm.coreset() {
-        reporter.set_coreset_info(coreset.len())
+        let coreset_radius = items
+            .par_iter()
+            .map(|p| {
+                coreset
+                    .iter()
+                    .map(|c| OrderedF32(p.distance(c)))
+                    .min()
+                    .unwrap()
+            })
+            .max()
+            .unwrap()
+            .0;
+        reporter.set_coreset_info(coreset.len(), coreset_radius as f64)
     }
 
     reporter.set_outcome(elapsed, radius_no_outliers, centers.len() as u32);
@@ -109,7 +121,19 @@ where
         );
 
         if let Some(coreset) = algorithm.coreset() {
-            reporter.set_coreset_info(coreset.len())
+            let coreset_radius = items
+                .par_iter()
+                .map(|p| {
+                    coreset
+                        .iter()
+                        .map(|c| OrderedF32(p.distance(c)))
+                        .min()
+                        .unwrap()
+                })
+                .max()
+                .unwrap()
+                .0;
+            reporter.set_coreset_info(coreset.len(), coreset_radius as f64)
         }
 
         println!("Reporting result");
