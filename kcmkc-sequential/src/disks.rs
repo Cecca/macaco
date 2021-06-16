@@ -3,6 +3,7 @@ use rayon::prelude::*;
 
 // Pre-compute all pairwise distances, and then keep the distances from each point in sorted order.
 // This allows the retrieval of disks in time proportional to the size of the disk itself.
+#[derive(Clone)]
 pub struct DiskBuilder {
     distances: Vec<Vec<(usize, f32)>>,
 }
@@ -102,8 +103,8 @@ impl DiskBuilder {
     }
 
     /// Get the indices of points in the ball of radius `r` around point `i`.
-    /// The indices are not in sorted order, so to compute the intersection between disks
-    /// in linear time we should first sort them!
+    /// The indices sorted in distance order, so to compute the intersection between disks
+    /// in linear time we should first sort them by id!
     pub fn disk<'a>(&'a self, i: usize, r: f32) -> impl Iterator<Item = usize> + 'a {
         self.distances[i]
             .iter()

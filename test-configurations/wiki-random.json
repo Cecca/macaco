@@ -4,8 +4,8 @@
         "Fixed": 10
     },
     "algorithm": {
-        "SeqCoreset": {
-            "tau": 64
+        "Random": {
+            "seed": 2458
         }
     },
     "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
@@ -21,8 +21,7 @@
                 6,
                 7,
                 8,
-                9,
-                10
+                9
             ]
         }
     }

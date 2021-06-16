@@ -5,6 +5,7 @@ pub mod chen_et_al;
 pub mod disks;
 pub mod greedy_heuristic;
 pub mod kcenter;
+pub mod local_search;
 pub mod random;
 pub mod seq_coreset;
 pub mod streaming_coreset;

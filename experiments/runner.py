@@ -368,6 +368,8 @@ def run_random():
 
 def check():
     datasets = ["wiki-d10-c50-s1000000"]
+    # datasets = ["MusixMatch"]
+    # datasets = ["random-100000"]
     for dataset in datasets:
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
@@ -396,25 +398,48 @@ def check():
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": 0.01},
+                    "outliers": {"Fixed": 10},
                     "algorithm": {"Random": {"seed": seed}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": list(range(0, 10))}},
+                    # "constraint": {
+                    #     "partition": {
+                    #         "categories": dict((str(i), 2) for i in range(0, 9))
+                    #     }
+                    # },
                 }
             )
 
+        # run(
+        #     {
+        #         "shuffle_seed": shuffle_seed,
+        #         "outliers": {"Fixed": 10},
+        #         "algorithm": "ChenEtAl",
+        #         "dataset": DATASETS[dataset].get_path(),
+        #         "constraint": {"transversal": {"topics": list(range(0, 10))}},
+        #         # "constraint": {
+        #         #     "partition": {
+        #         #         "categories": dict((str(i), 2) for i in range(0, 9))
+        #         #     }
+        #         # },
+        #     }
+        # )
+
         # Run coreset algorithms
-        taus = [2, 4, 8, 16, 32]  # , 64, 128, 256]
+        taus = [2, 4, 8, 16, 32, 256]  # , 64, 128, 256]
         for tau in taus:
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Percentage": 0.01},
+                    "outliers": {"Fixed": 10},
                     "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
                     "constraint": {"transversal": {"topics": list(range(0, 10))}}
                     # "constraint": {
-                    # "partition": {"categories": {"Rock": 10, "Pop": 10}}
+                    #     #     "partition": {"categories": {"Rock": 10, "Pop": 10}}
+                    #     "partition": {
+                    #         "categories": dict((str(i), 2) for i in range(0, 9))
+                    #     }
                     # },
                 }
             )

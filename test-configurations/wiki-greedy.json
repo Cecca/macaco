@@ -1,13 +1,9 @@
 {
-    "shuffle_seed": 345345,
+    "shuffle_seed": 34525345,
     "outliers": {
         "Fixed": 10
     },
-    "algorithm": {
-        "SeqCoreset": {
-            "tau": 64
-        }
-    },
+    "algorithm": "Greedy",
     "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
     "constraint": {
         "transversal": {
@@ -21,8 +17,7 @@
                 6,
                 7,
                 8,
-                9,
-                10
+                9
             ]
         }
     }

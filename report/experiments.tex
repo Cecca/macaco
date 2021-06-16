@@ -1,0 +1,55 @@
+\section{Experiments}
+
+\newcommand{\data}[1]{\texttt{#1}}
+
+With this experimental evaluation, we aim to answer the following questions:
+\begin{itemize}
+    \item What is the influence of the coreset size on the performance, 
+        both in terms of quality and running time?
+    \item How expensive is to build the coreset, compared with finding
+        a good clustering on the coreset itself?
+    \item (maybe) What is the influence of the cost of checking the independent set oracle
+        on the running time?
+\end{itemize}
+
+\todo[inline]{maybe you want to show some scalability results?}
+\todo[inline]{we don't see improvement with an increase of k (or worse, we see things getting worse) as a result of the baseline algorithm being a 7 approximation. 
+Probably we should come up with some fast heuristic to improve on that solution if we want to show something.}
+
+To answer the questions above, we use the following datasets.
+\begin{description}
+    \item[\data{Wikipedia}] A dump of the English Wikipedia, comprised of 4\,976\,753 pages, 
+        mapped to 10-dimensional vectors using Glove~\cite{missing}.
+        On this dataset we use the cosine distance.
+        We impose a transversal matroid constraint on this dataset. Each page belongs 
+        to at least one out of 100 categories. Note that the original categories with which
+        Wikipedia pages are tagged with are more than one million, and are therefore not useful
+        for expressing a transversal matroid constraint. Therefore, we use LDA~\cite{missing}
+        to derive 100 topics from the content of the pages. Each page is then tagged with all
+        topics whose probability is larger than 0.1.
+    \item[\data{Songs}] This dataset comprises the lyrics of 237\,662 songs. Each song is mapped
+        to a 5\,000 dimensional sparse vector using the Bag of Words model, and the distance between
+        vectors is measured using the cosine distance.
+        We impose a partition matroid constraint, where each song belongs to a single genre.
+    \item[\data{Pathological}] A random dataset of three dimensional vectors built as follows. 
+        Let $n$ be the size of the dataset. We sample $n-\sqrt{n}$ points from the unit cube
+        with a corner at $(0,0,0)$, and then sample the remaining $\sqrt{n}$ points from
+        appropriately shifted unit cubes so that they are not overllapping.
+        Each point is colored with one out of 10 colors, thus forming a partition matroid.
+        The rationale behind this construction is that sampling an arbitrary independent set is very unlikely 
+        to give a good solution.
+        Furthermore, this dataset has a small doubling dimension.
+\end{description}
+
+\subsection{Comparison with sequential algorithm}
+
+\todo[inline]{
+    \textbf{Possible critique:} the baseline we compare with is not the strongest 
+    one, since it is just a 7 approximation
+    algorithm, while the best are 3 approximations.
+}
+
+Due to the high computational complexity of the baseline algorithm, we run this first comparison 
+on samples of 10\,000 points from each dataset.
+
+

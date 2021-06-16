@@ -1,6 +1,7 @@
 use crate::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
+    local_search::{self, local_search},
     SequentialAlgorithm,
 };
 use kcmkc_base::{
@@ -132,6 +133,8 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
 
         let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
+        // let solution = local_search(&coreset, Rc::clone(&matroid), p, &weights)
+        //     .expect("could not find solution with local search");
         let elapsed_solution = start.elapsed();
         println!("Solution found on coreset in {:.2?}", elapsed_solution);
         debug_assert!(matroid.is_maximal(&solution, &dataset));

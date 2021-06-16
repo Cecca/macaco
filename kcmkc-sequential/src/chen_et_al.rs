@@ -6,11 +6,11 @@ use kcmkc_base::{
 };
 use kcmkc_base::{matroid::augment, types::Distance};
 use rayon::prelude::*;
-use std::rc::Rc;
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
 };
+use std::{iter::FromIterator, rc::Rc};
 
 use crate::{disks::*, SequentialAlgorithm};
 
@@ -84,11 +84,105 @@ pub fn robust_matroid_center<'a, V: Distance + Clone + PartialEq + Sync, W: Weig
 
     if !matroid.is_maximal(&centers, points) {
         println!("the returned set of centers is not maximal: extend it to maximality");
-        augment(Rc::clone(&matroid), &centers, points)
+        // augment(Rc::clone(&matroid), &centers, points)
+        // Instead of simply augmenting the set blindly, we pick elements from the disks
+        // that are far away from the center
+        improve_solution(points, matroid, centers, p, weight_map)
     } else {
         println!("Returning centers as is");
         centers
     }
+}
+
+fn improve_solution<'a, V: Clone + Distance, W: WeightMap>(
+    points: &'a [V],
+    matroid: Rc<dyn Matroid<V>>,
+    mut solution: Vec<V>,
+    p: usize,
+    weight_map: &W,
+) -> Vec<V> {
+    assert!(matroid.is_independent(&solution));
+    let rank = matroid
+        .maximal_independent_set(&Vec::from_iter(points.iter()))
+        .len();
+
+    // sort by distance to the closest center
+    let mut points = Vec::from_iter(
+        points
+            .iter()
+            .enumerate()
+            .map(|(i, p)| (p, weight_map.weight_of(i))),
+    );
+    points.sort_by_key(|p| std::cmp::Reverse(p.0.set_distance(&solution).1));
+    // Find the weight of the outliers, and thus the index of the first outlier
+
+    let z = points.iter().map(|pair| pair.1).sum::<u32>() - p as u32;
+
+    // Try to add to the current solution
+    let mut cur_weight = 0;
+    for p in points
+        .iter()
+        .skip_while(|(_, w)| {
+            cur_weight += w;
+            cur_weight < z
+        })
+        .map(|pair| pair.0.clone())
+    {
+        solution.push(p);
+        if !matroid.is_independent(&solution) {
+            solution.pop();
+        } else if solution.len() == rank {
+            return solution;
+        }
+    }
+
+    panic!("Should not get here!");
+
+    // // For each center, sort nodes in increasing order of distance
+    // let candidates: Vec<Vec<usize>> = solution
+    //     .iter()
+    //     .map(|c| {
+    //         let mut pts = Vec::from_iter(0..points.len());
+    //         pts.sort_by_key(|i| std::cmp::Reverse(OrderedF32(c.distance(&points[*i]))));
+    //         pts
+    //     })
+    //     .collect();
+    // rec_improve_solution(points, matroid, &candidates, solution, rank, 0)
+    //     .expect("couldn't find a solution")
+}
+
+fn rec_improve_solution<'a, V: Clone + Distance>(
+    points: &'a [V],
+    matroid: Rc<dyn Matroid<V>>,
+    candidates: &Vec<Vec<usize>>,
+    current: Vec<V>,
+    rank: usize,
+    i: usize,
+) -> Result<Vec<V>, ()> {
+    assert!(matroid.is_independent(&current));
+    if current.len() == rank {
+        return Ok(current);
+    }
+
+    for cand in candidates[i].iter() {
+        let mut tentative = current.clone();
+        tentative.push(points[*cand].clone());
+        if matroid.is_independent(&tentative) {
+            match rec_improve_solution(
+                points,
+                Rc::clone(&matroid),
+                candidates,
+                tentative,
+                rank,
+                (i + 1) % candidates.len(),
+            ) {
+                Ok(sol) => return Ok(sol),
+                Err(()) => (), // do nothing, continue with next candidate
+            }
+        }
+    }
+    // Unable to find a solution
+    Err(())
 }
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
