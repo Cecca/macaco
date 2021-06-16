@@ -651,6 +651,7 @@ DATASETS = {
     ),
     "wiki-d50-c100": Wikipedia("20210120", dimensions=50, topics=100),
     "wiki-d10-c50": Wikipedia("20210120", dimensions=10, topics=50),
+    "wiki-d10-c10": Wikipedia("20210120", dimensions=10, topics=10),
     "wiki-d50-c100-eucl": Wikipedia(
         "20210120", dimensions=50, topics=100, distance="euclidean"
     ),
@@ -674,7 +675,7 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["random-100000"]
+    dataset = DATASETS["random-wiki-d10-c10"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())
