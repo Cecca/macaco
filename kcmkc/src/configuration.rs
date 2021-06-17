@@ -278,6 +278,7 @@ impl Configuration {
             }
         }
         sha.input(format!("{:?}", self.constraint.describe()));
+        sha.input(format!("{:?}", self.outliers));
         match self.datatype()? {
             Datatype::WikiPage => {
                 let algorithm = WikiPage::configure_algorithm_info(&self);

@@ -55,6 +55,7 @@ where
             .max()
             .unwrap()
             .0;
+        println!("Radius of coreset is {}", coreset_radius);
         reporter.set_coreset_info(coreset.len(), coreset_radius as f64)
     }
 
