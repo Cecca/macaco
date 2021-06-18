@@ -667,6 +667,9 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
     DATASETS["wiki-d10-c50-s{}".format(size)] = SampledDataset(
         base=DATASETS["wiki-d10-c50"], size=size, seed=12341245
     )
+    DATASETS["wiki-d10-c10-s{}".format(size)] = SampledDataset(
+        base=DATASETS["wiki-d10-c50"], size=size, seed=12341245
+    )
     DATASETS["wiki-d50-c100-s{}-eucl".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100-eucl"], size=size, seed=12341245
     )

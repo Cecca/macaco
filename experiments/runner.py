@@ -367,7 +367,7 @@ def run_random():
 
 
 def check():
-    datasets = ["wiki-d10-c50-s1000000"]
+    datasets = ["wiki-d10-c10-s100000"]
     # datasets = ["MusixMatch"]
     # datasets = ["random-100000"]
     for dataset in datasets:
@@ -382,65 +382,43 @@ def check():
         234524,
         2346,
         3256209,
-        256,
-        2345609,
-        2309681,
-        356985,
-        897340,
-        3489238,
-        2398,
-        23986729358,
-        235687,
+        23462,
+        24572,
+        476467,
+        34673,
+        346987,
+        235,
+        467858,
+        246734,
+        467,
     ]
+    shuffle_seeds.extend(range(1, 100))
+
+    constraint = {"transversal": {"topics": list(range(0, 10))}}
+    outliers = {"Percentage": 0.001}
 
     for shuffle_seed, dataset in itertools.product(shuffle_seeds, datasets):
         for seed in [1458, 345, 65623]:
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": 10},
+                    "outliers": outliers,
                     "algorithm": {"Random": {"seed": seed}},
                     "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": list(range(0, 10))}},
-                    # "constraint": {
-                    #     "partition": {
-                    #         "categories": dict((str(i), 2) for i in range(0, 9))
-                    #     }
-                    # },
+                    "constraint": constraint,
                 }
             )
 
-        # run(
-        #     {
-        #         "shuffle_seed": shuffle_seed,
-        #         "outliers": {"Fixed": 10},
-        #         "algorithm": "ChenEtAl",
-        #         "dataset": DATASETS[dataset].get_path(),
-        #         "constraint": {"transversal": {"topics": list(range(0, 10))}},
-        #         # "constraint": {
-        #         #     "partition": {
-        #         #         "categories": dict((str(i), 2) for i in range(0, 9))
-        #         #     }
-        #         # },
-        #     }
-        # )
-
         # Run coreset algorithms
-        taus = [2, 4, 8, 16, 32, 256]  # , 64, 128, 256]
+        taus = [2, 4, 8, 16, 32, 64, 128, 256]
         for tau in taus:
             run(
                 {
                     "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": 10},
+                    "outliers": outliers,
                     "algorithm": {"SeqCoreset": {"tau": tau}},
                     "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": list(range(0, 10))}}
-                    # "constraint": {
-                    #     #     "partition": {"categories": {"Rock": 10, "Pop": 10}}
-                    #     "partition": {
-                    #         "categories": dict((str(i), 2) for i in range(0, 9))
-                    #     }
-                    # },
+                    "constraint": constraint,
                 }
             )
 
