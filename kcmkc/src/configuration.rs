@@ -12,11 +12,95 @@ use kcmkc_sequential::{
     seq_coreset::SeqCoreset, streaming_coreset::StreamingCoreset, SequentialAlgorithm,
 };
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, path::PathBuf, process::Command, rc::Rc};
+use sha2::Digest;
+use std::collections::HashMap;
+use std::iter::FromIterator;
+use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, process::Command, rc::Rc};
 use timely::communication::Config as TimelyConfig;
 use timely::communication::WorkerGuards;
 use timely::worker::Config as WorkerConfig;
 use timely::worker::Worker;
+
+pub trait Sha {
+    fn update_sha<D: Digest>(&self, sha: &mut D);
+
+    fn sha(&self) -> Result<String> {
+        let mut sha = sha2::Sha256::new();
+        self.update_sha(&mut sha);
+        Ok(format!("{:x}", sha.result()))
+    }
+}
+
+impl<T: Sha> Sha for Vec<T> {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        for x in self.iter() {
+            x.update_sha(sha);
+        }
+    }
+}
+
+impl<K: Sha, V: Sha> Sha for HashMap<K, V> {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        for (k, v) in self.iter() {
+            k.update_sha(sha);
+            v.update_sha(sha);
+        }
+    }
+}
+
+impl<K: Sha, V: Sha> Sha for BTreeMap<K, V> {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        for (k, v) in self.iter() {
+            k.update_sha(sha);
+            v.update_sha(sha);
+        }
+    }
+}
+
+impl Sha for usize {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        sha.input(self.to_le_bytes());
+    }
+}
+
+impl Sha for u64 {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        sha.input(self.to_le_bytes());
+    }
+}
+
+impl Sha for u32 {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        sha.input(self.to_le_bytes());
+    }
+}
+
+impl Sha for f32 {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        sha.input(self.to_le_bytes());
+    }
+}
+
+impl Sha for String {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        sha.input(self.as_bytes());
+    }
+}
+
+impl Sha for Constraint {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        match &self {
+            Constraint::Transversal { topics } => {
+                sha.input("transversal");
+                topics.update_sha(sha);
+            }
+            Constraint::Partition { categories } => {
+                sha.input("partition");
+                categories.update_sha(sha);
+            }
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AlgorithmConfig {
@@ -37,10 +121,41 @@ impl AlgorithmConfig {
     }
 }
 
+impl Sha for AlgorithmConfig {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        match &self {
+            AlgorithmConfig::Random { seed } => {
+                sha.input("random");
+                sha.input(seed.to_le_bytes());
+            }
+            AlgorithmConfig::ChenEtAl => sha.input("chen-et-al"),
+            AlgorithmConfig::Greedy => sha.input("greedy"),
+            AlgorithmConfig::SeqCoreset { tau } => sha.input("seq-coreset"),
+            AlgorithmConfig::StreamingCoreset { tau } => {
+                sha.input("streaming-coreset");
+                sha.input(tau.to_le_bytes())
+            }
+            AlgorithmConfig::MapReduceCoreset { tau } => {
+                sha.input("mapreduce-coreset");
+                sha.input(tau.to_le_bytes())
+            }
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OutliersSpec {
     Fixed(usize),
     Percentage(f64),
+}
+
+impl Sha for OutliersSpec {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        match &self {
+            Self::Fixed(x) => sha.input(x.to_le_bytes()),
+            Self::Percentage(x) => sha.input(x.to_le_bytes()),
+        }
+    }
 }
 
 impl OutliersSpec {
@@ -75,6 +190,18 @@ pub struct ParallelConfiguration {
     pub threads: usize,
     /// the hosts to run on
     pub hosts: Option<Vec<Host>>,
+}
+
+impl Sha for ParallelConfiguration {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        if let Some(pid) = self.process_id {
+            pid.update_sha(sha);
+        }
+        if let Some(hosts) = self.hosts.as_ref() {
+            hosts.update_sha(sha)
+        }
+        self.threads.update_sha(sha);
+    }
 }
 
 impl ParallelConfiguration {
@@ -187,6 +314,19 @@ pub struct Configuration {
     pub parallel: Option<ParallelConfiguration>,
 }
 
+impl Sha for Configuration {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        self.shuffle_seed.update_sha(sha);
+        self.outliers.update_sha(sha);
+        self.algorithm.update_sha(sha);
+        self.dataset.to_str().unwrap().to_owned().update_sha(sha);
+        self.constraint.update_sha(sha);
+        if let Some(parallel) = self.parallel.as_ref() {
+            parallel.update_sha(sha);
+        }
+    }
+}
+
 impl WithProcessId for Configuration {
     fn with_process_id(&self, process_id: usize) -> Self {
         let parallel_conf = self
@@ -254,82 +394,6 @@ impl Configuration {
             .context("reading metadata")
     }
 
-    pub fn sha(&self) -> anyhow::Result<String> {
-        use sha2::Digest;
-        let mut sha = sha2::Sha256::new();
-
-        let data_meta = Dataset::new(&self.dataset).metadata()?;
-        sha.input(format!(
-            "{}{}{:?}{:?}",
-            data_meta.name,
-            data_meta.version,
-            data_meta.parameters_string(),
-            data_meta.constraint
-        ));
-        sha.input(format!("{}", self.shuffle_seed));
-        if let Some(parallel) = self.parallel.as_ref() {
-            sha.input(format!("{}", parallel.threads));
-            if let Some(hosts) = parallel.hosts.as_ref() {
-                let mut hosts = hosts.clone();
-                hosts.sort();
-                for h in hosts {
-                    sha.input(format!("{}:{}", h.name, h.port));
-                }
-            }
-        }
-        sha.input(format!("{:?}", self.constraint.describe()));
-        sha.input(format!("{:?}", self.outliers));
-        match self.datatype()? {
-            Datatype::WikiPage => {
-                let algorithm = WikiPage::configure_algorithm_info(&self);
-                sha.input(format!(
-                    "{}{}{}",
-                    algorithm.name(),
-                    algorithm.version(),
-                    algorithm.parameters()
-                ));
-            }
-            Datatype::WikiPageEuclidean => {
-                let algorithm = WikiPageEuclidean::configure_algorithm_info(&self);
-                sha.input(format!(
-                    "{}{}{}",
-                    algorithm.name(),
-                    algorithm.version(),
-                    algorithm.parameters()
-                ));
-            }
-            Datatype::Song => {
-                let algorithm = Song::configure_algorithm_info(&self);
-                sha.input(format!(
-                    "{}{}{}",
-                    algorithm.name(),
-                    algorithm.version(),
-                    algorithm.parameters()
-                ));
-            }
-            Datatype::ColorVector => {
-                let algorithm = ColorVector::configure_algorithm_info(&self);
-                sha.input(format!(
-                    "{}{}{}",
-                    algorithm.name(),
-                    algorithm.version(),
-                    algorithm.parameters()
-                ));
-            }
-            Datatype::Higgs => {
-                let algorithm = Higgs::configure_algorithm_info(&self);
-                sha.input(format!(
-                    "{}{}{}",
-                    algorithm.name(),
-                    algorithm.version(),
-                    algorithm.parameters()
-                ));
-            }
-        }
-
-        Ok(format!("{:x}", sha.result()))
-    }
-
     pub fn execute<T, F>(&self, func: F) -> Result<Option<WorkerGuards<T>>>
     where
         T: Send + 'static,
@@ -363,9 +427,9 @@ pub trait Configure {
 impl Configure for Higgs {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
-            Constraint::Partition { categories } => {
-                Rc::new(PartitionMatroid::new(categories.clone()))
-            }
+            Constraint::Partition { categories } => Rc::new(PartitionMatroid::new(
+                HashMap::from_iter(categories.clone().into_iter()),
+            )),
             _ => panic!("Can only build a partition matroid constraint for Song"),
         }
     }
@@ -400,9 +464,9 @@ impl Configure for Higgs {
 impl Configure for ColorVector {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
-            Constraint::Partition { categories } => {
-                Rc::new(PartitionMatroid::new(categories.clone()))
-            }
+            Constraint::Partition { categories } => Rc::new(PartitionMatroid::new(
+                HashMap::from_iter(categories.clone().into_iter()),
+            )),
             _ => panic!("Can only build a partition matroid constraint for Song"),
         }
     }
@@ -507,9 +571,9 @@ impl Configure for WikiPageEuclidean {
 impl Configure for Song {
     fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
         match &conf.constraint {
-            Constraint::Partition { categories } => {
-                Rc::new(PartitionMatroid::new(categories.clone()))
-            }
+            Constraint::Partition { categories } => Rc::new(PartitionMatroid::new(
+                HashMap::from_iter(categories.clone().into_iter()),
+            )),
             _ => panic!("Can only build a partition matroid constraint for Song"),
         }
     }
@@ -550,8 +614,8 @@ pub fn get_hostname() -> String {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Host {
-    name: String,
-    port: String,
+    pub name: String,
+    pub port: String,
 }
 
 impl Host {
@@ -568,5 +632,12 @@ impl TryFrom<&str> for Host {
         let name = tokens.next().ok_or("missing host part")?.to_owned();
         let port = tokens.next().ok_or("missing port part")?.to_owned();
         Ok(Self { name, port })
+    }
+}
+
+impl Sha for Host {
+    fn update_sha<D: Digest>(&self, sha: &mut D) {
+        sha.input(self.name.as_bytes());
+        sha.input(self.port.as_bytes());
     }
 }

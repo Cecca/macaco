@@ -6,6 +6,7 @@ use rand::{prelude::SliceRandom, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rmp_serde::decode::Error;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::{collections::HashMap, io::BufReader};
 
@@ -32,7 +33,7 @@ pub enum Constraint {
     #[serde(rename = "transversal")]
     Transversal { topics: Vec<u32> },
     #[serde(rename = "partition")]
-    Partition { categories: HashMap<String, u32> },
+    Partition { categories: BTreeMap<String, u32> },
 }
 
 impl Constraint {
