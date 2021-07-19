@@ -1,0 +1,20 @@
+{
+    "shuffle_seed": 345345,
+    "outliers": {
+        "Fixed": 10
+    },
+    "algorithm": {
+        "Random": {
+            "seed": 2458
+        }
+    },
+    "dataset": ".datasets/higgs/higgs-v1.msgpack.gz",
+    "constraint": {
+        "partition": {
+            "categories": {
+                "background": 10,
+                "signal": 10
+            }
+        }
+    }
+}

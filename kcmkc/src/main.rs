@@ -173,6 +173,7 @@ fn main() -> Result<()> {
             Datatype::WikiPageEuclidean => run_seq::<WikiPageEuclidean>(&config),
             Datatype::Song => run_seq::<Song>(&config),
             Datatype::ColorVector => run_seq::<ColorVector>(&config),
+            Datatype::Higgs => run_seq::<Higgs>(&config),
         }?;
     } else {
         config
@@ -204,6 +205,7 @@ fn main() -> Result<()> {
                     Datatype::WikiPageEuclidean => run_par::<WikiPageEuclidean>(&config, worker),
                     Datatype::Song => run_par::<Song>(&config, worker),
                     Datatype::ColorVector => run_par::<ColorVector>(&config, worker),
+                    Datatype::Higgs => run_par::<Higgs>(&config, worker),
                 }
             })
             .unwrap();

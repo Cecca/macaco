@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use chrono::prelude::*;
 use kcmkc_base::{
     dataset::Datatype,
-    types::{ColorVector, Song, WikiPage, WikiPageEuclidean},
+    types::{ColorVector, Higgs, Song, WikiPage, WikiPageEuclidean},
 };
 use rusqlite::*;
 use std::path::PathBuf;
@@ -121,6 +121,10 @@ impl Reporter {
             }
             Datatype::ColorVector => {
                 let algo = ColorVector::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version(), algo.parameters())
+            }
+            Datatype::Higgs => {
+                let algo = Higgs::configure_algorithm_info(&self.config);
                 (algo.name(), algo.version(), algo.parameters())
             }
         };

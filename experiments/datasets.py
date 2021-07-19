@@ -472,6 +472,59 @@ class Random(Dataset):
         #             msgpack.pack(vec, fp)
 
 
+class Higgs(Dataset):
+    version = 1
+
+    def __init__(self):
+        self.cache = os.path.join(CACHE_DIR, "higgs")
+        self.file_name = os.path.join(
+            self.cache, "higgs-v{}.msgpack.gz".format(MusixMatch.version)
+        )
+        self.url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00280/HIGGS.csv.gz"
+        self.local_file = os.path.join(self.cache, "higgs.csv.gz")
+
+    def get_cache_dir(self):
+        return self.cache
+
+    def get_path(self):
+        return self.file_name
+
+    def build_metadata(self):
+        meta = {
+            "name": "Higgs",
+            "datatype": {"Higgs": None},
+            "constraint": {"partition": {"categories": {"0": 1, "1": 1}}},
+            "version": Higgs.version,
+            "parameters": {},
+        }
+        return meta
+
+    def preprocess(self):
+        def iter_file(path):
+            with gzip.open(path, "rb") as fp:
+                for line in fp:
+                    line = line.decode("ascii")
+                    tokens = line.split(",")
+                    category = int(float(tokens[0])) == 1
+                    # We just retain the last 7 "high level" features
+                    vector = [float(x) for x in tokens[-7:]]
+                    yield {"category": category, "vector": vector}
+
+        if not os.path.isfile(self.file_name):
+            download_file(self.url, self.local_file)
+            items = iter_file(self.local_file)
+
+            with gzip.open(self.file_name, "wb") as fp:
+                self.write_metadata(fp)
+                for item in tqdm(
+                    items,
+                    leave=False,
+                    total=11000000,
+                    unit="items",
+                ):
+                    msgpack.pack(item, fp)
+
+
 class MusixMatch(Dataset):
     version = 1
 
@@ -657,6 +710,7 @@ DATASETS = {
         "20210120", dimensions=50, topics=100, distance="euclidean"
     ),
     "MusixMatch": MusixMatch(),
+    "Higgs": Higgs(),
 }
 
 # Sampled datasets
@@ -679,7 +733,7 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["wiki-d10-c20"]
+    dataset = DATASETS["Higgs"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())

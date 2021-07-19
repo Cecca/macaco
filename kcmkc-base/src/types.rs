@@ -165,7 +165,7 @@ impl Distance for ColorVector {
 }
 
 impl PartitionMatroidElement for ColorVector {
-    fn category(&self) -> &String {
+    fn category(&self) -> &str {
         &self.color
     }
 }
@@ -261,12 +261,43 @@ impl Distance for Song {
 }
 
 impl PartitionMatroidElement for Song {
-    fn category<'a>(&'a self) -> &'a String {
+    fn category<'a>(&'a self) -> &'a str {
         &self.genre
     }
 }
 
 impl Weight for Song {
+    fn weight(&self) -> u32 {
+        self.weight
+    }
+}
+
+#[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]
+pub struct Higgs {
+    pub category: bool,
+    pub vector: Vector,
+    #[serde(skip, default = "unit_weight")]
+    pub weight: u32,
+}
+
+impl Distance for Higgs {
+    fn distance(&self, other: &Self) -> f32 {
+        self.vector.norm_squared + other.vector.norm_squared
+            - 2.0 * self.vector.inner_product(&other.vector)
+    }
+}
+
+impl PartitionMatroidElement for Higgs {
+    fn category<'a>(&'a self) -> &'a str {
+        if self.category {
+            "signal"
+        } else {
+            "background"
+        }
+    }
+}
+
+impl Weight for Higgs {
     fn weight(&self) -> u32 {
         self.weight
     }

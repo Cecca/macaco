@@ -335,7 +335,7 @@ fn set_intersection<I1: IntoIterator<Item = u32>, I2: IntoIterator<Item = u32>>(
 
 /// Element of a set on which we can impose a partition matroid
 pub trait PartitionMatroidElement {
-    fn category<'a>(&'a self) -> &'a String;
+    fn category<'a>(&'a self) -> &'a str;
 }
 
 pub struct PartitionMatroid<T: PartitionMatroidElement> {
