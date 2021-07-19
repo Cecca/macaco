@@ -39,15 +39,6 @@ impl<T: Sha> Sha for Vec<T> {
     }
 }
 
-impl<K: Sha, V: Sha> Sha for HashMap<K, V> {
-    fn update_sha<D: Digest>(&self, sha: &mut D) {
-        for (k, v) in self.iter() {
-            k.update_sha(sha);
-            v.update_sha(sha);
-        }
-    }
-}
-
 impl<K: Sha, V: Sha> Sha for BTreeMap<K, V> {
     fn update_sha<D: Digest>(&self, sha: &mut D) {
         for (k, v) in self.iter() {

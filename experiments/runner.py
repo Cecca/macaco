@@ -367,7 +367,7 @@ def run_random():
 
 
 def check():
-    datasets = ["Higgs"]
+    datasets = ["wiki-d10-c20"]
     # datasets = ["MusixMatch"]
     # datasets = ["random-100000"]
     for dataset in datasets:
@@ -394,8 +394,8 @@ def check():
     ]
     # shuffle_seeds.extend(range(1, 100))
 
-    # constraint = {"transversal": {"topics": list(range(0, 10))}}
-    constraint = {"partition": {"categories": {"signal": 10, "background": 10}}}
+    constraint = {"transversal": {"topics": list(range(0, 20))}}
+    # constraint = {"partition": {"categories": {"signal": 10, "background": 10}}}
     outliers = {"Percentage": 0.001}
 
     for shuffle_seed, dataset in itertools.product(shuffle_seeds, datasets):
@@ -411,7 +411,7 @@ def check():
             )
 
         # Run coreset algorithms
-        taus = [2, 4, 8, 16, 32, 64, 128, 256]
+        taus = [8, 32]
         for tau in taus:
             run(
                 {
