@@ -59,7 +59,7 @@ def run_higgs():
             "shuffle_seed": shuffle_seed,
             "outliers": {"Percentage": frac_out},
             "dataset": DATASETS[dataset].get_path(),
-            "constraint": constr,
+            "constraint": {"partition": constr},
         }
         # Run the naive baseline
         print("Run random")
@@ -490,7 +490,7 @@ def check():
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
     # check()
-    run_wiki()
-    run_musixmatch()
+    # run_wiki()
+    # run_musixmatch()
     run_higgs()
     # run_random()
