@@ -37,6 +37,69 @@ def run(configuration):
         sys.exit(1)
 
 
+def run_higgs():
+    """
+    Run experiments on the Wikipedia dataset and its samples
+    """
+    datasets = ["Higgs"]
+    for dataset in datasets:
+        DATASETS[dataset].try_download_preprocessed()
+        DATASETS[dataset].preprocess()
+    constraints = [{"signal": 10, "background": 10}]
+    # Fraction of allowed outliers
+    frac_outliers = [0.0001]
+    # These seeds also define the number of repetitions
+    shuffle_seeds = [43234]
+    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+
+    for shuffle_seed, dataset, constr, frac_out in itertools.product(
+        shuffle_seeds, datasets, constraints, frac_outliers
+    ):
+        base_conf = {
+            "shuffle_seed": shuffle_seed,
+            "outliers": {"Percentage": frac_out},
+            "dataset": DATASETS[dataset].get_path(),
+            "constraint": constr,
+        }
+        # Run the naive baseline
+        print("Run random")
+        for seed in [1458, 345, 65623]:
+            c = base_conf.copy()
+            c["algorithm"] = {"Random": {"seed": seed}}
+            run(c)
+
+        # if dataset in {
+        # }:
+        #     # Run the baseline algorithm
+        #     run(
+        #         {
+        #             "shuffle_seed": shuffle_seed,
+        #             "outliers": {"Percentage": frac_out},
+        #             "algorithm": "ChenEtAl",
+        #             "dataset": DATASETS[dataset].get_path(),
+        #             "constraint": constr,
+        #         }
+        #     )
+
+        # # Run coreset algorithms
+        taus = [2 ** x for x in [3, 6]]
+        print(taus)
+        for tau in taus:
+            print("Run SeqCoreset", tau)
+            c = base_conf.copy()
+            c["algorithm"] = {"SeqCoreset": {"tau": tau}}
+            run(c)
+            print("Run StreamCoreset", tau)
+            c["algorithm"] = {"StreamingCoreset": {"tau": tau}}
+            run(c)
+
+            for hosts in [workers[:i] for i in [2, 4, 8]]:
+                print("Run MRCoreset", tau, hosts)
+                c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+                c["parallel"] = {"threads": 1, "hosts": hosts}
+                run(c)
+
+
 def run_wiki():
     """
     Run experiments on the Wikipedia dataset and its samples
@@ -426,7 +489,8 @@ def check():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    check()
-    # run_wiki()
-    # run_musixmatch()
+    # check()
+    run_wiki()
+    run_musixmatch()
+    run_higgs()
     # run_random()
