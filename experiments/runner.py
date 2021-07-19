@@ -59,7 +59,7 @@ def run_higgs():
             "shuffle_seed": shuffle_seed,
             "outliers": {"Percentage": frac_out},
             "dataset": DATASETS[dataset].get_path(),
-            "constraint": {"partition": constr},
+            "constraint": {"partition": {"categories": constr}},
         }
         # Run the naive baseline
         print("Run random")
