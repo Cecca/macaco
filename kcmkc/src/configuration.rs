@@ -373,10 +373,12 @@ impl Configuration {
     }
 
     pub fn datatype(&self) -> anyhow::Result<Datatype> {
-        Ok(Dataset::new(&self.dataset)
+        println!("Reading datatype from {:?}", self.dataset);
+        let meta = Dataset::new(&self.dataset)
             .metadata()
-            .context("reading datatype")?
-            .datatype)
+            .context("reading datatype")?;
+            println!("Metadata is is {:?}", meta);
+        Ok(meta.datatype)
     }
 
     pub fn dataset_metadata(&self) -> anyhow::Result<Metadata> {

@@ -219,7 +219,7 @@ class Wikipedia(Dataset):
         return self.cache_dir
 
     def get_path(self):
-        return self.out_fname
+        return os.path.abspath(self.out_fname)
 
     def build_metadata(self):
         datatype = "WikiPageEuclidean" if self.distance == "euclidean" else "WikiPage"
@@ -326,7 +326,7 @@ class SampledDataset(Dataset):
         return self.cache_dir
 
     def get_path(self):
-        return self.path
+        return os.path.abspath(self.path)
 
     def build_metadata(self):
         parameters = self.base.metadata()["parameters"]
@@ -392,7 +392,7 @@ class Random(Dataset):
         return self.cache
 
     def get_path(self):
-        return self.file_name
+        return os.path.abspath(self.file_name)
 
     def get_colors(self):
         color_rank = self.rank // self.num_colors
@@ -487,7 +487,7 @@ class Higgs(Dataset):
         return self.cache
 
     def get_path(self):
-        return self.file_name
+        return os.path.abspath(self.file_name)
 
     def build_metadata(self):
         meta = {
@@ -544,7 +544,7 @@ class MusixMatch(Dataset):
         return self.cache
 
     def get_path(self):
-        return self.file_name
+        return os.path.abspath(self.file_name)
 
     def build_metadata(self):
         meta = {
@@ -644,7 +644,7 @@ class BoundedDifficultyDataset(Dataset):
         )
 
     def get_path(self):
-        return self.path
+        return os.path.abspath(self.path)
 
     def build_metadata(self):
         parameters = self.base.metadata()["parameters"]
@@ -727,9 +727,9 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}-eucl".format(size)] = SampledDataset(
         base=DATASETS["wiki-d50-c100-eucl"], size=size, seed=12341245
     )
-    # DATASETS["MusixMatch-s{}".format(size)] = SampledDataset(
-    #     base=DATASETS["MusixMatch"], size=size, seed=12341245
-    # )
+    DATASETS["Higgs-s{}".format(size)] = SampledDataset(
+        base=DATASETS["Higgs"], size=size, seed=12341245
+    )
 
 
 if __name__ == "__main__":

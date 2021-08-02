@@ -61,7 +61,6 @@ def run_higgs():
             "dataset": DATASETS[dataset].get_path(),
             "constraint": {"partition": {"categories": constr}},
         }
-        # Run the naive baseline
         print("Run random")
         for seed in [1458, 345, 65623]:
             c = base_conf.copy()
@@ -88,6 +87,7 @@ def run_higgs():
 
             for hosts in [workers[:i] for i in [2, 4, 8]]:
                 print("Run MRCoreset", tau, hosts)
+                c = base_conf.copy()
                 c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
                 c["parallel"] = {"threads": 1, "hosts": hosts}
                 run(c)

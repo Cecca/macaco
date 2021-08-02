@@ -193,6 +193,7 @@ fn main() -> Result<()> {
                 if worker.index() == 0 {
                     println!("reading datatype");
                     let datatype = config.datatype()?;
+                    println!("Sending datatype {:?}", datatype);
                     input.send(datatype);
                     println!("datatype sent to buddies");
                 }
