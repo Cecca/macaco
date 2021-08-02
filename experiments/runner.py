@@ -68,18 +68,11 @@ def run_higgs():
             c["algorithm"] = {"Random": {"seed": seed}}
             run(c)
 
-        # if dataset in {
-        # }:
-        #     # Run the baseline algorithm
-        #     run(
-        #         {
-        #             "shuffle_seed": shuffle_seed,
-        #             "outliers": {"Percentage": frac_out},
-        #             "algorithm": "ChenEtAl",
-        #             "dataset": DATASETS[dataset].get_path(),
-        #             "constraint": constr,
-        #         }
-        #     )
+        if dataset in {"Higgs-10000"}:
+            # Run the baseline algorithm
+            c = base_conf.copy()
+            c["algorithm"] = "ChenEtAl"
+            run(c)
 
         # # Run coreset algorithms
         taus = [2 ** x for x in [3, 6]]
@@ -106,7 +99,7 @@ def run_wiki():
     """
     datasets = [
         # "wiki-d10-c50",
-        "wiki-d10-c50-s10000"
+        "wiki-d10-c10-s10000"
         # "wiki-d50-c100-s10000",  # <- a sample where we can also run the baseline algorithm
         # "wiki-d50-c100-s10000-eucl",  # <- a sample where we can also run the baseline algorithm, euclidean distance
         # "wiki-d50-c100",  # <- The full wikipedia dataset
@@ -122,7 +115,7 @@ def run_wiki():
         list(range(0, 10)),
     ]
     # Fraction of allowed outliers
-    frac_outliers = [10]
+    frac_outliers = [0.0001]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
@@ -130,18 +123,18 @@ def run_wiki():
     for shuffle_seed, dataset, constr, frac_out in itertools.product(
         shuffle_seeds, datasets, constraints, frac_outliers
     ):
+        base_conf = {
+            "shuffle_seed": shuffle_seed,
+            "outliers": {"Percentage": frac_out},
+            "dataset": DATASETS[dataset].get_path(),
+            "constraint": {"transversal": {"topics": constr}},
+        }
         # Run the naive baseline
         print("Run random")
         for seed in [1458, 345, 65623]:
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"Random": {"seed": seed}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = {"Random": {"seed": seed}}
+            run(c)
 
         if dataset in {
             "wiki-d10-c50-s10000",
@@ -149,54 +142,29 @@ def run_wiki():
             "wiki-d50-c100-s10000-eucl",
         }:
             # Run the baseline algorithm
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": "ChenEtAl",
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = "ChenEtAl"
+            run(c)
 
         # # Run coreset algorithms
         taus = [2 ** x for x in [3, 4, 5, 6]]
         print(taus)
         for tau in taus:
             print("Run SeqCoreset", tau)
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"SeqCoreset": {"tau": tau}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = {"SeqCoreset": {"tau": tau}}
+            run(c)
             print("Run StreamCoreset", tau)
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"StreamingCoreset": {"tau": tau}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"transversal": {"topics": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = {"StreamCoreset": {"tau": tau}}
+            run(c)
         for tau in [1, 2, 4, 8]:
             for hosts in [workers[:i] for i in [2, 4, 8]]:
                 print("Run MRCoreset", tau, hosts)
-                # Keep the size of the final coreset constant across thread counts
-                run(
-                    {
-                        "parallel": {"threads": 1, "hosts": hosts},
-                        "shuffle_seed": shuffle_seed,
-                        "outliers": {"Fixed": frac_out},
-                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
-                        "dataset": os.path.abspath(DATASETS[dataset].get_path()),
-                        "constraint": {"transversal": {"topics": constr}},
-                    }
-                )
+                c = base_conf.copy()
+                c["parallel"] = {"threads": 1, "hosts": hosts}
+                c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+                run(c)
 
 
 def run_musixmatch():
@@ -265,76 +233,53 @@ def run_musixmatch():
         DATASETS[dataset].preprocess()
     constraints = [midrank_matroid, lowrank_matroid]
     # Fraction of allowed outliers
-    frac_outliers = [10]
+    # frac_outliers = [10]
+    frac_outliers = [0.0001]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
     for shuffle_seed, dataset, constr, frac_out in itertools.product(
         shuffle_seeds, datasets, constraints, frac_outliers
     ):
+        base_conf = {
+            "shuffle_seed": shuffle_seed,
+            "outliers": {"Percentage": frac_out},
+            "dataset": DATASETS[dataset].get_path(),
+            "constraint": {"partition": {"categories": constr}},
+        }
         # Run the naive baseline
         print("Run random")
         for seed in [1458, 345, 65623]:
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"Random": {"seed": seed}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"partition": {"categories": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = {"Random": {"seed": seed}}
+            run(c)
 
         # # Run the baseline algorithm
         if dataset == "MusixMatch-s10000":
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": "ChenEtAl",
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"partition": {"categories": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = "ChenEtAl"
+            run(c)
 
         # # Run coreset algorithms
         taus = [2 ** x for x in [3, 4, 5, 6]]
         print(taus)
         for tau in taus:
             print("Run SeqCoreset", tau)
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"SeqCoreset": {"tau": tau}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"partition": {"categories": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = {"SeqCoreset": {"tau": tau}}
+            run(c)
             print("Run StreamCoreset", tau)
-            run(
-                {
-                    "shuffle_seed": shuffle_seed,
-                    "outliers": {"Fixed": frac_out},
-                    "algorithm": {"StreamingCoreset": {"tau": tau}},
-                    "dataset": DATASETS[dataset].get_path(),
-                    "constraint": {"partition": {"categories": constr}},
-                }
-            )
+            c = base_conf.copy()
+            c["algorithm"] = {"StreamingCoreset": {"tau": tau}}
+            run(c)
         for tau in [1, 2, 4, 8]:
             for hosts in [workers[:i] for i in [2, 4, 8]]:
                 print("Run MRCoreset", tau, hosts)
+                c = base_conf.copy()
+                c["parallel"] = {"threads": 1, "hosts": hosts}
+                c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+                run(c)
                 # Keep the size of the final coreset constant across thread counts
-                run(
-                    {
-                        "parallel": {"threads": 1, "hosts": hosts},
-                        "shuffle_seed": shuffle_seed,
-                        "outliers": {"Fixed": frac_out},
-                        "algorithm": {"MapReduceCoreset": {"tau": tau}},
-                        "dataset": os.path.abspath(DATASETS[dataset].get_path()),
-                        "constraint": {"partition": {"categories": constr}},
-                    }
-                )
 
 
 def run_random():
