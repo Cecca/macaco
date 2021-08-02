@@ -198,7 +198,10 @@ fn main() -> Result<()> {
                 }
                 input.close();
                 worker.step_while(|| !probe.done());
-                let datatype: Datatype = datatype.take().take().unwrap();
+                let datatype: Datatype = datatype
+                    .take()
+                    .take()
+                    .context("extracting received datatype")?;
                 println!("exchanged datatype {:?}", datatype);
                 match datatype {
                     Datatype::WikiPage => run_par::<WikiPage>(&config, worker),
@@ -208,7 +211,7 @@ fn main() -> Result<()> {
                     Datatype::Higgs => run_par::<Higgs>(&config, worker),
                 }
             })
-            .unwrap();
+            .context("running dataflow")?;
     }
 
     Ok(())
