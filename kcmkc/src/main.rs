@@ -113,7 +113,7 @@ where
     if worker.index() == 0 {
         let (radius_no_outliers, _radius_all_points) =
             compute_radius_outliers(&items, &centers, outliers);
-        assert!(radius_no_outliers < _radius_all_points);
+        assert!(radius_no_outliers <= _radius_all_points);
         println!(
             "Found clustering with {} centers in {:?}, with radius {}",
             centers.len(),
