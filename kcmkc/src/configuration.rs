@@ -121,7 +121,10 @@ impl Sha for AlgorithmConfig {
             }
             AlgorithmConfig::ChenEtAl => sha.input("chen-et-al"),
             AlgorithmConfig::Greedy => sha.input("greedy"),
-            AlgorithmConfig::SeqCoreset { tau } => sha.input("seq-coreset"),
+            AlgorithmConfig::SeqCoreset { tau } => {
+                sha.input("seq-coreset");
+                sha.input(tau.to_le_bytes())
+            }
             AlgorithmConfig::StreamingCoreset { tau } => {
                 sha.input("streaming-coreset");
                 sha.input(tau.to_le_bytes())
@@ -377,7 +380,7 @@ impl Configuration {
         let meta = Dataset::new(&self.dataset)
             .metadata()
             .context("reading datatype")?;
-            println!("Metadata is is {:?}", meta);
+        println!("Metadata is is {:?}", meta);
         Ok(meta.datatype)
     }
 
