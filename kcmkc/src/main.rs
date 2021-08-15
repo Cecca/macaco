@@ -174,7 +174,7 @@ fn main() -> Result<()> {
             Datatype::Song => run_seq::<Song>(&config),
             Datatype::ColorVector => run_seq::<ColorVector>(&config),
             Datatype::Higgs => run_seq::<Higgs>(&config),
-            Datatype::Phone => run_seq::<Higgs>(&config),
+            Datatype::Phone => run_seq::<Phone>(&config),
         }?;
     } else {
         config
