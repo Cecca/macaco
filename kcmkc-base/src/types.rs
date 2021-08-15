@@ -33,7 +33,6 @@ impl<'de> Deserialize<'de> for Vector {
 
 impl Vector {
     pub fn new(data: Vec<f32>) -> Self {
-        let data = Vec::from(&data[..4]);
         let norm_squared: f32 = data.iter().map(|x| x * x).sum::<f32>();
         let norm: f32 = norm_squared.sqrt();
         Self {
