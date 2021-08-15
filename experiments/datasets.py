@@ -472,6 +472,81 @@ class Random(Dataset):
         #             msgpack.pack(vec, fp)
 
 
+class Phones(Dataset):
+    version = 1
+
+    def __init__(self):
+        self.cache = os.path.join(CACHE_DIR, "Activity_recognition")
+        self.file_name = os.path.join(
+            self.cache, "Phones-v{}.msgpack.gz".format(MusixMatch.version)
+        )
+        self.url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00344/Activity%20recognition%20exp.zip"
+        self.local_file = os.path.join(self.cache, "Activity_recognition_exp.zip")
+
+    def get_cache_dir(self):
+        return self.cache
+
+    def get_path(self):
+        return os.path.abspath(self.file_name)
+
+    def build_metadata(self):
+        meta = {
+            "name": "Phones",
+            "datatype": {"Phone": None},
+            "constraint": {
+                "partition": {
+                    "categories": {
+                        "stand": 1,
+                        "null": 1,
+                        "sit": 1,
+                        "walk": 1,
+                        "stairsup": 1,
+                        "stairsdown": 1,
+                        "bike": 1,
+                    }
+                }
+            },
+            "version": Phones.version,
+            "parameters": {},
+        }
+        return meta
+
+    def preprocess(self):
+        import zipfile
+
+        def iter_file(path):
+            with zipfile.ZipFile(path, "r") as datazip:
+                with datazip.open(
+                    "Activity recognition exp/Phones_accelerometer.csv",
+                ) as fp:
+                    isfirst = True
+                    for line in fp.readlines():
+                        if isfirst:
+                            isfirst = False
+                            continue
+                        line = line.decode("ascii")
+                        row = line.split(",")
+                        x = float(row[3])
+                        y = float(row[4])
+                        z = float(row[5])
+                        cat = row[-1].strip()
+                        yield {"category": cat, "vector": [x, y, z]}
+
+        if not os.path.isfile(self.file_name):
+            download_file(self.url, self.local_file)
+            items = iter_file(self.local_file)
+
+            with gzip.open(self.file_name, "wb") as fp:
+                self.write_metadata(fp)
+                for item in tqdm(
+                    items,
+                    leave=False,
+                    total=13062476,
+                    unit="items",
+                ):
+                    msgpack.pack(item, fp)
+
+
 class Higgs(Dataset):
     version = 1
 
@@ -711,6 +786,7 @@ DATASETS = {
     ),
     "MusixMatch": MusixMatch(),
     "Higgs": Higgs(),
+    "Phones": Phones(),
 }
 
 # Sampled datasets
@@ -733,7 +809,7 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["Higgs"]
+    dataset = DATASETS["Phones"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())

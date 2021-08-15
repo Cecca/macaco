@@ -303,6 +303,33 @@ impl Weight for Higgs {
     }
 }
 
+#[derive(Deserialize, Debug, Abomonation, Clone, PartialEq)]
+pub struct Phone {
+    pub category: String,
+    vector: Vector,
+    #[serde(skip, default = "unit_weight")]
+    pub weight: u32,
+}
+
+impl Distance for Phone {
+    fn distance(&self, other: &Self) -> f32 {
+        self.vector.norm_squared + other.vector.norm_squared
+            - 2.0 * self.vector.inner_product(&other.vector)
+    }
+}
+
+impl PartitionMatroidElement for Phone {
+    fn category<'a>(&'a self) -> &'a str {
+        &self.category
+    }
+}
+
+impl Weight for Phone {
+    fn weight(&self) -> u32 {
+        self.weight
+    }
+}
+
 // Some utility types
 
 #[derive(PartialEq, PartialOrd, Clone, Copy, Debug, Abomonation)]

@@ -120,6 +120,7 @@ pub enum Datatype {
     Song,
     ColorVector,
     Higgs,
+    Phone,
 }
 
 #[derive(Deserialize, Debug)]

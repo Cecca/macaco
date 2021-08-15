@@ -174,6 +174,7 @@ fn main() -> Result<()> {
             Datatype::Song => run_seq::<Song>(&config),
             Datatype::ColorVector => run_seq::<ColorVector>(&config),
             Datatype::Higgs => run_seq::<Higgs>(&config),
+            Datatype::Phone => run_seq::<Higgs>(&config),
         }?;
     } else {
         config
@@ -210,6 +211,7 @@ fn main() -> Result<()> {
                     Datatype::Song => run_par::<Song>(&config, worker),
                     Datatype::ColorVector => run_par::<ColorVector>(&config, worker),
                     Datatype::Higgs => run_par::<Higgs>(&config, worker),
+                    Datatype::Phone => run_par::<Phone>(&config, worker),
                 }
             })
             .context("running dataflow")?;

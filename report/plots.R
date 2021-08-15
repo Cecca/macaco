@@ -29,10 +29,31 @@ scale_color_algorithm <- function() {
     scale_color_manual(values = algopalette, aesthetics = c("fill", "color"))
 }
 
+do_plot_sequential_effect <- function(data) {
+    plotdata <- data %>% 
+        filter(algorithm == "SeqCoreset") %>%
+        filter(!((dataset == "MusixMatch") && (rank == 20))) %>%
+        group_by(dataset, rank, outliers_spec, algorithm, tau) %>% 
+        summarise(ratio_to_best = mean(ratio_to_best))
+
+    p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best)) +
+        geom_point() +
+        facet_wrap(vars(dataset, rank, outliers_spec), ncol=2, scales="free") +
+        theme_paper() +
+        labs(
+            caption=str_wrap("There is an interplay between the matroid constraint and the allowed outliers, if we want to observe some effect of the parameter tau.
+            In particular, we have that allowing for too many outliers (e.g. Wikipedia 0.0001, which is 500 outliers over 5 million points) makes all the solutions very similar, because the most extreme distances are just removed.
+            If the matroid constraint is too stringent (i.e. there is too little liberty in choosing the centers)
+            then the solutions will also be too similar to each other.", width=100)
+        )
+
+    p
+}
+
 do_plot_tradeoff <- function(data) {
     plotdata <- data %>%
         mutate(total_time = set_units(total_time, "s") %>% drop_units()) %>%
-        mutate(dataset = fct_reorder2(dataset, is_sample, distance))
+        mutate(dataset = fct_reorder(dataset, is_sample))
 
     random <- plotdata %>% 
         filter(algorithm == "Random")
@@ -79,22 +100,23 @@ do_plot_tradeoff <- function(data) {
                 color = algopalette["Random"]
             ) +
             # geom_point(data = random, alpha = 0.5, size = 0.5) +
-            geom_point_interactive(size = 1.2, stat="summary", fun.data=mean_se) +
+            geom_point(size = 1.2, stat="summary", fun.data=mean_se) +
             # scale_y_continuous(trans = "log10") +
             scale_color_algorithm() +
             labs(y = "total time (s)", x = "radius", title=title) +
             # facet_grid(vars(dataset), vars(rank), scales = "free") +
-            facet_wrap(vars(rank), scales = "free") +
+            facet_wrap(vars(dataset, rank), scales = "free", ncol=1) +
             theme_paper()
     }
 
-    p_musixmatch <- averages %>% filter(dataset == "MusixMatch") %>% draw()
-    p_musixmatch_sample <- averages %>% filter(dataset == "MusixMatch-sample-10000") %>% draw()
-    p_wiki <- averages %>% filter(dataset == "Wikipedia") %>% draw()
-    p_wiki_sample <- averages %>% filter(dataset == "Wikipedia-sample-10000") %>% draw()
-    p_random <- averages %>% filter(dataset == "Random") %>% draw()
-    (p_musixmatch /p_musixmatch_sample / p_wiki / p_wiki_sample / p_random / guide_area()) +
-        plot_layout(guides = 'collect')
+    averages %>% 
+        filter(dataset %in% c("Higgs", "MusixMatch", "Wikipedia")) %>% 
+        draw()
+    # p_higgs <- averages %>% filter(dataset == "Higgs") %>% draw()
+    # p_musixmatch <- averages %>% filter(dataset == "MusixMatch", rank == 133) %>% draw()
+    # p_wiki <- averages %>% filter(dataset == "Wikipedia") %>% draw()
+    # (p_higgs / p_musixmatch / p_wiki / guide_area()) +
+    #     plot_layout(guides = 'collect')
 }
 
 do_plot_time <- function(data, coreset_only=F) {

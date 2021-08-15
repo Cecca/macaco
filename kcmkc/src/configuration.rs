@@ -3,7 +3,7 @@ use kcmkc_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
     matroid::{Matroid, PartitionMatroid, TransversalMatroid},
-    types::{ColorVector, Higgs, Song, WikiPage, WikiPageEuclidean},
+    types::{ColorVector, Higgs, Phone, Song, WikiPage, WikiPageEuclidean},
 };
 use kcmkc_parallel::mapreduce_coreset::MapReduceCoreset;
 use kcmkc_parallel::ParallelAlgorithm;
@@ -418,6 +418,43 @@ pub trait Configure {
     fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>>;
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>>;
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>>;
+}
+
+impl Configure for Phone {
+    fn configure_constraint(conf: &Configuration) -> Rc<dyn Matroid<Self>> {
+        match &conf.constraint {
+            Constraint::Partition { categories } => Rc::new(PartitionMatroid::new(
+                HashMap::from_iter(categories.clone().into_iter()),
+            )),
+            _ => panic!("Can only build a partition matroid constraint for Song"),
+        }
+    }
+    fn configure_algorithm_info(conf: &Configuration) -> Box<dyn Algorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+        }
+    }
+    fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::Greedy => Box::new(GreedyHeuristic::default()),
+            AlgorithmConfig::ChenEtAl => Box::new(ChenEtAl::default()),
+            AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
+            AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
+            AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+        }
+    }
+    fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
+        match conf.algorithm {
+            AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            _ => panic!("Cannot run algorithm in parallel"),
+        }
+    }
 }
 
 impl Configure for Higgs {

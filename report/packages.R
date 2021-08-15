@@ -8,4 +8,5 @@ suppressWarnings({
     library(ggiraph)
     library(ggrepel)
     library(cowplot)
+    library(plotly)
 })
