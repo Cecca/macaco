@@ -31,14 +31,20 @@ scale_color_algorithm <- function() {
 
 do_plot_sequential_effect <- function(data) {
     plotdata <- data %>% 
-        filter(algorithm == "SeqCoreset") %>%
-        filter(!((dataset == "MusixMatch") && (rank == 20))) %>%
+        filter(algorithm %in% c("SeqCoreset", "StreamingCoreset", "ChenEtAl")) %>%
         group_by(dataset, rank, outliers_spec, algorithm, tau) %>% 
         summarise(ratio_to_best = mean(ratio_to_best))
+    baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
 
-    p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best)) +
+    p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
         geom_point() +
+        geom_hline(
+            aes(yintercept=ratio_to_best),
+            data=baseline,
+            color=algopalette['ChenEtAl']
+        ) +
         facet_wrap(vars(dataset, rank, outliers_spec), ncol=2, scales="free") +
+        scale_color_algorithm() +
         theme_paper() +
         labs(
             caption=str_wrap("There is an interplay between the matroid constraint and the allowed outliers, if we want to observe some effect of the parameter tau.
@@ -49,6 +55,35 @@ do_plot_sequential_effect <- function(data) {
 
     p
 }
+
+do_plot_sequential_time <- function(data) {
+    plotdata <- data %>% 
+        filter(algorithm %in% c("SeqCoreset", "StreamingCoreset", "ChenEtAl")) %>%
+        group_by(dataset, rank, outliers_spec, algorithm, tau) %>% 
+        summarise(total_time = mean(total_time) %>% set_units("s") %>% drop_units())
+    baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
+
+    p <- ggplot(plotdata, aes(x=tau, y=total_time, color=algorithm)) +
+        geom_point() +
+        geom_hline(
+            aes(yintercept=total_time),
+            data=baseline,
+            color=algopalette['ChenEtAl']
+        ) +
+        facet_wrap(vars(dataset, rank, outliers_spec), ncol=2, scales="free") +
+        scale_y_log10(labels=scales::number_format(accuracy=1)) +
+        scale_color_algorithm() +
+        theme_paper() +
+        labs(
+            caption=str_wrap("The troubling thing in this plot is that the running time 
+            of the streaming algorithm is _so_ much slower than the sequential algorithm, so there really
+            looks to be no point in running it, since it also provides a worst approximation.
+            Except of course that it works online with unbounded data.", width=100)
+        )
+
+    p
+}
+
 
 do_plot_tradeoff <- function(data) {
     plotdata <- data %>%

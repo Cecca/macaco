@@ -9,6 +9,7 @@ plan <- drake_plan(
         table_result()
     },
     plot_sequential_effect = do_plot_sequential_effect(data_result),
+    plot_sequential_time = do_plot_sequential_time(data_result),
     # plot_tradeoff = target(
     #     do_plot_tradeoff(data_result),
     #     # do_plot_tradeoff(filter(data_result, rank == rank_value)),

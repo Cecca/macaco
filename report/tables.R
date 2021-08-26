@@ -44,7 +44,8 @@ table_result <- function() {
         mutate(
             dimensions = access_json(dataset_params, "dimensions") %>% as.numeric(),
             dimensions = if_else(str_detect(dataset, "MusixMatch"), 5000, dimensions),
-            dimensions = if_else(str_detect(dataset, "Higgs"), 7, dimensions)
+            dimensions = if_else(str_detect(dataset, "Higgs"), 7, dimensions),
+            dimensions = if_else(str_detect(dataset, "Phones"), 3, dimensions)
         ) %>% 
         mutate(
             wiki_topics = access_json(dataset_params, "topics"),
