@@ -8,7 +8,7 @@
             "tau": 16
         }
     },
-    "dataset": ".datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
+    "dataset": ".datasets/wikipedia/20210120/wiki-d10-c50-v1.msgpack.gz",
     "constraint": {
         "transversal": {
             "topics": [

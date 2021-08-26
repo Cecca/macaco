@@ -34,7 +34,7 @@ impl<V> StreamingCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset<V> {
     fn version(&self) -> u32 {
-        3
+        4
     }
 
     fn name(&self) -> String {
@@ -125,7 +125,8 @@ impl<T: Clone + Distance> StreamingState<T> {
         }
     }
 
-    fn coreset(self) -> Vec<(T, u32)> {
+    fn coreset(mut self) -> Vec<(T, u32)> {
+        self.restore_independence();
         let weights: Vec<u32> = self
             .clusters
             .iter()
@@ -141,6 +142,34 @@ impl<T: Clone + Distance> StreamingState<T> {
         points.into_iter().zip(weights).collect()
     }
 
+    fn restore_independence_for(&mut self, i: usize) {
+        info!("restore independent set for cluster {}", i);
+        let (_center, cluster, weights) = &mut self.clusters[i];
+        let is = self
+            .matroid
+            .maximal_independent_set(&cluster.iter().collect::<Vec<&T>>());
+        let is: Vec<T> = is.into_iter().cloned().collect();
+        cluster.clear();
+        cluster.extend(is.into_iter());
+        let tot_weight: u32 = weights.iter().sum();
+        let div = tot_weight / cluster.len() as u32;
+        let mut rem = tot_weight % cluster.len() as u32;
+        weights.clear();
+        weights.resize(cluster.len(), div);
+        let mut i = 0;
+        while rem > 0 {
+            weights[i] += 1;
+            rem -= 1;
+            i = (i + 1) % weights.len();
+        }
+    }
+
+    fn restore_independence(&mut self) {
+        for i in 0..self.clusters.len() {
+            self.restore_independence_for(i);
+        }
+    }
+
     fn update(&mut self, x: &T) {
         if let Some(distance_bound) = self.distance_bound {
             let (d, (_center, cluster, weights)) = self
@@ -152,27 +181,9 @@ impl<T: Clone + Distance> StreamingState<T> {
             if d.0 > distance_bound {
                 debug!("new center, current centers {}", self.clusters.len());
                 self.clusters.push((x.clone(), vec![x.clone()], vec![1]));
-            } else if cluster.len() == 1 && !self.matroid.is_independent(&cluster) {
-                if self.matroid.is_independent(&[x.clone()]) {
-                    // replace the current center
-                    *_center = x.clone();
-                    cluster.pop();
-                    cluster.push(x.clone());
-                }
-                weights[0] += 1;
             } else {
-                // The node is covered by the existing centers, we should just check
-                // if we should add it to the independent sets or if we just need to increase
-                // the counter of an existing element
                 cluster.push(x.clone());
-                if self.matroid.is_independent(&cluster) {
-                    debug!("  Adding point to the independent set");
-                    weights.push(1);
-                } else {
-                    cluster.pop();
-                    // add to the weight of the one with minimum weight
-                    *weights.iter_mut().min().unwrap() += 1;
-                }
+                weights.push(1);
             }
             #[cfg(debug_assertions)]
             {
@@ -206,14 +217,13 @@ impl<T: Clone + Distance> StreamingState<T> {
             }
         }
         assert!(self.clusters.len() <= self.k);
-        // Check that all sets of representatives are independent sets
-        self.clusters.iter().for_each(|(_, cluster, _)| {
-            assert!(
-                cluster.len() == 1 || self.matroid.is_independent(&cluster),
-                "cluster with {} representatives is not independent",
-                cluster.len()
-            );
-        });
+
+        // fix independent sets in large clusters
+        for i in 0..self.clusters.len() {
+            if self.clusters[i].1.len() >= 2048 {
+                self.restore_independence_for(i);
+            }
+        }
     }
 
     /// Reduce the number of clusters to `< self.k` by doubling the radius
@@ -235,62 +245,14 @@ impl<T: Clone + Distance> StreamingState<T> {
                         <= self.distance_bound.unwrap()
                     {
                         // remove the center to be merged
-                        let (center_to_merge, cluster_to_merge, weights_to_merge) =
+                        let (_center_to_merge, cluster_to_merge, weights_to_merge) =
                             self.clusters.swap_remove(j);
 
                         // Merge the independent sets and the weights
-                        let (current_center, current_cluster, current_weights) =
+                        let (_current_center, current_cluster, current_weights) =
                             &mut self.clusters[i];
-                        match (
-                            self.matroid.is_independent(&current_cluster),
-                            self.matroid.is_independent(&cluster_to_merge),
-                        ) {
-                            (false, false) => {
-                                assert!(current_cluster.len() == 1);
-                                assert!(cluster_to_merge.len() == 1);
-                                // both are singleton clusters, and none of them
-                                // forms an independent set. We just increase the weight
-                                // of the current cluster by the amount to merge
-                                current_weights[0] += weights_to_merge[0];
-                            }
-                            (false, true) => {
-                                assert!(current_cluster.len() == 1);
-                                // the current cluster is not an independent set, but the cluster
-                                // to merge is. We swap them and add 1 to the weight of the first
-                                // cluster
-                                let w = current_weights[0];
-                                *current_center = center_to_merge;
-                                *current_cluster = cluster_to_merge;
-                                *current_weights = weights_to_merge;
-                                current_weights[0] += w
-                            }
-                            (true, false) => {
-                                assert!(cluster_to_merge.len() == 1);
-                                // The current cluster is an independent set, but the other
-                                // is not. We simply increase the weight
-                                current_weights[0] += weights_to_merge[0];
-                            }
-                            (true, true) => {
-                                for (x, w) in cluster_to_merge
-                                    .into_iter()
-                                    .zip(weights_to_merge.into_iter())
-                                {
-                                    current_cluster.push(x);
-                                    if self.matroid.is_independent(&current_cluster) {
-                                        debug!("  Augmenting independent set");
-                                        current_weights.push(w);
-                                    } else {
-                                        // Remove the point we just added, since it does not
-                                        // form an indepedent set
-                                        current_cluster.pop();
-                                        // Give the weight of the point that is already represented
-                                        // to the center with the smallest weight
-                                        *current_weights.iter_mut().min().unwrap() += w;
-                                    }
-                                }
-                            }
-                        }
-
+                        current_cluster.extend(cluster_to_merge.into_iter());
+                        current_weights.extend(weights_to_merge.into_iter());
                         n -= 1;
                     }
                     j += 1;
