@@ -1,4 +1,5 @@
 use crate::configuration::Sha;
+use crate::configuration::*;
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use kcmkc_base::{
@@ -8,8 +9,6 @@ use kcmkc_base::{
 use rusqlite::*;
 use std::path::PathBuf;
 use std::time::Duration;
-
-use crate::configuration::Configuration;
 
 struct Outcome {
     pub total_time: Duration,
@@ -89,14 +88,41 @@ impl Reporter {
     }
 
     pub fn already_run(&self) -> Result<Option<i64>> {
+        let (algorithm, algorithm_version) = match self.config.datatype()? {
+            Datatype::WikiPage => {
+                let algo = WikiPage::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version())
+            }
+            Datatype::WikiPageEuclidean => {
+                let algo = WikiPageEuclidean::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version())
+            }
+            Datatype::Song => {
+                let algo = Song::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version())
+            }
+            Datatype::ColorVector => {
+                let algo = ColorVector::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version())
+            }
+            Datatype::Higgs => {
+                let algo = Higgs::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version())
+            }
+            Datatype::Phone => {
+                let algo = Phone::configure_algorithm_info(&self.config);
+                (algo.name(), algo.version())
+            }
+        };
+
         println!("connecting to the database");
         let conn = self
             .get_conn()
             .context("error connecting to the database")?;
         println!("running query");
         conn.query_row(
-            "SELECT id FROM result WHERE params_sha == ?1",
-            params![self.config.sha()?],
+            "SELECT id FROM result WHERE params_sha = ?1 AND algorithm = ?2 AND algorithm_version = ?3",
+            params![self.config.sha()?, algorithm, algorithm_version],
             |row| Ok(row.get(0).expect("error getting id")),
         )
         .optional()
@@ -104,8 +130,6 @@ impl Reporter {
     }
 
     pub fn save(self) -> Result<()> {
-        use crate::configuration::Configure;
-
         let mut conn = self.get_conn()?;
         let (algorithm, algorithm_version, algorithm_params) = match self.config.datatype()? {
             Datatype::WikiPage => {
