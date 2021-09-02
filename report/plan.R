@@ -10,6 +10,12 @@ plan <- drake_plan(
     },
     plot_sequential_effect = do_plot_sequential_effect(data_result),
     plot_sequential_time = do_plot_sequential_time(data_result),
+    plot_mapreduce_time = do_plot_mapreduce_time(data_result),
+    fig_mapreduce_time = ggsave("imgs/mr-time.png", 
+        plot=plot_mapreduce_time,
+        width=8,
+        height=4
+    )
     # plot_tradeoff = target(
     #     do_plot_tradeoff(data_result),
     #     # do_plot_tradeoff(filter(data_result, rank == rank_value)),

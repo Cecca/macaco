@@ -84,6 +84,56 @@ do_plot_sequential_time <- function(data) {
     p
 }
 
+do_plot_mapreduce_time <- function(data) {
+    data <- data %>%
+        filter(tau <= 10) %>%
+        filter(!str_detect(dataset, "sample")) %>%
+        mutate(across(contains("_time"), ~ set_units(.x, "s") %>% drop_units()))
+    mr <- data %>% filter(algorithm == "MRCoreset") %>%
+        group_by(dataset, rank, outliers_spec, workers, tau) %>%
+        summarise(across(contains("_time"), mean))
+    seq <- data %>% filter(algorithm == "SeqCoreset") %>%
+        group_by(dataset, rank, outliers_spec, tau) %>%
+        summarise(across(contains("_time"), mean))
+
+    p <- ggplot(mr, aes(x=workers, y=coreset_time)) +
+        geom_segment(aes(xend=workers, y=coreset_time, yend=0)) +
+        geom_point(aes(y=coreset_time, shape=factor(workers)), show.legend=F) +
+        geom_hline(aes(yintercept=coreset_time), data=seq, linetype="dotted") +
+        # geom_segment(aes(xend=tau, y=coreset_time, yend=coreset_time + solution_time), color="red") +
+        facet_grid(vars(dataset), vars(tau), scales="free") +
+        scale_color_algorithm() +
+        scale_x_continuous(
+            trans="log2", 
+            limits=c(1, 16),
+            # expand=expansion(mult=c(1,1)),
+            breaks=c(2,4,8)
+        ) +
+        scale_y_continuous(trans="log2") +
+        theme_paper() +
+        theme(
+            panel.grid = element_blank(),
+            panel.border = element_blank(),
+            axis.line.x = element_blank()
+        ) +
+        coord_cartesian(clip="on",) +
+        labs(
+            title="Coreset construction time on MapReduce",
+            y = "total time (s)",
+            caption=str_wrap(
+                "Computing the solution on the coreset is one order of magnitude slower than
+                building the coreset itself, hence we don't report that time here in this figure.
+                The construction of the coreset scales linearly for Higgs and Phones: doubling 
+                the resources halves the running time, also starting from the sequential baseline 
+                (dotted line). For Wikipedia the scalability is 
+                less pronounced, due to the higher cost of invoking the matroid oracle",
+                width=100
+            )
+        ) +
+        annotate(geom="segment", x=1, xend=16, y=0, yend=0)
+
+    p
+}
 
 do_plot_tradeoff <- function(data) {
     plotdata <- data %>%
