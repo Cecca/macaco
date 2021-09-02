@@ -9,7 +9,17 @@ plan <- drake_plan(
         table_result()
     },
     plot_sequential_effect = do_plot_sequential_effect(data_result),
+    fig_sequential_effect = ggsave("imgs/seq-effect.png", 
+        plot=plot_sequential_effect,
+        width=8,
+        height=8
+    ),
     plot_sequential_time = do_plot_sequential_time(data_result),
+    fig_sequential_time = ggsave("imgs/seq-time.png", 
+        plot=plot_sequential_time,
+        width=8,
+        height=8
+    ),
     plot_mapreduce_time = do_plot_mapreduce_time(data_result),
     fig_mapreduce_time = ggsave("imgs/mr-time.png", 
         plot=plot_mapreduce_time,

@@ -6,18 +6,18 @@ theme_paper <- function() {
         )
 }
 
-algopalette <- list(
-    "ChenEtAl" = "#E69F00",
-    "MRCoreset" = "#56B4E9",
-    "Random" = "#009E73",
-    "SeqCoreset" = "#F0E442",
-    "StreamingCoreset" = "#0072B2"
-    # "#D55E00",
-    # "#CC79A7",
-    # "#000000"
-)
+# algopalette <- list(
+#     "ChenEtAl" = "#E69F00",
+#     "MRCoreset" = "#56B4E9",
+#     "Random" = "#009E73",
+#     "SeqCoreset" = "#F0E442",
+#     "StreamingCoreset" = "#0072B2"
+#     # "#D55E00",
+#     # "#CC79A7",
+#     # "#000000"
+# )
 
-algopalette <- list(
+algopalette <- c(
     "ChenEtAl" = "#4e79a7",
     "MRCoreset" = "#59a14f",
     "SeqCoreset" = "#f28e2b",
@@ -43,7 +43,7 @@ do_plot_sequential_effect <- function(data) {
             data=baseline,
             color=algopalette['ChenEtAl']
         ) +
-        facet_wrap(vars(dataset, rank, outliers_spec), ncol=2, scales="free") +
+        facet_wrap(vars(dataset, rank), ncol=2, scales="free") +
         scale_color_algorithm() +
         theme_paper() +
         labs(
@@ -63,22 +63,22 @@ do_plot_sequential_time <- function(data) {
         summarise(total_time = mean(total_time) %>% set_units("s") %>% drop_units())
     baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
 
-    p <- ggplot(plotdata, aes(x=tau, y=total_time, color=algorithm)) +
+    p <- ggplot(
+            filter(plotdata, algorithm != "ChenEtAl"), 
+            aes(x=tau, y=total_time, color=algorithm)
+        ) +
+        geom_line() +
         geom_point() +
         geom_hline(
             aes(yintercept=total_time),
             data=baseline,
             color=algopalette['ChenEtAl']
         ) +
-        facet_wrap(vars(dataset, rank, outliers_spec), ncol=2, scales="free") +
+        facet_wrap(vars(dataset, rank), ncol=2, scales="free") +
         scale_y_log10(labels=scales::number_format(accuracy=1)) +
         scale_color_algorithm() +
         theme_paper() +
         labs(
-            caption=str_wrap("The troubling thing in this plot is that the running time 
-            of the streaming algorithm is _so_ much slower than the sequential algorithm, so there really
-            looks to be no point in running it, since it also provides a worst approximation.
-            Except of course that it works online with unbounded data.", width=100)
         )
 
     p
