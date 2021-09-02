@@ -6,17 +6,6 @@ theme_paper <- function() {
         )
 }
 
-# algopalette <- list(
-#     "ChenEtAl" = "#E69F00",
-#     "MRCoreset" = "#56B4E9",
-#     "Random" = "#009E73",
-#     "SeqCoreset" = "#F0E442",
-#     "StreamingCoreset" = "#0072B2"
-#     # "#D55E00",
-#     # "#CC79A7",
-#     # "#000000"
-# )
-
 algopalette <- c(
     "ChenEtAl" = "#4e79a7",
     "MRCoreset" = "#59a14f",
@@ -44,6 +33,7 @@ do_plot_sequential_effect <- function(data) {
             color=algopalette['ChenEtAl']
         ) +
         facet_wrap(vars(dataset, rank), ncol=2, scales="free") +
+        scale_x_continuous(breaks=scales::pretty_breaks()) +
         scale_color_algorithm() +
         theme_paper() +
         labs(
@@ -76,9 +66,11 @@ do_plot_sequential_time <- function(data) {
         ) +
         facet_wrap(vars(dataset, rank), ncol=2, scales="free") +
         scale_y_log10(labels=scales::number_format(accuracy=1)) +
+        scale_x_continuous(breaks=scales::pretty_breaks()) +
         scale_color_algorithm() +
         theme_paper() +
         labs(
+            y = "total time (s)"
         )
 
     p
