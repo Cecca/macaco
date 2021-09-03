@@ -22,8 +22,13 @@ do_plot_sequential_effect <- function(data) {
     plotdata <- data %>% 
         filter(algorithm %in% c("SeqCoreset", "StreamingCoreset", "ChenEtAl")) %>%
         group_by(dataset, rank, outliers_spec, algorithm, tau) %>% 
-        summarise(ratio_to_best = mean(ratio_to_best))
+        summarise(ratio_to_best = mean(ratio_to_best)) %>%
+        mutate(
+            sample = if_else(str_detect(dataset, "sample"), "sample", "full"),
+            dataset = str_remove(dataset, "-sample-10000")
+        )
     baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
+    plotdata <- plotdata %>% filter(tau <= 10)
 
     p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
         geom_point() +
@@ -32,15 +37,14 @@ do_plot_sequential_effect <- function(data) {
             data=baseline,
             color=algopalette['ChenEtAl']
         ) +
-        facet_wrap(vars(dataset, rank), ncol=2, scales="free") +
+        facet_grid(vars(dataset), vars(sample), scales="free_y") +
         scale_x_continuous(breaks=scales::pretty_breaks()) +
         scale_color_algorithm() +
         theme_paper() +
+        theme(
+            panel.border = element_rect(fill=NA)
+        ) +
         labs(
-            caption=str_wrap("There is an interplay between the matroid constraint and the allowed outliers, if we want to observe some effect of the parameter tau.
-            In particular, we have that allowing for too many outliers (e.g. Wikipedia 0.0001, which is 500 outliers over 5 million points) makes all the solutions very similar, because the most extreme distances are just removed.
-            If the matroid constraint is too stringent (i.e. there is too little liberty in choosing the centers)
-            then the solutions will also be too similar to each other.", width=100)
         )
 
     p
@@ -50,8 +54,13 @@ do_plot_sequential_time <- function(data) {
     plotdata <- data %>% 
         filter(algorithm %in% c("SeqCoreset", "StreamingCoreset", "ChenEtAl")) %>%
         group_by(dataset, rank, outliers_spec, algorithm, tau) %>% 
-        summarise(total_time = mean(total_time) %>% set_units("s") %>% drop_units())
+        summarise(total_time = mean(total_time) %>% set_units("s") %>% drop_units()) %>%
+        mutate(
+            sample = if_else(str_detect(dataset, "sample"), "sample", "full"),
+            dataset = str_remove(dataset, "-sample-10000")
+        )
     baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
+    plotdata <- plotdata %>% filter(tau <= 10)
 
     p <- ggplot(
             filter(plotdata, algorithm != "ChenEtAl"), 
@@ -64,11 +73,14 @@ do_plot_sequential_time <- function(data) {
             data=baseline,
             color=algopalette['ChenEtAl']
         ) +
-        facet_wrap(vars(dataset, rank), ncol=2, scales="free") +
+        facet_grid(vars(dataset), vars(sample), scales="free_y") +
         scale_y_log10(labels=scales::number_format(accuracy=1)) +
         scale_x_continuous(breaks=scales::pretty_breaks()) +
         scale_color_algorithm() +
         theme_paper() +
+        theme(
+            panel.border = element_rect(fill=NA)
+        ) +
         labs(
             y = "total time (s)"
         )
@@ -110,21 +122,40 @@ do_plot_mapreduce_time <- function(data) {
         ) +
         coord_cartesian(clip="on",) +
         labs(
-            title="Coreset construction time on MapReduce",
-            y = "total time (s)",
-            caption=str_wrap(
-                "Computing the solution on the coreset is one order of magnitude slower than
-                building the coreset itself, hence we don't report that time here in this figure.
-                The construction of the coreset scales linearly for Higgs and Phones: doubling 
-                the resources halves the running time, also starting from the sequential baseline 
-                (dotted line). For Wikipedia the scalability is 
-                less pronounced, due to the higher cost of invoking the matroid oracle",
-                width=100
-            )
+            y = "total time (s)"
         ) +
         annotate(geom="segment", x=1, xend=16, y=0, yend=0)
 
     p
+}
+
+do_plot_solution_time <- function(data) {
+    plotdata <- data %>% 
+        group_by(dataset, workers, algorithm, tau) %>% 
+        summarise(across(c(solution_time, coreset_size), ~ mean(.x))) %>% 
+        filter(!str_detect(dataset, "sample")) %>%
+        filter(tau %in% c(3, 6, 10)) %>%
+        mutate(solution_time = drop_units(set_units(solution_time, "s")))
+
+    ggplot(plotdata, aes(coreset_size, solution_time, shape=factor(tau), color=algorithm)) +
+        geom_point() +
+        scale_y_continuous(
+            labels=scales::number_format(), 
+            breaks=scales::breaks_log(),
+            trans="log"
+        ) + 
+        scale_x_continuous(
+            labels=scales::number_format(), 
+            breaks=c(100, 300, 1000),
+            trans="log"
+        ) + 
+        labs(
+            x="coreset size",
+            y="time (s)",
+            shape=TeX("\\tau")
+        ) +
+        facet_wrap(vars(dataset)) +
+        theme_paper()
 }
 
 do_plot_tradeoff <- function(data) {
@@ -189,11 +220,6 @@ do_plot_tradeoff <- function(data) {
     averages %>% 
         filter(dataset %in% c("Higgs", "MusixMatch", "Wikipedia")) %>% 
         draw()
-    # p_higgs <- averages %>% filter(dataset == "Higgs") %>% draw()
-    # p_musixmatch <- averages %>% filter(dataset == "MusixMatch", rank == 133) %>% draw()
-    # p_wiki <- averages %>% filter(dataset == "Wikipedia") %>% draw()
-    # (p_higgs / p_musixmatch / p_wiki / guide_area()) +
-    #     plot_layout(guides = 'collect')
 }
 
 do_plot_time <- function(data, coreset_only=F) {

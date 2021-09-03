@@ -11,28 +11,33 @@ plan <- drake_plan(
     plot_sequential_effect = do_plot_sequential_effect(data_result),
     fig_sequential_effect = ggsave("imgs/seq-effect.png", 
         plot=plot_sequential_effect,
-        width=8,
-        height=8
+        width=5,
+        height=5
     ),
     plot_sequential_time = do_plot_sequential_time(data_result),
     fig_sequential_time = ggsave("imgs/seq-time.png", 
         plot=plot_sequential_time,
-        width=8,
-        height=8
+        width=5,
+        height=5
     ),
     plot_mapreduce_time = do_plot_mapreduce_time(data_result),
     fig_mapreduce_time = ggsave("imgs/mr-time.png", 
         plot=plot_mapreduce_time,
+        width=9,
+        height=3
+    ),
+    plot_tradeoff = do_plot_tradeoff(data_result),
+    fig_tradeoff = ggsave("imgs/tradeoff.png", 
+        plot=plot_tradeoff,
         width=8,
         height=4
-    )
-    # plot_tradeoff = target(
-    #     do_plot_tradeoff(data_result),
-    #     # do_plot_tradeoff(filter(data_result, rank == rank_value)),
-    #     # transform = cross(
-    #     #     rank_value = c(10, 50)
-    #     # )
-    # ),
+    ),
+    plot_solution_time = do_plot_solution_time(data_result),
+    fig_solution_time = ggsave("imgs/solution-time.png",
+        plot = plot_solution_time,
+        width = 5,
+        height = 5
+    ),
     # plot_time = target(
     #     do_plot_time(data_result, coreset_only = F),
     #     # do_plot_time(filter(data_result, rank == rank_value), coreset_only = F),
