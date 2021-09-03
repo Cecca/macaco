@@ -231,6 +231,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     distances: &DiskBuilder,
     weight_map: &W,
 ) -> Result<Vec<V>, usize> {
+    let timer = Instant::now();
     let n = points.len();
     // Mapping between points and the center they are assigned to
     let mut assignment: Vec<Option<usize>> = vec![None; points.len()];
@@ -335,18 +336,20 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     let covered_nodes: usize = solution.iter().map(|disk| disk.weight() as usize).sum();
     if covered_nodes < p {
         println!(
-            "    Covered nodes {} < {}, invalid solution with {} centers",
+            "    Covered nodes {} < {}, invalid solution with {} centers ({:?})",
             covered_nodes,
             p,
-            solution.len()
+            solution.len(),
+            timer.elapsed()
         );
         return Err(covered_nodes);
     } else {
         println!(
-            "    Covered nodes {} >= {}, valid solution with {} centers",
+            "    Covered nodes {} >= {}, valid solution with {} centers ({:?})",
             covered_nodes,
             p,
-            solution.len()
+            solution.len(),
+            timer.elapsed()
         );
     }
 

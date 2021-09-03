@@ -89,7 +89,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V>
         let start = Instant::now();
         let solution = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
         let elapsed_solution = start.elapsed();
-        assert!(matroid.is_maximal(&solution, &dataset));
+        debug_assert!(matroid.is_maximal(&solution, &dataset));
 
         self.coreset.replace(coreset);
         self.profile.replace((elapsed_coreset, elapsed_solution));

@@ -46,7 +46,7 @@ impl<V> MapReduceCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset<V> {
     fn version(&self) -> u32 {
-        5
+        6
     }
 
     fn name(&self) -> String {
@@ -140,19 +140,20 @@ impl<T: Distance + Clone + Weight + PartialEq + Abomonation + ExchangeData> Para
         let elapsed_coreset = start.elapsed();
 
         let start = Instant::now();
-        let solution = if worker.index() == 0 {
+        let (solution, elapsed_solution) = if worker.index() == 0 {
             println!("Coreset of size {} ({:?})", coreset.len(), elapsed_coreset);
             let s = robust_matroid_center(&coreset, Rc::clone(&matroid), p, &weights);
-            assert!(
+            let elapsed_solution = start.elapsed();
+            println!("found solution in {:?}", elapsed_solution);
+            debug_assert!(
                 matroid.is_maximal(&s, &dataset),
                 "size of the solution is {}",
                 s.len()
             );
-            s
+            (s, elapsed_solution)
         } else {
-            Vec::new()
+            (Vec::new(), std::time::Duration::from_secs(0))
         };
-        let elapsed_solution = start.elapsed();
 
         self.coreset.replace(coreset);
         self.profile.replace((elapsed_coreset, elapsed_solution));

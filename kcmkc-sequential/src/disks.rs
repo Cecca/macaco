@@ -11,6 +11,7 @@ pub struct DiskBuilder {
 impl DiskBuilder {
     pub fn new<V: Distance + Sync>(points: &[V]) -> Self {
         println!("Pre-computing distances");
+        let timer = std::time::Instant::now();
         let distances: Vec<Vec<(usize, f32)>> = points
             .par_iter()
             .map(|a| {
@@ -23,6 +24,7 @@ impl DiskBuilder {
                 dists
             })
             .collect();
+        println!("...done in {:?}", timer.elapsed());
         Self { distances }
     }
 
