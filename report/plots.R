@@ -137,7 +137,51 @@ do_plot_solution_time <- function(data) {
         filter(tau %in% c(3, 6, 10)) %>%
         mutate(solution_time = drop_units(set_units(solution_time, "s")))
 
+    # mincsize <- ungroup(plotdata) %>% summarise(min(coreset_size)) %>% pull()
+    # mintime <- ungroup(plotdata) %>% summarise(min(solution_time)) %>% pull()
+    # scalelin <- mintime / mincsize
+    # scalequad <- mintime / mincsize^2
+    # scalecube <- mintime / mincsize^3
+
+    reflines <- plotdata %>% 
+        group_by(dataset) %>% 
+        summarise(
+            mintime = min(solution_time), 
+            minsize = min(coreset_size), 
+            scale_lin = mintime / minsize, 
+            scale_quad = mintime / minsize^2, 
+            scale_cub = mintime / minsize^3
+        )  %>%
+        rowwise() %>% 
+        summarise(
+            dataset = dataset,
+            tribble(
+                ~label, ~x, ~y, 
+                "n", minsize, scale_lin*minsize, 
+                "n", 1000, 1000*scale_lin,
+                "n^2", minsize, scale_quad*minsize^2,
+                "n^2", 1000, 1000^2*scale_quad,
+                "n^3", minsize, scale_cub*minsize^3,
+                "n^3", 1000, 1000^3*scale_cub,
+            )
+        )
+
     ggplot(plotdata, aes(coreset_size, solution_time, shape=factor(tau), color=algorithm)) +
+        geom_line(
+            aes(x, y, group=label),
+            data=reflines,
+            inherit.aes=F,
+            linetype="dotted"
+        ) +
+        geom_text(
+            aes(x, y, label=label),
+            data=filter(reflines, x == 1000),
+            inherit.aes=F,
+            vjust=0,
+            hjust=1,
+            size=3,
+            parse=T
+        ) +
         geom_point() +
         scale_y_continuous(
             labels=scales::number_format(), 
@@ -155,6 +199,23 @@ do_plot_solution_time <- function(data) {
             shape=TeX("\\tau")
         ) +
         facet_wrap(vars(dataset)) +
+        coord_cartesian(clip="off") +
+        theme_paper() +
+        theme(
+            panel.grid = element_blank()
+        )
+}
+
+do_plot_time_ratio <- function(data) {
+    plotdata <- data %>%
+        filter(workers %in% c(1, 8))
+
+    ggplot(plotdata, aes(tau, time_ratio)) +
+        geom_point() +
+        geom_segment(aes(yend=1, xend=tau)) +
+        geom_hline(yintercept=1) +
+        scale_y_log10(labels=scales::number_format(accuracy=0.01)) +
+        facet_grid(vars(dataset), vars(algorithm)) +
         theme_paper()
 }
 

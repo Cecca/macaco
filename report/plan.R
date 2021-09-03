@@ -36,33 +36,19 @@ plan <- drake_plan(
     fig_solution_time = ggsave("imgs/solution-time.png",
         plot = plot_solution_time,
         width = 5,
-        height = 5
+        height = 3
     ),
-    # plot_time = target(
-    #     do_plot_time(data_result, coreset_only = F),
-    #     # do_plot_time(filter(data_result, rank == rank_value), coreset_only = F),
-    #     # transform = cross(
-    #     #     rank_value = c(10, 50)
-    #     # )
-    # ),
-    # plot_time_coreset = target(
-    #     do_plot_time(data_result, coreset_only = T),
-    #     # do_plot_time(filter(data_result, rank == rank_value), coreset_only = T),
-    #     # transform = cross(
-    #     #     rank_value = c(10, 50)
-    #     # )
-    # ),
-    # figure_samples = ggsave(
-    #     "imgs/radius-vs-time.png",
-    #     do_plot_samples(data_result),
-    #     width = 10,
-    #     height = 5,
-    #     dpi = 300
-    # )
-    # notes = rmarkdown::render(
-    #     knitr_in("R/notes.Rmd"),
-    #     output_file = file_out("notes.html"),
-    #     output_dir = "R",
-    #     quiet = TRUE
-    # )
+
+    data_time_ratio = data_result %>%
+        mutate(across(contains("time"), ~ drop_units(set_units(., "s")))) %>%
+        filter(!str_detect(dataset, "sample"), str_detect(algorithm, "Coreset")) %>% 
+        group_by(dataset, algorithm, workers, tau) %>% 
+        summarise(across(c(coreset_time, solution_time), mean)) %>% 
+        mutate(time_ratio = coreset_time / solution_time),
+    plot_time_ratio = do_plot_time_ratio(data_time_ratio),
+    fig_time_ratio = ggsave("imgs/time-ratio.png",
+        plot = plot_time_ratio,
+        width = 5,
+        height = 4
+    ),
 )
