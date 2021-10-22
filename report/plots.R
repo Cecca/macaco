@@ -37,7 +37,7 @@ do_plot_sequential_effect <- function(data) {
             data=baseline,
             color=algopalette['ChenEtAl']
         ) +
-        facet_grid(vars(dataset), vars(sample), scales="free_y") +
+        facet_grid(vars(dataset, outliers_spec), vars(sample), scales="free_y") +
         scale_x_continuous(breaks=scales::pretty_breaks()) +
         scale_color_algorithm() +
         theme_paper() +
@@ -73,7 +73,7 @@ do_plot_sequential_time <- function(data) {
             data=baseline,
             color=algopalette['ChenEtAl']
         ) +
-        facet_grid(vars(dataset), vars(sample), scales="free_y") +
+        facet_grid(vars(dataset, outliers_spec), vars(sample), scales="free_y") +
         scale_y_log10(labels=scales::number_format(accuracy=1)) +
         scale_x_continuous(breaks=scales::pretty_breaks()) +
         scale_color_algorithm() +
@@ -105,7 +105,7 @@ do_plot_mapreduce_time <- function(data) {
         geom_point(aes(y=coreset_time, shape=factor(workers)), show.legend=F) +
         geom_hline(aes(yintercept=coreset_time), data=seq, linetype="dotted") +
         # geom_segment(aes(xend=tau, y=coreset_time, yend=coreset_time + solution_time), color="red") +
-        facet_grid(vars(dataset), vars(tau), scales="free") +
+        facet_grid(vars(dataset, outliers_spec), vars(tau), scales="free") +
         scale_color_algorithm() +
         scale_x_continuous(
             trans="log2", 
@@ -131,7 +131,7 @@ do_plot_mapreduce_time <- function(data) {
 
 do_plot_solution_time <- function(data) {
     plotdata <- data %>% 
-        group_by(dataset, workers, algorithm, tau) %>% 
+        group_by(dataset, outliers_spec, workers, algorithm, tau) %>% 
         summarise(across(c(solution_time, coreset_size), ~ mean(.x))) %>% 
         filter(!str_detect(dataset, "sample")) %>%
         filter(tau %in% c(3, 6, 10)) %>%
@@ -144,7 +144,7 @@ do_plot_solution_time <- function(data) {
     # scalecube <- mintime / mincsize^3
 
     reflines <- plotdata %>% 
-        group_by(dataset) %>% 
+        group_by(dataset, outliers_spec) %>% 
         summarise(
             mintime = min(solution_time), 
             minsize = min(coreset_size), 
@@ -155,6 +155,7 @@ do_plot_solution_time <- function(data) {
         rowwise() %>% 
         summarise(
             dataset = dataset,
+            outliers_spec = outliers_spec,
             tribble(
                 ~label, ~x, ~y, 
                 "n", minsize, scale_lin*minsize, 
@@ -165,6 +166,7 @@ do_plot_solution_time <- function(data) {
                 "n^3", 1000, 1000^3*scale_cub,
             )
         )
+    print(reflines)
 
     ggplot(plotdata, aes(coreset_size, solution_time, shape=factor(tau), color=algorithm)) +
         geom_line(
@@ -198,7 +200,7 @@ do_plot_solution_time <- function(data) {
             y="time (s)",
             shape=TeX("\\tau")
         ) +
-        facet_wrap(vars(dataset)) +
+        facet_wrap(vars(dataset, outliers_spec)) +
         coord_cartesian(clip="off") +
         theme_paper() +
         theme(
@@ -274,7 +276,7 @@ do_plot_tradeoff <- function(data) {
             scale_color_algorithm() +
             labs(y = "total time (s)", x = "radius", title=title) +
             # facet_grid(vars(dataset), vars(rank), scales = "free") +
-            facet_wrap(vars(dataset, rank), scales = "free", ncol=1) +
+            facet_wrap(vars(dataset, outliers_spec, rank), scales = "free", ncol=1) +
             theme_paper()
     }
 

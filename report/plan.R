@@ -12,31 +12,31 @@ plan <- drake_plan(
     fig_sequential_effect = ggsave("imgs/seq-effect.png", 
         plot=plot_sequential_effect,
         width=5,
-        height=5
+        height=10
     ),
     plot_sequential_time = do_plot_sequential_time(data_result),
     fig_sequential_time = ggsave("imgs/seq-time.png", 
         plot=plot_sequential_time,
         width=5,
-        height=5
+        height=10
     ),
     plot_mapreduce_time = do_plot_mapreduce_time(data_result),
     fig_mapreduce_time = ggsave("imgs/mr-time.png", 
         plot=plot_mapreduce_time,
         width=9,
-        height=3
+        height=6
     ),
     plot_tradeoff = do_plot_tradeoff(data_result),
     fig_tradeoff = ggsave("imgs/tradeoff.png", 
         plot=plot_tradeoff,
         width=8,
-        height=4
+        height=7
     ),
     plot_solution_time = do_plot_solution_time(data_result),
     fig_solution_time = ggsave("imgs/solution-time.png",
         plot = plot_solution_time,
         width = 5,
-        height = 3
+        height = 6
     ),
 
     data_time_ratio = data_result %>%
