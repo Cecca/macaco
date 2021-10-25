@@ -35,7 +35,7 @@ impl<V> SeqCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
     fn version(&self) -> u32 {
-        2
+        3
     }
 
     fn name(&self) -> String {
@@ -72,7 +72,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
         let start = Instant::now();
         // First find a clustering of tau centers minimizing the radius, with no
         // matroid constraints
-        let (centers, assignments) = kcenter(dataset, self.tau);
+        let (centers, assignments) = kcenter(&dataset, self.tau);
         println!("[{:?}] k-center completed", start.elapsed());
 
         // Build disks by assigning each center to the closest point

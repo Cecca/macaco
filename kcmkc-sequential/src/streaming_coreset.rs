@@ -34,7 +34,7 @@ impl<V> StreamingCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset<V> {
     fn version(&self) -> u32 {
-        4
+        5
     }
 
     fn name(&self) -> String {

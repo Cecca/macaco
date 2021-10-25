@@ -149,7 +149,11 @@ We emphasize, though, that \stream can work with unbounded inputs.
         less pronounced, due to the higher cost of invoking the matroid oracle.
         \mc{Show fewer values of $\tau$ in the final version.}
         \mc{We fix the number of outliers to 50, since the coreset construction does not depend on it.}
-        \mc{Why is it the case that with two workers we get such a huge speed up compared to the sequential algorithm?}
+        \mc{Why is it the case that with two workers we get such a huge speed up compared to the sequential algorithm?
+        The reason is cache locality. If we run the mapreduce algorithm with one worker (which is equivalent to the sequential algorithm)
+        we get a much better running time. This is because the data passes through the Abomonation serialization library,
+        meaning that all the bytes of the vectors sit in adjacent memory locations.
+        }
     }
 \end{figure*}
 

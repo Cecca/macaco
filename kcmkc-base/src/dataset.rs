@@ -181,9 +181,9 @@ impl Dataset {
 
     pub fn to_vec<T>(&self, shuffle_seed: Option<u64>) -> Result<Vec<T>>
     where
-        for<'de> T: Deserialize<'de>,
+        for<'de> T: Deserialize<'de> + Clone,
     {
-        let mut result = Vec::new();
+        let mut result: Vec<T> = Vec::new();
         // let spinner_style = ProgressStyle::default_spinner().template("{spinner} {pos} {wide_msg}");
         // let bar = ProgressBar::new_spinner();
         // bar.set_style(spinner_style);
@@ -198,6 +198,12 @@ impl Dataset {
             let mut rng = XorShiftRng::seed_from_u64(seed);
             result.shuffle(&mut rng);
         }
+
+        // The shuffling we do above actually only moves the references,
+        // and thus destroys cache locality. Copying things back in order restores it.
+        let mut compacted = Vec::new();
+        compacted.extend(result.iter().cloned());
+        let result = compacted;
 
         Ok(result)
     }

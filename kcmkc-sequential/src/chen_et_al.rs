@@ -22,7 +22,7 @@ pub struct ChenEtAl {
 
 impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
     fn version(&self) -> u32 {
-        1
+        2
     }
 
     fn name(&self) -> String {
