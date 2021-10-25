@@ -1,13 +1,12 @@
 use criterion::{
-    criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion,
-    PlotConfiguration,
+    criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion, PlotConfiguration,
 };
-use kcmkc_base::types::*;
-use kcmkc_sequential::kcenter::kcenter;
+use macaco_base::types::*;
+use macaco_sequential::kcenter::kcenter;
 
 fn bench_kcenter(c: &mut Criterion) {
-    let data: Vec<Higgs> = kcmkc_base::dataset::Dataset::new(
-        "/Users/matteoceccarello/Work/kcmkc/.datasets/higgs/higgs-v1.msgpack.gz",
+    let data: Vec<Higgs> = macaco_base::dataset::Dataset::new(
+        "/Users/matteoceccarello/Work/macaco/.datasets/higgs/higgs-v1.msgpack.gz",
     )
     .to_vec(None)
     .unwrap();

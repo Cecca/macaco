@@ -1,4 +1,4 @@
-use kcmkc_base::types::*;
+use macaco_base::types::*;
 use rayon::prelude::*;
 
 // Pre-compute all pairwise distances, and then keep the distances from each point in sorted order.

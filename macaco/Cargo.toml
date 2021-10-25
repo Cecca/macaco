@@ -1,5 +1,5 @@
 [package]
-name = "kcmkc"
+name = "macaco"
 version = "0.1.0"
 authors = ["Matteo Ceccarello <mceccarello@unibz.it>"]
 edition = "2018"
@@ -8,9 +8,9 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kcmkc-base = {path = "../kcmkc-base"}
-kcmkc-sequential = {path = "../kcmkc-sequential"}
-kcmkc-parallel = {path = "../kcmkc-parallel"}
+macaco-base = {path = "../macaco-base"}
+macaco-sequential = {path = "../macaco-sequential"}
+macaco-parallel = {path = "../macaco-parallel"}
 log = "0.4"
 env_logger = "0.8"
 roaring = "0.6"

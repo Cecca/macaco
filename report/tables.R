@@ -27,7 +27,7 @@ access_json <- function(jstr, name) {
 }
 
 table_dataset <- function(dataset_names) {
-    conn <- DBI::dbConnect(RSQLite::SQLite(), here("kcmkc-results.sqlite"))
+    conn <- DBI::dbConnect(RSQLite::SQLite(), here("macaco-results.sqlite"))
     results <- tbl(conn, "result") %>%
         filter(dataset %in% c(dataset_names)) %>%
         collect()
@@ -36,7 +36,7 @@ table_dataset <- function(dataset_names) {
 }
 
 table_result <- function() {
-    conn <- DBI::dbConnect(RSQLite::SQLite(), here("kcmkc-results.sqlite"))
+    conn <- DBI::dbConnect(RSQLite::SQLite(), here("macaco-results.sqlite"))
     results <- tbl(conn, "result") %>%
         collect() %>%
         replace_na(list(threads = 1)) %>%

@@ -11,7 +11,7 @@ env
 /check
 /imgs
 .Rprofile
-kcmkc-current.json
+macaco-current.json
 query.sql
 *.sqlite*
 ## Core latex/pdflatex auxiliary files:

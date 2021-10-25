@@ -1,5 +1,5 @@
 use abomonation::Abomonation;
-use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, types::Distance};
+use macaco_base::{algorithm::Algorithm, matroid::Matroid, types::Distance};
 
 use std::rc::Rc;
 use timely::{communication::Allocator, worker::Worker};

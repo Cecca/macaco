@@ -23,11 +23,11 @@ workers = [
 ]
 
 
-EXECUTABLE = "target/release/kcmkc"
+EXECUTABLE = "target/release/macaco"
 
 
 def run(configuration):
-    with open("/tmp/kcmkc-current.json", "w") as fp:
+    with open("/tmp/macaco-current.json", "w") as fp:
         json.dump(configuration, fp)
     conf_str = base64.b64encode(json.dumps(configuration).encode("utf-8"))
     sp = subprocess.run([EXECUTABLE, conf_str])

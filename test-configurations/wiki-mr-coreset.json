@@ -12,7 +12,7 @@
             "seed": 149854
         }
     },
-    "dataset": "/home/ceccarel/kcmkc/.datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
+    "dataset": "/home/ceccarel/macaco/.datasets/sampled/Wikipedia-date-20210120-dimensions-50-topics-100-sample10000-v1.msgpack.gz",
     "constraint": {
         "transversal": {
             "topics": [

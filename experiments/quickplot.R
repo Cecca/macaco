@@ -3,7 +3,7 @@ library(tidyverse)
 library(ggdist)
 library(lubridate)
 
-db <- DBI::dbConnect(RSQLite::SQLite(), "~/kcmkc-results.sqlite")
+db <- DBI::dbConnect(RSQLite::SQLite(), "~/macaco-results.sqlite")
 
 tbl(db, "result") %>% 
   # filter(algorithm != "Random") %>%

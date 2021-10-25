@@ -30,7 +30,7 @@ The MapReduce implementation runs on top of Timely Dataflow~\cite{DBLP:journals/
 All experiments have been executed on a cluster with 8 machines equipped
 with a Intel\textregistered Xeon\textregistered CPU (E5-2670 v2 @ 2.50GHz), and 16 Gb of RAM each.
 
-Our open source implementation is available at~\url{https://github.com/Cecca/kcmkc}.
+Our open source implementation is available at~\url{https://github.com/Cecca/macaco}.
 As an optimization for the \stream algorithm, instead of updating the independent set associated to a cluster center on every node addition
 -- which involve calling the expensive matroid oracle -- we buffer the points for each cluster center,
 computing the independent set only once every 2048 additions.

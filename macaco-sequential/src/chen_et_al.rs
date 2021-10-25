@@ -1,5 +1,5 @@
-use kcmkc_base::types::Distance;
-use kcmkc_base::{
+use macaco_base::types::Distance;
+use macaco_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
     perf_counters,
@@ -353,6 +353,7 @@ fn run_robust_matroid_center<'a, V: Distance + Clone, W: WeightMap>(
     Ok(centers)
 }
 
+#[allow(dead_code)]
 fn radii<V: Distance, W: WeightMap>(
     points: &[V],
     weight_map: &W,

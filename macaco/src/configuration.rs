@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
-use kcmkc_base::{
+use macaco_base::{
     algorithm::Algorithm,
     dataset::{Constraint, Dataset, Datatype, Metadata},
     matroid::{Matroid, PartitionMatroid, TransversalMatroid},
     types::{ColorVector, Higgs, Phone, Song, WikiPage, WikiPageEuclidean},
 };
-use kcmkc_parallel::mapreduce_coreset::MapReduceCoreset;
-use kcmkc_parallel::ParallelAlgorithm;
-use kcmkc_sequential::{
+use macaco_parallel::mapreduce_coreset::MapReduceCoreset;
+use macaco_parallel::ParallelAlgorithm;
+use macaco_sequential::{
     chen_et_al::ChenEtAl, greedy_heuristic::GreedyHeuristic, random::RandomClustering,
     seq_coreset::SeqCoreset, streaming_coreset::StreamingCoreset, SequentialAlgorithm,
 };

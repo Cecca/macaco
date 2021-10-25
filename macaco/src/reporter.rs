@@ -2,7 +2,7 @@ use crate::configuration::Sha;
 use crate::configuration::*;
 use anyhow::{Context, Result};
 use chrono::prelude::*;
-use kcmkc_base::{
+use macaco_base::{
     dataset::Datatype,
     types::{ColorVector, Higgs, Phone, Song, WikiPage, WikiPageEuclidean},
 };
@@ -53,7 +53,7 @@ impl Reporter {
     fn default_db_path() -> std::path::PathBuf {
         #[allow(deprecated)]
         let mut path = std::env::home_dir().expect("unable to get home directory");
-        path.push("kcmkc-results.sqlite");
+        path.push("macaco-results.sqlite");
         path
     }
 

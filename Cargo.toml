@@ -1,5 +1,5 @@
 [workspace]
-members = ["kcmkc", "kcmkc-base", "kcmkc-sequential", "kcmkc-parallel"]
+members = ["macaco", "macaco-base", "macaco-sequential", "macaco-parallel"]
 
 [profile.release]
 lto = "off"

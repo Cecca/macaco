@@ -1,5 +1,5 @@
 use crate::SequentialAlgorithm;
-use kcmkc_base::{
+use macaco_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
     perf_counters,

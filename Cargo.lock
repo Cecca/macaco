@@ -621,79 +621,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kcmkc"
-version = "0.1.0"
-dependencies = [
- "abomonation",
- "anyhow",
- "base64",
- "bincode",
- "chrono",
- "env_logger",
- "flate2",
- "indicatif",
- "kcmkc-base",
- "kcmkc-parallel",
- "kcmkc-sequential",
- "log",
- "progress-logger",
- "rayon",
- "roaring",
- "rusqlite",
- "serde",
- "serde_derive",
- "serde_json",
- "sha2",
- "timely",
- "vergen",
-]
-
-[[package]]
-name = "kcmkc-base"
-version = "0.1.0"
-dependencies = [
- "abomonation",
- "abomonation_derive",
- "anyhow",
- "flate2",
- "indicatif",
- "log",
- "progress-logger",
- "rand",
- "rand_xorshift",
- "rayon",
- "rmp-serde",
- "serde",
- "thread_local",
-]
-
-[[package]]
-name = "kcmkc-parallel"
-version = "0.1.0"
-dependencies = [
- "abomonation",
- "abomonation_derive",
- "anyhow",
- "kcmkc-base",
- "kcmkc-sequential",
- "log",
- "timely",
-]
-
-[[package]]
-name = "kcmkc-sequential"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "criterion",
- "kcmkc-base",
- "log",
- "rand",
- "rand_xorshift",
- "rayon",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -747,6 +674,79 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "macaco"
+version = "0.1.0"
+dependencies = [
+ "abomonation",
+ "anyhow",
+ "base64",
+ "bincode",
+ "chrono",
+ "env_logger",
+ "flate2",
+ "indicatif",
+ "log",
+ "macaco-base",
+ "macaco-parallel",
+ "macaco-sequential",
+ "progress-logger",
+ "rayon",
+ "roaring",
+ "rusqlite",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha2",
+ "timely",
+ "vergen",
+]
+
+[[package]]
+name = "macaco-base"
+version = "0.1.0"
+dependencies = [
+ "abomonation",
+ "abomonation_derive",
+ "anyhow",
+ "flate2",
+ "indicatif",
+ "log",
+ "progress-logger",
+ "rand",
+ "rand_xorshift",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "thread_local",
+]
+
+[[package]]
+name = "macaco-parallel"
+version = "0.1.0"
+dependencies = [
+ "abomonation",
+ "abomonation_derive",
+ "anyhow",
+ "log",
+ "macaco-base",
+ "macaco-sequential",
+ "timely",
+]
+
+[[package]]
+name = "macaco-sequential"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "log",
+ "macaco-base",
+ "rand",
+ "rand_xorshift",
+ "rayon",
 ]
 
 [[package]]

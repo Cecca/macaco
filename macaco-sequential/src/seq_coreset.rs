@@ -3,11 +3,11 @@ use crate::{
     kcenter::kcenter,
     SequentialAlgorithm,
 };
-use kcmkc_base::{
+use macaco_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
     perf_counters,
-    types::{Distance},
+    types::Distance,
 };
 use std::{
     rc::Rc,

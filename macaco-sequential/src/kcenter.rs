@@ -1,4 +1,4 @@
-use kcmkc_base::types::Distance;
+use macaco_base::types::Distance;
 
 /// Solve the k-center clustering by means of the farthest-first heuristic.
 ///

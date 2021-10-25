@@ -1,4 +1,4 @@
-use kcmkc_base::{algorithm::Algorithm, matroid::Matroid, perf_counters, types::Distance};
+use macaco_base::{algorithm::Algorithm, matroid::Matroid, perf_counters, types::Distance};
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 use std::{

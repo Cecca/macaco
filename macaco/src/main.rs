@@ -1,9 +1,9 @@
 use abomonation::Abomonation;
 use anyhow::{Context, Result};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
-use kcmkc::configuration::*;
-use kcmkc::reporter::Reporter;
-use kcmkc_base::{self, dataset::Dataset, dataset::Datatype, types::*};
+use macaco::configuration::*;
+use macaco::reporter::Reporter;
+use macaco_base::{self, dataset::Dataset, dataset::Datatype, types::*};
 use log::*;
 use rayon::prelude::*;
 use serde::Deserialize;

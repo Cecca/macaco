@@ -1,11 +1,11 @@
 plan <- drake_plan(
     higgs_data = {
-        file_in("kcmkc-results.sqlite")
+        file_in("macaco-results.sqlite")
         table_dataset(c("Higgs", "Higgs-sample-10000"))
     },
 
     data_result = {
-        file_in("kcmkc-results.sqlite")
+        file_in("macaco-results.sqlite")
         table_result()
     },
     plot_sequential_effect = do_plot_sequential_effect(data_result),

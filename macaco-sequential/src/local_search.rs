@@ -1,6 +1,6 @@
 use std::{iter::FromIterator, rc::Rc};
 
-use kcmkc_base::{
+use macaco_base::{
     matroid::{Matroid, Weight},
     types::*,
 };
@@ -10,7 +10,7 @@ use crate::{chen_et_al::WeightMap, disks::DiskBuilder};
 
 pub fn local_search<'a, T: Clone + Distance + Sync, W: WeightMap>(
     dataset: &'a [T],
-    matroid: std::rc::Rc<dyn kcmkc_base::matroid::Matroid<T>>,
+    matroid: std::rc::Rc<dyn macaco_base::matroid::Matroid<T>>,
     p: usize,
     weight_map: &'a W,
 ) -> anyhow::Result<Vec<T>> {
@@ -217,6 +217,7 @@ fn run_k_outliers<'a, V: Distance + Clone, W: WeightMap>(
     Ok(solution)
 }
 
+#[allow(dead_code)]
 fn radii<V: Distance, W: WeightMap>(
     points: &[V],
     weight_map: &W,
