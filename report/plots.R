@@ -7,11 +7,16 @@ theme_paper <- function() {
 }
 
 algopalette <- c(
-    "ChenEtAl" = "#4e79a7",
-    "MRCoreset" = "#59a14f",
-    "SeqCoreset" = "#f28e2b",
-    "StreamingCoreset" = "#edc948",
-    "Random" = "#76b7b2"
+    # "ChenEtAl" = "#4e79a7",
+    # "MRCoreset" = "#59a14f",
+    # "SeqCoreset" = "#f28e2b",
+    # "StreamingCoreset" = "#edc948",
+    # "Random" = "#76b7b2"
+    "ChenEtAl" = "#5778a4",
+    "MRCoreset" = "#e49444",
+    "SeqCoreset" = "#d1615d",
+    "StreamingCoreset" = "#85b6b2",
+    "Random" = "#e7ca60"
 )
 
 scale_color_algorithm <- function() {
@@ -30,24 +35,28 @@ do_plot_sequential_effect <- function(data) {
     baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
     plotdata <- plotdata %>% filter(tau <= 10)
 
-    p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
-        geom_point() +
-        geom_hline(
-            aes(yintercept=ratio_to_best),
-            data=baseline,
-            color=algopalette['ChenEtAl']
-        ) +
-        facet_grid(vars(dataset, outliers_spec), vars(sample), scales="free_y") +
-        scale_x_continuous(breaks=scales::pretty_breaks()) +
-        scale_color_algorithm() +
-        theme_paper() +
-        theme(
-            panel.border = element_rect(fill=NA)
-        ) +
-        labs(
-        )
+    doplot <- function(plotdata) {
+        p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
+            geom_point() +
+            geom_hline(
+                aes(yintercept=ratio_to_best),
+                data=baseline,
+                color=algopalette['ChenEtAl']
+            ) +
+            facet_grid(vars(dataset, outliers_spec), vars(sample), scales="free_y") +
+            scale_x_continuous(breaks=scales::pretty_breaks()) +
+            scale_color_algorithm() +
+            theme_paper() +
+            theme(
+                panel.border = element_rect(fill=NA)
+            ) +
+            labs(
+            )
 
-    p
+        p
+    }
+
+    dplot(plodata)
 }
 
 do_plot_sequential_time <- function(data) {
