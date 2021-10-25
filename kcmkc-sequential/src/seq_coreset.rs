@@ -1,14 +1,13 @@
 use crate::{
     chen_et_al::{robust_matroid_center, VecWeightMap},
     kcenter::kcenter,
-    local_search::{self, local_search},
     SequentialAlgorithm,
 };
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{Matroid, Weight},
     perf_counters,
-    types::{Distance, OrderedF32},
+    types::{Distance},
 };
 use std::{
     rc::Rc,

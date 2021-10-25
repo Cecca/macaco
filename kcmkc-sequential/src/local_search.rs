@@ -1,7 +1,6 @@
 use std::{iter::FromIterator, rc::Rc};
 
 use kcmkc_base::{
-    algorithm::Algorithm,
     matroid::{Matroid, Weight},
     types::*,
 };

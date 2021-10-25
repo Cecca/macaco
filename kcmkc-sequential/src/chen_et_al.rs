@@ -4,7 +4,7 @@ use kcmkc_base::{
     perf_counters,
     types::OrderedF32,
 };
-use kcmkc_base::{matroid::augment, types::Distance};
+use kcmkc_base::{types::Distance};
 use rayon::prelude::*;
 use std::{
     fmt::Debug,
@@ -98,8 +98,8 @@ fn improve_solution<'a, V: Clone + Distance + PartialEq, W: WeightMap>(
     points: &'a [V],
     matroid: Rc<dyn Matroid<V>>,
     mut solution: Vec<V>,
-    p: usize,
-    weight_map: &W,
+    _p: usize,
+    _weight_map: &W,
 ) -> Vec<V> {
     assert!(matroid.is_independent(&solution));
     let rank = matroid
