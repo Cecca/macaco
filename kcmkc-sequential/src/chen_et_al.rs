@@ -1,10 +1,10 @@
+use kcmkc_base::types::Distance;
 use kcmkc_base::{
     algorithm::Algorithm,
     matroid::{weighted_matroid_intersection, Matroid, Weight},
     perf_counters,
     types::OrderedF32,
 };
-use kcmkc_base::{types::Distance};
 use rayon::prelude::*;
 use std::{
     fmt::Debug,
@@ -185,40 +185,6 @@ fn improve_solution<'a, V: Clone + Distance + PartialEq, W: WeightMap>(
     //     .collect();
     // rec_improve_solution(points, matroid, &candidates, solution, rank, 0)
     //     .expect("couldn't find a solution")
-}
-
-fn rec_improve_solution<'a, V: Clone + Distance>(
-    points: &'a [V],
-    matroid: Rc<dyn Matroid<V>>,
-    candidates: &Vec<Vec<usize>>,
-    current: Vec<V>,
-    rank: usize,
-    i: usize,
-) -> Result<Vec<V>, ()> {
-    assert!(matroid.is_independent(&current));
-    if current.len() == rank {
-        return Ok(current);
-    }
-
-    for cand in candidates[i].iter() {
-        let mut tentative = current.clone();
-        tentative.push(points[*cand].clone());
-        if matroid.is_independent(&tentative) {
-            match rec_improve_solution(
-                points,
-                Rc::clone(&matroid),
-                candidates,
-                tentative,
-                rank,
-                (i + 1) % candidates.len(),
-            ) {
-                Ok(sol) => return Ok(sol),
-                Err(()) => (), // do nothing, continue with next candidate
-            }
-        }
-    }
-    // Unable to find a solution
-    Err(())
 }
 
 /// Returns a triplet of centers, number of uncovered nodes, and an
