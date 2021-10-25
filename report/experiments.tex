@@ -44,13 +44,13 @@ Each result is the average over at least 10 runs.
 
 \begin{table}
     \caption{\label{tab:datasets}Datasets used in this experimental evaluation.}
-    \begin{tabular}{lrrlrr}
+    \begin{tabular}{lrrlr}
         \toprule
-        dataset & n & dim & matroid & rank & outliers \\
+        dataset & n & dim & matroid & rank \\
         \midrule
-        \higgs & 11\,000\,000 & 7 & Partition & 20 & 1\,306 \\ 
-        \phones & 13\,062\,475 & 3 & Partition & 35 & 1\,100\\ 
-        \wiki & 4\,976\,753 & 10 & Transversal & 50 & 50 \\ 
+        \higgs & 11\,000\,000 & 7 & Partition & 20  \\ 
+        \phones & 13\,062\,475 & 3 & Partition & 35 \\ 
+        \wiki & 4\,976\,753 & 10 & Transversal & 50 \\ 
         \bottomrule
     \end{tabular}
 \end{table}
@@ -77,15 +77,15 @@ Then, we define a transversal matroid on these categories.
 Given that the original categories of Wikipedia are over one million, using them to define a transversal matroid would make the
 matroid constraint immaterial.
 
-For each dataset, the maximum number of allowed outliers is reported in Table~\ref{tab:datasets}.
+For each dataset, we set the number of allowed outliers to 50, 100, and 150.\footnote{We also used $n/10000$ where $n$ is the size of the dataset, which resulted in the order of 1000 outliers. The results were very similar, but such a high number of outliers is not very realistic.}
 Allowing for more outliers would make finding solutions trivial, in that simply sampling a random independent set
 gives solutions with very good radius (compared with solutions computed with \chen).
 
 \subsection{Influence of coreset size}
 \label{sec:exp:coreset-size}
 
-\begin{figure}
-    \includegraphics[width=\columnwidth]{seq-effect}
+\begin{figure*}
+    \includegraphics[width=\textwidth]{seq-effect}
     \caption{
         \label{fig:seq-effect}
         Effect of the parameter $\tau$ on the solution quality.
@@ -94,7 +94,7 @@ gives solutions with very good radius (compared with solutions computed with \ch
         If the matroid constraint is too stringent (i.e. there is too little liberty in choosing the centers)
         then the solutions will also be too similar to each other.
     }
-\end{figure}
+\end{figure*}
 
 First we consider the effect of varying the size of the coreset on the solution quality, in a sequential setting.
 Due to the high complexity of \chen, we are unable to run it on the
@@ -115,13 +115,13 @@ Comparing with \chen (blue horizontal line) on the sampled datasets, both \seq a
 if not better, solutions using
 very small coresets. Using small coresets has a dramatic effect on the running time.
 
-\begin{figure}
-    \includegraphics[width=\columnwidth]{seq-time}
+\begin{figure*}
+    \includegraphics[width=\textwidth]{seq-time}
     \caption{
         \label{fig:seq-time}
         Effect of the parameter $\tau$ on the total running time.
     }
-\end{figure}
+\end{figure*}
 Figure~\ref{fig:seq-time} reports the running times of these experiments,
 showing that coreset based approaches are between two to three orders of magnitude faster than \chen
 for values of $\tau$ giving solutions of comparable quality.
@@ -148,6 +148,8 @@ We emphasize, though, that \stream can work with unbounded inputs.
         (dotted line). For Wikipedia the scalability is 
         less pronounced, due to the higher cost of invoking the matroid oracle.
         \mc{Show fewer values of $\tau$ in the final version.}
+        \mc{We fix the number of outliers to 50, since the coreset construction does not depend on it.}
+        \mc{Why is it the case that with two workers we get such a huge speed up compared to the sequential algorithm?}
     }
 \end{figure*}
 

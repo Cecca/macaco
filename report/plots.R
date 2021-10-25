@@ -32,20 +32,22 @@ do_plot_sequential_effect <- function(data) {
             sample = if_else(str_detect(dataset, "sample"), "sample", "full"),
             dataset = str_remove(dataset, "-sample-10000")
         )
-    baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
-    plotdata <- plotdata %>% filter(tau <= 10)
 
-    doplot <- function(plotdata) {
+    doplot <- function(plotdata, titlestr) {
+        baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
+        plotdata <- plotdata %>% filter(tau <= 10)
         p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
             geom_point() +
+            geom_line() +
             geom_hline(
                 aes(yintercept=ratio_to_best),
                 data=baseline,
                 color=algopalette['ChenEtAl']
             ) +
-            facet_grid(vars(dataset, outliers_spec), vars(sample), scales="free_y") +
+            facet_grid(vars(dataset), vars(outliers_spec), scales="free_y") +
             scale_x_continuous(breaks=scales::pretty_breaks()) +
             scale_color_algorithm() +
+            labs(title=titlestr) +
             theme_paper() +
             theme(
                 panel.border = element_rect(fill=NA)
@@ -56,7 +58,9 @@ do_plot_sequential_effect <- function(data) {
         p
     }
 
-    dplot(plodata)
+    doplot(filter(plotdata, sample == "full"), "Full data") |
+        doplot(filter(plotdata, sample == "sample"), "Sampled data")
+
 }
 
 do_plot_sequential_time <- function(data) {
@@ -68,37 +72,44 @@ do_plot_sequential_time <- function(data) {
             sample = if_else(str_detect(dataset, "sample"), "sample", "full"),
             dataset = str_remove(dataset, "-sample-10000")
         )
-    baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
-    plotdata <- plotdata %>% filter(tau <= 10)
 
-    p <- ggplot(
-            filter(plotdata, algorithm != "ChenEtAl"), 
-            aes(x=tau, y=total_time, color=algorithm)
-        ) +
-        geom_line() +
-        geom_point() +
-        geom_hline(
-            aes(yintercept=total_time),
-            data=baseline,
-            color=algopalette['ChenEtAl']
-        ) +
-        facet_grid(vars(dataset, outliers_spec), vars(sample), scales="free_y") +
-        scale_y_log10(labels=scales::number_format(accuracy=1)) +
-        scale_x_continuous(breaks=scales::pretty_breaks()) +
-        scale_color_algorithm() +
-        theme_paper() +
-        theme(
-            panel.border = element_rect(fill=NA)
-        ) +
-        labs(
-            y = "total time (s)"
-        )
+    doplot <- function(plotdata, titlestr) {
+        baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
+        plotdata <- plotdata %>% filter(tau <= 10)
+        p <- ggplot(
+                filter(plotdata, algorithm != "ChenEtAl"), 
+                aes(x=tau, y=total_time, color=algorithm)
+            ) +
+            geom_line() +
+            geom_point() +
+            geom_hline(
+                aes(yintercept=total_time),
+                data=baseline,
+                color=algopalette['ChenEtAl']
+            ) +
+            facet_grid(vars(dataset), vars(outliers_spec), scales="free_y") +
+            scale_y_log10(labels=scales::number_format(accuracy=1)) +
+            scale_x_continuous(breaks=scales::pretty_breaks()) +
+            scale_color_algorithm() +
+            labs(title = titlestr) +
+            theme_paper() +
+            theme(
+                panel.border = element_rect(fill=NA)
+            ) +
+            labs(
+                y = "total time (s)"
+            )
 
-    p
+        p
+    }
+
+    doplot(filter(plotdata, sample == "full"), "Full dataset") |
+        doplot(filter(plotdata, sample == "sample"), "Sampled dataset")
 }
 
 do_plot_mapreduce_time <- function(data) {
     data <- data %>%
+        filter(outliers_spec == 50) %>%
         filter(tau <= 10) %>%
         filter(!str_detect(dataset, "sample")) %>%
         mutate(across(contains("_time"), ~ set_units(.x, "s") %>% drop_units()))
@@ -122,7 +133,7 @@ do_plot_mapreduce_time <- function(data) {
             # expand=expansion(mult=c(1,1)),
             breaks=c(2,4,8)
         ) +
-        scale_y_continuous(trans="log2") +
+        scale_y_continuous(trans="identity") +
         theme_paper() +
         theme(
             panel.grid = element_blank(),
@@ -209,7 +220,7 @@ do_plot_solution_time <- function(data) {
             y="time (s)",
             shape=TeX("\\tau")
         ) +
-        facet_wrap(vars(dataset, outliers_spec)) +
+        facet_grid(vars(dataset), vars(outliers_spec)) +
         coord_cartesian(clip="off") +
         theme_paper() +
         theme(

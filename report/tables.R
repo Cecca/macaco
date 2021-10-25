@@ -64,8 +64,9 @@ table_result <- function() {
         filter((is.na(wiki_topics)) | ((wiki_topics == rank) & (wiki_topics != 10))) %>%
         filter((dataset != "MusixMatch") | (rank != 20)) %>%
         select(-ends_with("_ms")) %>%
-        mutate(outliers_spec = str_replace(outliers_spec, "Percentage", "P")) %>%
-        mutate(outliers_spec = str_replace(outliers_spec, "Fixed", "F"))
+        filter(!str_detect(outliers_spec, "Percentage")) %>%
+        mutate(outliers_spec = str_remove(outliers_spec, "Fixed\\(")) %>%
+        mutate(outliers_spec = as.integer(str_remove(outliers_spec, "\\)")))
 
     best <- results %>%
         group_by(dataset, outliers_spec, rank) %>%
