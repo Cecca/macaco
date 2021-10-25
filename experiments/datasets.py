@@ -789,6 +789,8 @@ DATASETS = {
     "Phones": Phones(),
 }
 
+DATASETS['Higgs-half'] = SampledDataset(DATASETS['Higgs'], size=5500000, seed=123456)
+
 # Sampled datasets
 for size in [1000000, 100000, 50000, 10000, 1000]:
     DATASETS["wiki-d50-c100-s{}".format(size)] = SampledDataset(
@@ -809,7 +811,7 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
 
 
 if __name__ == "__main__":
-    dataset = DATASETS["Phones"]
+    dataset = DATASETS["Higgs-half"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())

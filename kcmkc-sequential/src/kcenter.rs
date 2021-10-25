@@ -65,14 +65,16 @@ pub fn kcenter<'a, V: Distance>(
         }
     }
 
-    println!(
-        "Radius of clustering is {} ({:?})",
-        min_dist
-            .iter()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap(),
-        timer.elapsed()
-    );
+    // println!(
+    //     "Radius of clustering is {} ({:?} on {} points with {} centers)",
+    //     min_dist
+    //         .iter()
+    //         .max_by(|a, b| a.partial_cmp(b).unwrap())
+    //         .unwrap(),
+    //     timer.elapsed(),
+    //     points.len(),
+    //     k
+    // );
     assert!(
         centers.len() == k,
         "expected centers.len() == k == {}, but got {} != {}",
