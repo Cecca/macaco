@@ -34,7 +34,7 @@ impl<V> SeqCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
     fn version(&self) -> u32 {
-        3
+        4
     }
 
     fn name(&self) -> String {
@@ -67,6 +67,9 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
     ) -> anyhow::Result<Vec<V>> {
         let _z = dataset.len() - p;
         let _k = matroid.rank();
+        let mut loc_dataset = Vec::new();
+        loc_dataset.extend(dataset.iter().cloned());
+        let dataset = loc_dataset;
 
         let start = Instant::now();
         // First find a clustering of tau centers minimizing the radius, with no
