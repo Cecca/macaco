@@ -67,6 +67,8 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
     ) -> anyhow::Result<Vec<V>> {
         let _z = dataset.len() - p;
         let _k = matroid.rank();
+        // Cloning the dataset improves data locality, in that it rearranges
+        // the vectors that each element points to.
         let mut loc_dataset = Vec::new();
         loc_dataset.extend(dataset.iter().cloned());
         let dataset = loc_dataset;

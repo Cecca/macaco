@@ -34,7 +34,7 @@ impl<V> StreamingCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset<V> {
     fn version(&self) -> u32 {
-        5
+        6
     }
 
     fn name(&self) -> String {
@@ -67,10 +67,16 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V>
         matroid: Rc<dyn Matroid<V>>,
         p: usize,
     ) -> anyhow::Result<Vec<V>> {
+        // Cloning the dataset improves data locality, in that it rearranges
+        // the vectors that each element points to.
+        let mut loc_dataset = Vec::new();
+        loc_dataset.extend(dataset.iter().cloned());
+        let dataset = loc_dataset;
+
         let start = Instant::now();
         let mut state = StreamingState::new(self.tau, Rc::clone(&matroid));
         let mut cnt = 0;
-        for x in dataset {
+        for x in &dataset {
             state.update(x);
             cnt += 1;
         }
