@@ -21,7 +21,7 @@ With this experimental evaluation, we aim to answer the following questions:
         by Chen et al.~\cite{DBLP:journals/algorithmica/ChenLLW16}?
     \item How expensive is to build the coreset, compared with finding
         a good clustering on the coreset itself?
-    \item How does the coreset size benefit from parallelism?
+    \item How does the coreset construction benefit from parallelism?
 \end{itemize}
 
 \paragraph*{Experimental setup}
@@ -108,12 +108,15 @@ and the smallest radius found on that dataset \emph{by any configuration}.
 Figure~\ref{fig:seq-effect} reports the results of this experiment.
 First, we observe that increasing $\tau$ quickly improves the solution before hitting a plateau, where
 building larger coresets does not improve the quality of the solution.
+On \higgs this effect is more pronounced, whereas for \wiki already using a small coreset yields a good-quality solution.
+\mc{Check the following statement in the light of the new experiments.}
 Furthermore, we notice that \stream and \seq have comparable quality, with the former performing slightly 
 worse for the same coreset size, as predicted by the theory.
 
 Comparing with \chen (blue horizontal line) on the sampled datasets, both \seq and \stream compute comparable, 
-if not better, solutions using
-very small coresets. Using small coresets has a dramatic effect on the running time.
+if not better, solutions using rather small coresets.
+As we shall see,
+using small coresets has a dramatic effect on the running time.
 
 \begin{figure*}
     \includegraphics[width=\textwidth]{seq-time}
@@ -124,8 +127,9 @@ very small coresets. Using small coresets has a dramatic effect on the running t
 \end{figure*}
 Figure~\ref{fig:seq-time} reports the running times of these experiments,
 showing that coreset based approaches are between two to three orders of magnitude faster than \chen
-for values of $\tau$ giving solutions of comparable quality.
+(on samples of 10\,000 points of each dataset) for values of $\tau$ giving solutions of comparable quality.
 As for the relative performance of \seq and \stream, on sampled datasets they have similar performance.
+\mc{Reformulate this in the light of the new experiments.}
 On the full datasets, \seq has a very predictable performance, degrading for increasing values of $\tau$.
 The performance of \stream, on the other hand, is almost constant in $\tau$, and slower than $\seq$.
 We emphasize, though, that \stream can work with unbounded inputs.
@@ -140,7 +144,7 @@ We emphasize, though, that \stream can work with unbounded inputs.
         Time to build the coreset with the \mapr algorithm, for varying number of workers.
         Each column of plots corresponds to a different value of $\tau$.
         The dotted line represents the performance of the \seq algorithm in constructing the coreset.
-        The time scale is logarithmic in base 2.
+        The time scale is linear.
         \mc{Computing the solution on the coreset is one order of magnitude slower than
         building the coreset itself, hence we don't report that time here in this figure.}
         The construction of the coreset scales linearly for Higgs and Phones: doubling 
@@ -148,24 +152,25 @@ We emphasize, though, that \stream can work with unbounded inputs.
         (dotted line). For Wikipedia the scalability is 
         less pronounced, due to the higher cost of invoking the matroid oracle.
         \mc{Show fewer values of $\tau$ in the final version.}
-        \mc{We fix the number of outliers to 50, since the coreset construction does not depend on it.}
-        \mc{Why is it the case that with two workers we get such a huge speed up compared to the sequential algorithm?
-        The reason is cache locality. If we run the mapreduce algorithm with one worker (which is equivalent to the sequential algorithm)
-        we get a much better running time. This is because the data passes through the Abomonation serialization library,
-        meaning that all the bytes of the vectors sit in adjacent memory locations.
-        }
     }
 \end{figure*}
 
 We now focus on the cost of building the coreset using the \mapr algorithm, compared to \seq.
 We test 2, 4, and 8 workers, varying the values of $\tau$ between 1 and 10. Note that for the same value
 of $\tau$, the size of the aggregated coreset will change depending on the number of workers.
+As for the number of allowed outliers, we fix it to 50, noting that it does not influence the 
+time required to build the coreset itself.
 
 Figure~\ref{fig:mr-coreset-time} reports the results of this experiment. 
 For a fixed value of $\tau \ge 3$, on \higgs and \phones the \mapr construction scales linearly with the 
-number of processors. Furthermore, running \mapr with 2 workers is twice as fast as \seq, which is expected
-given that each worker in \mapr is basically executing \seq on a fraction of the input.
+number of processors. 
+The \seq algorithm is faster than \mapr with 2 workers for small values of $\tau$. 
+This is due to the overheads introduced by the communication required to distributed data to
+processors located on different machines.
+
 The scalability is less pronounced for \wiki, mainly due to the higher cost of evaluating the matroid oracle.
+\mc{In fact, for larger values of $\tau$, the algorithm scales only from 2 to 4 workers, 
+    and slows down when going from 4 to 8 workers. This is a behavior to be investigated}
 
 \subsection{Time to compute the solution}
 
@@ -182,7 +187,29 @@ Finally, we consider the time to compute the clustering solution on the coreset,
 how it compares with computing the coreset in the first place.
 Figure~\ref{fig:solution-time} reports the time required to compute the clustering
 solution against the size of the coreset.
-\mc{There is something odd. Small coresets for MapReduce take longer than they should.}
 
+\begin{figure}
+    \includegraphics[width=\columnwidth]{time-ratio.png}
+    \caption{
+        \label{fig:time-ratio}
+        Ratio between the time spent building the coreset and time spent computing the solution.
+        To the left the time for the solution dominates, to the right the time spent for the
+        coreset dominates.
+    }
+\end{figure}
+We now observe the ratio between the time required to compute the coreset and the time to compute the 
+solution.
+In \mapr we fix the number of workers to 8.
+The results are reported in Figure~\ref{fig:time-ratio}, where each line corresponds to a value of $\tau$
+for a given combination of algorithm and dataset.
+Lines leaning toward the left represent configurations where the computation of the solution is more expensive,
+lines directed toward the right are configurations where the running time is dominated by the coreset construction.
+Note that for a fixed value of $\tau$ the coreset computed by \mapr are a factor 8 larger, since that is the number
+of machines employed in parallel.
 
-
+In general, we note that building larger coresets tilts the balance between more expensive 
+computation of the solutions. This is expected: the coreset construction scales linearly in $\tau$,
+whereas the computation of the solution suffers from a quadratic complexity, as we have 
+seen in Figure~\ref{fig:solution-time}.
+In particular, the larger coresets built by \mapr require very little time to build in practice,
+but imply a larger (in proportion) solution time.

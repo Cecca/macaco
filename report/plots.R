@@ -230,15 +230,40 @@ do_plot_solution_time <- function(data) {
 
 do_plot_time_ratio <- function(data) {
     plotdata <- data %>%
-        filter(workers %in% c(1, 8))
+        filter(
+            workers %in% c(1, 8),
+            tau %in% 1:10
+        ) %>%
+        mutate(dominant = if_else(time_ratio < 1, "#ef8a62", "#67a9cf"))
 
-    ggplot(plotdata, aes(tau, time_ratio)) +
+
+    ggplot(plotdata, aes(tau, time_ratio, color=dominant)) +
         geom_point() +
         geom_segment(aes(yend=1, xend=tau)) +
         geom_hline(yintercept=1) +
-        scale_y_log10(labels=scales::number_format(accuracy=0.01)) +
+        geom_vline(xintercept =0) +
+        scale_y_log10(
+            breaks=c(0.01, 0.1, 1, 10, 100),
+            labels=c("", "10", "1", "10", "")
+        ) +
+        scale_x_continuous(
+            breaks = c(1, 5, 10),
+            limits = c(0, NA)
+        ) +
+        scale_color_identity() +
         facet_grid(vars(dataset), vars(algorithm)) +
-        theme_paper()
+        labs(
+            x = TeX("$\\tau$"),
+            y = "Time ratio"
+        ) +
+        coord_flip() +
+        theme_paper() +
+        theme(
+            panel.grid = element_blank(),
+            panel.grid.major.x = element_line(size=0.2, color="lightgray"),
+            axis.line.y = element_blank(),
+            axis.line.x = element_blank()
+        )
 }
 
 do_plot_tradeoff <- function(data) {

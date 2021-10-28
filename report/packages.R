@@ -9,4 +9,5 @@ suppressWarnings({
     library(ggrepel)
     library(cowplot)
     library(plotly)
+    library(latex2exp)
 })

@@ -42,6 +42,7 @@ plan <- drake_plan(
     data_time_ratio = data_result %>%
         mutate(across(contains("time"), ~ drop_units(set_units(., "s")))) %>%
         filter(!str_detect(dataset, "sample"), str_detect(algorithm, "Coreset")) %>% 
+        filter(outliers_spec == 50) %>%
         group_by(dataset, algorithm, workers, tau) %>% 
         summarise(across(c(coreset_time, solution_time), mean)) %>% 
         mutate(time_ratio = coreset_time / solution_time),
