@@ -65,6 +65,10 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset
         self.profile.clone().unwrap()
     }
 
+    fn memory_usage(&self) -> Option<u64> {
+        None
+    }
+
     fn counters(&self) -> (u64, u64) {
         self.counters.clone().unwrap()
     }

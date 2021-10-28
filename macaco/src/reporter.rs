@@ -34,6 +34,7 @@ pub struct Reporter {
     coreset_info: Option<CoresetInfo>,
     counters: Option<Counters>,
     profile: Option<(Duration, Duration)>,
+    memory_usage: Option<u64>,
 }
 
 impl Reporter {
@@ -47,6 +48,7 @@ impl Reporter {
             coreset_info: None,
             profile: None,
             counters: None,
+            memory_usage: None,
         }
     }
 
@@ -71,6 +73,10 @@ impl Reporter {
 
     pub fn set_profile(&mut self, profile: (Duration, Duration)) {
         self.profile.replace(profile);
+    }
+
+    pub fn set_memory_usage(&mut self, memory: u64) {
+        self.memory_usage.replace(memory);
     }
 
     pub fn set_coreset_info(&mut self, size: usize, radius: f64) {
@@ -196,7 +202,8 @@ impl Reporter {
                     radius,
                     num_centers,
                     coreset_size,
-                    coreset_radius
+                    coreset_radius,
+                    memory_coreset_kb
                 ) VALUES (
                     :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -211,7 +218,8 @@ impl Reporter {
                     :radius,
                     :num_centers,
                     :coreset_size,
-                    :coreset_radius
+                    :coreset_radius,
+                    :memory_coreset_kb
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
@@ -237,6 +245,7 @@ impl Reporter {
                     ":num_centers": outcome.num_centers,
                     ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),
                     ":coreset_radius": self.coreset_info.as_ref().map(|ci| ci.radius),
+                    ":memory_coreset_kb": self.memory_usage.map(|m| m as i64),
                 },
             )?;
 
@@ -265,6 +274,10 @@ fn db_migrate(conn: &Connection) -> Result<()> {
     if version < 2 {
         conn.execute_batch(include_str!("migrations/v2.sql"))
             .context("error applying version 2")?;
+    }
+    if version < 3 {
+        conn.execute_batch(include_str!("migrations/v3.sql"))
+            .context("error applying version 3")?;
     }
 
     Ok(())

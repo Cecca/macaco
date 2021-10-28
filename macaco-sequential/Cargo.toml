@@ -13,6 +13,7 @@ rand_xorshift = "0.3"
 anyhow = "1.0"
 rayon = "1.5"
 log = "0.4"
+sysinfo = "0.20"
 
 [dev-dependencies]
 criterion = "0.3"

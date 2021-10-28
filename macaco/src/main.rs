@@ -1,10 +1,10 @@
 use abomonation::Abomonation;
 use anyhow::{Context, Result};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
+use log::*;
 use macaco::configuration::*;
 use macaco::reporter::Reporter;
 use macaco_base::{self, dataset::Dataset, dataset::Datatype, types::*};
-use log::*;
 use rayon::prelude::*;
 use serde::Deserialize;
 use std::{cell::RefCell, rc::Rc};
@@ -62,6 +62,9 @@ where
     reporter.set_outcome(elapsed, radius_no_outliers, centers.len() as u32);
     reporter.set_profile(algorithm.time_profile());
     reporter.set_counters(algorithm.counters());
+    if let Some(mem) = algorithm.memory_usage() {
+        reporter.set_memory_usage(mem);
+    }
     reporter.save()?;
 
     Ok(())
@@ -144,6 +147,9 @@ where
         reporter.set_profile(algorithm.time_profile());
         println!(" . set counters");
         reporter.set_counters(algorithm.counters());
+        if let Some(mem) = algorithm.memory_usage() {
+            reporter.set_memory_usage(mem);
+        }
         println!(" . save");
         reporter.save()?;
         println!("...done!")

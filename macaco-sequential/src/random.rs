@@ -44,6 +44,10 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
         self.profile.clone().unwrap()
     }
 
+    fn memory_usage(&self) -> Option<u64> {
+        None
+    }
+
     fn counters(&self) -> (u64, u64) {
         self.counters.clone().unwrap()
     }

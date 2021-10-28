@@ -628,9 +628,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.82"
+version = "0.2.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89203f3fba0a3795506acaad8ebce3c80c0af93f994d5a1d7a0b1eeb23271929"
+checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
 
 [[package]]
 name = "libgit2-sys"
@@ -747,6 +747,7 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "rayon",
+ "sysinfo 0.20.0",
 ]
 
 [[package]]
@@ -961,7 +962,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cf9af70e113c0264cef87cb9fe3209f796bf326e29175b81f5bc54d4284c70a"
 dependencies = [
  "log",
- "sysinfo",
+ "sysinfo 0.15.9",
 ]
 
 [[package]]
@@ -1284,6 +1285,21 @@ dependencies = [
  "cfg-if",
  "core-foundation-sys",
  "doc-comment",
+ "libc",
+ "ntapi",
+ "once_cell",
+ "rayon",
+ "winapi",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0af066e6272f2175c1783cfc2ebf3e2d8dfe2c182b00677fdeccbf8291af83fb"
+dependencies = [
+ "cfg-if",
+ "core-foundation-sys",
  "libc",
  "ntapi",
  "once_cell",

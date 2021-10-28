@@ -14,5 +14,7 @@ pub trait Algorithm<T: Distance + Clone> {
     /// (second element)
     fn time_profile(&self) -> (Duration, Duration);
 
+    fn memory_usage(&self) -> Option<u64>;
+
     fn counters(&self) -> (u64, u64);
 }
