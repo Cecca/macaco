@@ -400,3 +400,15 @@ do_plot_samples <- function(data) {
         facet_wrap(vars(flabel), scales="free") +
         theme_paper()
 }
+
+do_plot_memory <- function(plotdata) {
+    ggplot(plotdata, aes(x = tau, y=memory_coreset_mb, color=algorithm)) +
+        geom_point() +
+        geom_line() +
+        facet_grid(vars(algorithm), vars(dataset), scales="free_y") +
+        labs(
+            x = TeX("$\\tau$"),
+            y = "Memory (MB)"
+        ) +
+        theme_paper()
+}

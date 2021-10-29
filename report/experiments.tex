@@ -19,6 +19,7 @@ With this experimental evaluation, we aim to answer the following questions:
         both in terms of quality and running time?
     \item How does the coreset-based strategy compare with the algorithm 
         by Chen et al.~\cite{DBLP:journals/algorithmica/ChenLLW16}?
+    \item How do \stream and \seq compare in terms of memory requirements?
     \item How expensive is to build the coreset, compared with finding
         a good clustering on the coreset itself?
     \item How does the coreset construction benefit from parallelism?
@@ -133,6 +134,22 @@ As for the relative performance of \seq and \stream, on sampled datasets they ha
 On the full datasets, \seq has a very predictable performance, degrading for increasing values of $\tau$.
 The performance of \stream, on the other hand, is almost constant in $\tau$, and slower than $\seq$.
 We emphasize, though, that \stream can work with unbounded inputs.
+
+\subsection{Memory requirements}
+\label{sec:memory}
+
+\begin{figure}
+    \includegraphics[width=\columnwidth]{memory}
+    \caption{\label{fig:memory}Memory required by \stream and \seq to build the coreset.}
+\end{figure}
+
+In this section we focus on the memory required by \seq and \stream to build the
+coreset.
+In particular, recall that \seq needs to store the entire dataset in memory, whereas \stream 
+can work with a small working memory.
+Figure~\ref{fig:memory} reports on the results of this experiments, for varying values of $\tau$
+and fixing the number of outliers to 150 (which does not influence the coreset construction memory).
+
 
 \subsection{Scalability of the MapReduce coreset construction}
 \label{sec:exp:mapreduce}

@@ -10,9 +10,9 @@ plan <- drake_plan(
     },
 
     data_memory = data_result %>%
-        filter(!str_detect(dataset, "sample")) %>%
-        drop_na(memory_coreset_kb) %>%
-        mutate(memory_coreset_mb = memory_coreset_kb / 1024),
+        filter(!str_detect(dataset, "sample"), outliers_spec == 150) %>%
+        drop_na(memory_coreset_bytes) %>%
+        mutate(memory_coreset_mb = memory_coreset_bytes / (1024 * 1024)),
 
     plot_sequential_effect = do_plot_sequential_effect(data_result),
     fig_sequential_effect = ggsave("imgs/seq-effect.png", 
@@ -43,6 +43,13 @@ plan <- drake_plan(
         plot = plot_solution_time,
         width = 5,
         height = 6
+    ),
+
+    plot_memory = do_plot_memory(data_memory),
+    fig_memory = ggsave("imgs/memory.png",
+        plot = plot_memory,
+        width = 5,
+        height = 5
     ),
 
     data_time_ratio = data_result %>%
