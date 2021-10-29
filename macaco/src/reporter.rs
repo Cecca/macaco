@@ -34,7 +34,7 @@ pub struct Reporter {
     coreset_info: Option<CoresetInfo>,
     counters: Option<Counters>,
     profile: Option<(Duration, Duration)>,
-    memory_usage: Option<u64>,
+    memory_usage: Option<usize>,
 }
 
 impl Reporter {
@@ -75,7 +75,7 @@ impl Reporter {
         self.profile.replace(profile);
     }
 
-    pub fn set_memory_usage(&mut self, memory: u64) {
+    pub fn set_memory_usage(&mut self, memory: usize) {
         self.memory_usage.replace(memory);
     }
 
@@ -203,7 +203,7 @@ impl Reporter {
                     num_centers,
                     coreset_size,
                     coreset_radius,
-                    memory_coreset_kb
+                    memory_coreset_bytes
                 ) VALUES (
                     :code_version, :date, :hosts, :threads, :params_sha, :outliers_spec,
                     :algorithm, :algorithm_params, :algorithm_version,
@@ -219,7 +219,7 @@ impl Reporter {
                     :num_centers,
                     :coreset_size,
                     :coreset_radius,
-                    :memory_coreset_kb
+                    :memory_coreset_bytes
                 )",
                 named_params! {
                     ":code_version": env!("VERGEN_GIT_SHA"),
@@ -245,7 +245,7 @@ impl Reporter {
                     ":num_centers": outcome.num_centers,
                     ":coreset_size": self.coreset_info.as_ref().map(|ci| ci.size as u32),
                     ":coreset_radius": self.coreset_info.as_ref().map(|ci| ci.radius),
-                    ":memory_coreset_kb": self.memory_usage.map(|m| m as i64),
+                    ":memory_coreset_bytes": self.memory_usage.map(|m| m as i64),
                 },
             )?;
 

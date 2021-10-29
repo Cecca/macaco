@@ -41,7 +41,7 @@ impl<T: Distance + Clone + Debug + PartialEq> Algorithm<T> for ChenEtAl {
         self.profile.clone().unwrap()
     }
 
-    fn memory_usage(&self) -> Option<u64> {
+    fn memory_usage(&self) -> Option<usize> {
         None
     }
 

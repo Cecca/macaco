@@ -13,14 +13,13 @@ use std::{
     rc::Rc,
     time::{Duration, Instant},
 };
-use sysinfo::*;
 
 pub struct SeqCoreset<V> {
     tau: usize,
     coreset: Option<Vec<V>>,
     profile: Option<(Duration, Duration)>,
     counters: Option<(u64, u64)>,
-    memory: Option<u64>,
+    memory: Option<usize>,
 }
 
 impl<V> SeqCoreset<V> {
@@ -60,7 +59,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for SeqCoreset<V> {
         self.counters.clone().unwrap()
     }
 
-    fn memory_usage(&self) -> Option<u64> {
+    fn memory_usage(&self) -> Option<usize> {
         self.memory
     }
 }
@@ -75,9 +74,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
         let _z = dataset.len() - p;
         let _k = matroid.rank();
 
-        let mut sys = System::new_all();
-        sys.refresh_memory();
-        let start_memory = sys.used_memory();
+        let start_memory = macaco_base::allocator::allocated();
 
         // Cloning the dataset improves data locality, in that it rearranges
         // the vectors that each element points to.
@@ -147,10 +144,9 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V> for
         let elapsed_coreset = start.elapsed();
         println!("Coreset of size {}", coreset.len(),);
 
-        sys.refresh_memory();
-        let end_memory = sys.used_memory();
+        let end_memory = macaco_base::allocator::allocated();
         let coreset_memory = end_memory - start_memory;
-        println!("used {} KB to build the coreset", coreset_memory);
+        println!("used {} bytes to build the coreset", coreset_memory);
         self.memory.replace(coreset_memory);
 
         let start = Instant::now();

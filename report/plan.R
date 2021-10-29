@@ -8,6 +8,12 @@ plan <- drake_plan(
         file_in("macaco-results.sqlite")
         table_result()
     },
+
+    data_memory = data_result %>%
+        filter(!str_detect(dataset, "sample")) %>%
+        drop_na(memory_coreset_kb) %>%
+        mutate(memory_coreset_mb = memory_coreset_kb / 1024),
+
     plot_sequential_effect = do_plot_sequential_effect(data_result),
     fig_sequential_effect = ggsave("imgs/seq-effect.png", 
         plot=plot_sequential_effect,

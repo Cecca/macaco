@@ -44,7 +44,7 @@ impl<T: Distance + Clone> Algorithm<T> for RandomClustering {
         self.profile.clone().unwrap()
     }
 
-    fn memory_usage(&self) -> Option<u64> {
+    fn memory_usage(&self) -> Option<usize> {
         None
     }
 

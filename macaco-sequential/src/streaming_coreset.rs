@@ -13,14 +13,13 @@ use std::{
     rc::Rc,
     time::{Duration, Instant},
 };
-use sysinfo::*;
 
 pub struct StreamingCoreset<T> {
     tau: usize,
     coreset: Option<Vec<T>>,
     profile: Option<(Duration, Duration)>,
     counters: Option<(u64, u64)>,
-    memory: Option<u64>,
+    memory: Option<usize>,
 }
 
 impl<V> StreamingCoreset<V> {
@@ -56,7 +55,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for StreamingCoreset
         self.profile.clone().unwrap()
     }
 
-    fn memory_usage(&self) -> Option<u64> {
+    fn memory_usage(&self) -> Option<usize> {
         self.memory
     }
 
@@ -80,9 +79,7 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V>
         loc_dataset.extend(dataset.iter().cloned());
         let dataset = loc_dataset;
 
-        let mut sys = System::new_all();
-        sys.refresh_memory();
-        let start_memory = sys.used_memory();
+        let start_memory = macaco_base::allocator::allocated();
 
         let start = Instant::now();
         let mut state = StreamingState::new(self.tau, Rc::clone(&matroid));
@@ -92,10 +89,9 @@ impl<V: Distance + Clone + Weight + PartialEq + Sync> SequentialAlgorithm<V>
             cnt += 1;
         }
         debug!("Processed {} points", cnt);
-        sys.refresh_memory();
-        let end_memory = sys.used_memory();
+        let end_memory = macaco_base::allocator::allocated();
         let coreset_memory = end_memory - start_memory;
-        println!("used {} KB to build the coreset", coreset_memory);
+        println!("used {} bytes to build the coreset", coreset_memory);
         self.memory.replace(coreset_memory);
 
         let coreset = state.coreset();

@@ -1,4 +1,5 @@
 pub mod algorithm;
+pub mod allocator;
 pub mod dataset;
 pub mod matroid;
 pub mod perf_counters;

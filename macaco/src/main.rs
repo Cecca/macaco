@@ -4,6 +4,7 @@ use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use log::*;
 use macaco::configuration::*;
 use macaco::reporter::Reporter;
+use macaco_base::allocator::CountingAllocator;
 use macaco_base::{self, dataset::Dataset, dataset::Datatype, types::*};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -11,6 +12,9 @@ use std::{cell::RefCell, rc::Rc};
 use std::{fmt::Debug, time::Instant};
 use timely::dataflow::operators::*;
 use timely::{communication::Allocator, worker::Worker};
+
+#[global_allocator]
+static A: CountingAllocator = CountingAllocator;
 
 fn run_seq<V: Distance + Clone + Debug + Configure + Sync>(config: &Configuration) -> Result<()>
 where

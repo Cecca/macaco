@@ -39,7 +39,7 @@ impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for GreedyHeuristic 
         self.profile.clone().unwrap()
     }
 
-    fn memory_usage(&self) -> Option<u64> {
+    fn memory_usage(&self) -> Option<usize> {
         None
     }
 
