@@ -19,7 +19,6 @@ use crate::{
 };
 
 pub struct KaleStreaming<T: Distance + Clone> {
-    initial_guess: f32,
     epsilon: f32,
     coreset: Option<Vec<T>>,
     profile: Option<(Duration, Duration)>,
@@ -28,9 +27,8 @@ pub struct KaleStreaming<T: Distance + Clone> {
 }
 
 impl<T: Distance + Clone> KaleStreaming<T> {
-    pub fn new(initial_guess: f32, epsilon: f32) -> Self {
+    pub fn new(epsilon: f32) -> Self {
         Self {
-            initial_guess,
             epsilon,
             coreset: None,
             profile: None,
@@ -50,10 +48,7 @@ impl<T: Distance + Clone> Algorithm<T> for KaleStreaming<T> {
     }
 
     fn parameters(&self) -> String {
-        format!(
-            "{{\"initial_guess\": {}, \"epsilon\": {}}}",
-            self.initial_guess, self.epsilon
-        )
+        format!("{{\"epsilon\": {}}}", self.epsilon)
     }
 
     fn coreset(&self) -> Option<Vec<T>> {
@@ -91,13 +86,21 @@ impl<T: Distance + Clone + PartialEq + Sync> SequentialAlgorithm<T> for KaleStre
         let start_memory = macaco_base::allocator::allocated();
         let start = Instant::now();
 
-        let mut state = KaleState::new(
-            z,
-            rank,
-            self.initial_guess,
-            self.epsilon,
-            Rc::clone(&matroid),
-        );
+        print!("Finding initial guess... ");
+        // peek at the first rank + 1 items of the stream and take the minimum distance
+        // as the initial guess
+        let mut initial_guess = f32::INFINITY;
+        for i in 0..(rank + 1) {
+            for j in (i + 1)..(rank + 1) {
+                let d = dataset[i].distance(&dataset[j]);
+                if d < initial_guess {
+                    initial_guess = d;
+                }
+            }
+        }
+        println!("{}", initial_guess);
+
+        let mut state = KaleState::new(z, rank, initial_guess, self.epsilon, Rc::clone(&matroid));
 
         let mut cnt = 0;
         for x in &dataset {
@@ -107,15 +110,15 @@ impl<T: Distance + Clone + PartialEq + Sync> SequentialAlgorithm<T> for KaleStre
         info!("Processed {} points", cnt);
         let end_memory = macaco_base::allocator::allocated();
         let coreset_memory = end_memory - start_memory;
-        println!("used {} bytes to build the coreset", coreset_memory);
         self.memory.replace(coreset_memory);
 
         let coreset = state.coreset();
         let elapsed_coreset = start.elapsed();
         println!(
-            "Coreset of size {} computed in {:?}",
+            "Coreset of size {} computed in {:?} using {} bytes",
             coreset.len(),
-            elapsed_coreset
+            elapsed_coreset,
+            coreset_memory
         );
 
         println!("Setting up weights");
@@ -170,6 +173,7 @@ impl<T: Distance + Clone> KaleState<T> {
             instances.push(StreamingInstance::new(z, rank, radius, Rc::clone(&matroid)));
         }
         let child_factor = instances.last().unwrap().radius / initial_guess;
+        println!("Child factor is {}", child_factor);
 
         Self {
             child_factor,
@@ -179,33 +183,47 @@ impl<T: Distance + Clone> KaleState<T> {
 
     pub fn update(&mut self, x: &T) {
         let mut new_instances = Vec::new();
-        for instance in self.instances.iter_mut() {
-            if !instance.update(x) {
-                let mut new_inst = StreamingInstance {
-                    active: true,
-                    z: instance.z,
-                    rank: instance.rank,
-                    radius: instance.radius * self.child_factor,
-                    l: 0,
-                    pivots: Vec::new(),
-                    free_points: Vec::new(),
-                    matroid: Rc::clone(&instance.matroid),
-                };
-                println!("Creating new instance with radius {}", new_inst.radius);
+        let radii = self
+            .instances
+            .iter()
+            .map(|i| i.radius)
+            .collect::<Vec<f32>>();
+        for (i, instance) in self.instances.iter_mut().enumerate() {
+            if instance.active {
+                if !instance.update(x) {
+                    let new_radius = instance.radius * self.child_factor;
+                    // add the new instance only if the new radius is not the one of an already existing instance
+                    if !radii.contains(&new_radius) {
+                        let mut new_inst = StreamingInstance {
+                            active: true,
+                            z: instance.z,
+                            rank: instance.rank,
+                            radius: instance.radius * self.child_factor,
+                            l: 0,
+                            pivots: Vec::new(),
+                            free_points: Vec::new(),
+                            matroid: Rc::clone(&instance.matroid),
+                        };
+                        println!(
+                            "Creating child instance with radius {} from radius {} (instance {})",
+                            new_inst.radius, instance.radius, i
+                        );
 
-                for (_, ac, ic) in &instance.pivots {
-                    for x in ac {
-                        new_inst.update(x);
-                    }
-                    for x in ic {
-                        new_inst.update(x);
+                        for (_, ac, ic) in &instance.pivots {
+                            for x in ac {
+                                new_inst.update(x);
+                            }
+                            for x in ic {
+                                new_inst.update(x);
+                            }
+                        }
+                        for x in &instance.free_points {
+                            new_inst.update(x);
+                        }
+
+                        new_instances.push(new_inst);
                     }
                 }
-                for x in &instance.free_points {
-                    new_inst.update(x);
-                }
-
-                new_instances.push(new_inst);
             }
         }
 
@@ -267,18 +285,21 @@ impl<T: Distance + Clone> StreamingInstance<T> {
             return false;
         }
         // Find the closest center
-        let (dist, (_c, _ac, ic)) = self
+        let closest = self
             .pivots
             .iter_mut()
             .map(|triplet| (OrderedF32(triplet.0.distance(&x)), triplet))
-            .min_by_key(|pair| pair.0)
-            .unwrap();
+            .min_by_key(|pair| pair.0);
 
         // Try to add the point to the cluster
-        if dist.0 <= 4.0 * self.radius {
-            ic.push(x.clone());
-            if !self.matroid.is_independent(&ic) {
-                ic.pop().unwrap();
+        if let Some((dist, (_c, _ac, ic))) = closest {
+            if dist.0 <= 4.0 * self.radius {
+                ic.push(x.clone());
+                if !self.matroid.is_independent(&ic) {
+                    ic.pop().unwrap();
+                }
+            } else {
+                self.free_points.push(x.clone());
             }
         } else {
             self.free_points.push(x.clone());

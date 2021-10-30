@@ -8,8 +8,9 @@ use macaco_base::{
 use macaco_parallel::mapreduce_coreset::MapReduceCoreset;
 use macaco_parallel::ParallelAlgorithm;
 use macaco_sequential::{
-    chen_et_al::ChenEtAl, greedy_heuristic::GreedyHeuristic, random::RandomClustering,
-    seq_coreset::SeqCoreset, streaming_coreset::StreamingCoreset, SequentialAlgorithm,
+    chen_et_al::ChenEtAl, greedy_heuristic::GreedyHeuristic, kale::KaleStreaming,
+    random::RandomClustering, seq_coreset::SeqCoreset, streaming_coreset::StreamingCoreset,
+    SequentialAlgorithm,
 };
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -101,6 +102,7 @@ pub enum AlgorithmConfig {
     SeqCoreset { tau: usize },
     StreamingCoreset { tau: usize },
     MapReduceCoreset { tau: usize },
+    KaleStreaming { epsilon: f32 },
 }
 
 impl AlgorithmConfig {
@@ -132,6 +134,10 @@ impl Sha for AlgorithmConfig {
             AlgorithmConfig::MapReduceCoreset { tau } => {
                 sha.input("mapreduce-coreset");
                 sha.input(tau.to_le_bytes())
+            }
+            AlgorithmConfig::KaleStreaming { epsilon } => {
+                sha.input("kale-streaming");
+                sha.input(epsilon.to_le_bytes())
             }
         }
     }
@@ -437,6 +443,7 @@ impl Configure for Phone {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -446,6 +453,7 @@ impl Configure for Phone {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
         }
     }
@@ -474,6 +482,7 @@ impl Configure for Higgs {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -483,6 +492,7 @@ impl Configure for Higgs {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
         }
     }
@@ -511,6 +521,7 @@ impl Configure for ColorVector {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -520,6 +531,7 @@ impl Configure for ColorVector {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
         }
     }
@@ -546,6 +558,7 @@ impl Configure for WikiPage {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -555,6 +568,7 @@ impl Configure for WikiPage {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
         }
     }
@@ -580,6 +594,7 @@ impl Configure for WikiPageEuclidean {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
         }
     }
@@ -590,6 +605,7 @@ impl Configure for WikiPageEuclidean {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
         }
     }
@@ -617,6 +633,7 @@ impl Configure for Song {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
         }
     }
@@ -627,6 +644,7 @@ impl Configure for Song {
             AlgorithmConfig::Random { seed } => Box::new(RandomClustering::new(seed)),
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
+            AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
         }
     }
