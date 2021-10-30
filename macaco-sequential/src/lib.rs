@@ -4,6 +4,7 @@ use std::rc::Rc;
 pub mod chen_et_al;
 pub mod disks;
 pub mod greedy_heuristic;
+pub mod kale;
 pub mod kcenter;
 pub mod local_search;
 pub mod random;
