@@ -36,6 +36,7 @@ def run(configuration):
         print(json.dumps(configuration))
         sys.exit(1)
 
+
 def run_phones():
     """
     Run experiments on the Wikipedia dataset and its samples
@@ -47,22 +48,24 @@ def run_phones():
     for dataset in datasets:
         DATASETS[dataset].try_download_preprocessed()
         DATASETS[dataset].preprocess()
-    constraints = [{
-        "stand": 5,
-        "null": 5,
-        "sit": 5,
-        "walk": 5,
-        "stairsup": 5,
-        "stairsdown": 5,
-        "bike": 5
-    }]
+    constraints = [
+        {
+            "stand": 5,
+            "null": 5,
+            "sit": 5,
+            "walk": 5,
+            "stairsup": 5,
+            "stairsdown": 5,
+            "bike": 5,
+        }
+    ]
     # Fraction of allowed outliers
     frac_outliers = [0.0001]
     fix_outliers = [150, 100, 50]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     shuffle_seeds = [124351243]
-    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
     for shuffle_seed, dataset, constr, fix_out in itertools.product(
         shuffle_seeds, datasets, constraints, fix_outliers
@@ -86,6 +89,11 @@ def run_phones():
         #     c["algorithm"] = "ChenEtAl"
         #     run(c)
 
+        for epsilon in [1.0, 0.5, 2.0]:
+            c = base_conf.copy()
+            c["algorithm"] = {"KaleStreaming": {"epsilon": epsilon}}
+            run(c)
+
         # # Run coreset algorithms
         taus = range(1, 10)
         print(taus)
@@ -106,7 +114,6 @@ def run_phones():
             #     run(c)
 
 
-
 def run_higgs():
     """
     Run experiments on the Wikipedia dataset and its samples
@@ -125,7 +132,7 @@ def run_higgs():
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     shuffle_seeds = [124351243]
-    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
     for shuffle_seed, dataset, constr, fix_out in itertools.product(
         shuffle_seeds, datasets, constraints, fix_outliers
@@ -148,6 +155,10 @@ def run_higgs():
         #     c = base_conf.copy()
         #     c["algorithm"] = "ChenEtAl"
         #     run(c)
+        for epsilon in [1.0, 0.5, 2.0]:
+            c = base_conf.copy()
+            c["algorithm"] = {"KaleStreaming": {"epsilon": epsilon}}
+            run(c)
 
         # # Run coreset algorithms
         taus = range(1, 10)
@@ -193,7 +204,7 @@ def run_wiki():
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     shuffle_seeds = [124351243]
-    shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
+    # shuffle_seeds = [43234, 23562, 12451, 445234, 234524]
 
     for shuffle_seed, dataset, constr, fix_out in itertools.product(
         shuffle_seeds, datasets, constraints, fix_outliers
@@ -219,6 +230,10 @@ def run_wiki():
         #     c = base_conf.copy()
         #     c["algorithm"] = "ChenEtAl"
         #     run(c)
+        for epsilon in [1.0, 0.5, 2.0]:
+            c = base_conf.copy()
+            c["algorithm"] = {"KaleStreaming": {"epsilon": epsilon}}
+            run(c)
 
         # # Run coreset algorithms
         taus = range(1, 10)
