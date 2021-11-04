@@ -12,6 +12,7 @@
 \newcommand{\seq}{\textsc{SeqCoreset}\xspace}
 \newcommand{\stream}{\textsc{StremingCoreset}\xspace}
 \newcommand{\mapr}{\textsc{MRCoreset}\xspace}
+\newcommand{\kale}{\textsc{KaleStream}\xspace}
 
 With this experimental evaluation, we aim to answer the following questions:
 \begin{itemize}
@@ -28,7 +29,9 @@ With this experimental evaluation, we aim to answer the following questions:
 
 \paragraph*{Experimental setup}
 We implemented all algorithms using Rust 1.53.0-nightly (\texttt{ca075d268} 2021-04-28).
-The MapReduce implementation runs on top of Timely Dataflow~\cite{DBLP:journals/cacm/MurrayMIIBA16}.
+Our benchmark includes the first, to the best of our knowledge, implementation of the algorithms 
+introduced in~\cite{DBLP:journals/algorithmica/ChenLLW16,DBLP:conf/approx/Kale19}.
+The MapReduce implementation of our coreset approach runs on top of Timely Dataflow~\cite{DBLP:journals/cacm/MurrayMIIBA16}.
 All experiments have been executed on a cluster with 8 machines equipped
 with a Intel\textregistered Xeon\textregistered CPU (E5-2670 v2 @ 2.50GHz), and 16 Gb of RAM each.
 
@@ -116,6 +119,9 @@ Furthermore, we notice that \stream and \seq have comparable quality,
 with the former performing slightly 
 worse for the same value of $\tau$, as predicted by the theory.
 
+The comparison with \kale (violet horizontal line) on the full datasets shows that both \seq and \stream
+attain solutions of comparable, and in some cases better, quality.
+
 Comparing with \chen (blue horizontal line) on the sampled datasets, both \seq and \stream compute comparable, 
 if not better, solutions using rather small coresets.
 As we shall see,
@@ -137,8 +143,23 @@ of $\tau$.
 \stream performance is comparable of better than \seq, which counterbalances the slightly worse
 approximation, with the addition of using far less memory, as we shall see in the next section.
 
+If we compare the two streaming algorithms, i.e. \stream and \kale, we note that
+\stream is 5 to 100 times faster than \kale using the highest (that is, most
+accurate) value of $\tau$ among the ones we tried.  This is due to two facts:
+while the procedure to update the state of \stream for each point is somewhat
+more complicated than that for \kale (for instance, we need to restructure the
+set of centers whenever the radius guess is updated), running several instances
+in parallel as done by \kale takes a toll on the performance.  Furthermore, we
+found that the coresets computed by \kale are larger than the ones computed by
+\stream: while this may lead to better quality solutions, it also entails a
+larger running time to find such solutions in the coreset.
+
+
 \subsection{Memory requirements}
 \label{sec:memory}
+
+\mc{The memory required by both \kale and \stream is negligible, in the order of a few megabytes. 
+I think we can safely skip this section, perhaps mentioning the results with a passing remark.}
 
 \begin{figure}
     \includegraphics[width=\columnwidth]{memory-50}
