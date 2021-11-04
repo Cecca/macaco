@@ -17,8 +17,9 @@ With this experimental evaluation, we aim to answer the following questions:
 \begin{itemize}
     \item What is the influence of the coreset size on the performance, 
         both in terms of quality and running time?
-    \item How does the coreset-based strategy compare with the algorithm 
-        by Chen et al.~\cite{DBLP:journals/algorithmica/ChenLLW16}?
+    \item How does the coreset-based strategy compare with the algorithms
+        by Chen et al.~\cite{DBLP:journals/algorithmica/ChenLLW16}
+        and by Kale~\cite{DBLP:conf/approx/Kale19}?
     \item How do \stream and \seq compare in terms of memory requirements?
     \item How expensive is to build the coreset, compared with finding
         a good clustering on the coreset itself?
@@ -39,7 +40,8 @@ computing the independent set only once every 2048 additions.
 In all experiments, rather than setting the parameter $\epsilon$, which in the previous sections 
 relates the quality of the solution with the size of the coreset, we control directly the number of 
 cluster centers around which the coresets are built. We denote this parameter with $\tau$.
-This is to have greater control on the size of the coreset, with the goal of observing the
+This is to have greater control on the size of the coreset, which will be
+$\le \tau\cdot \operatorname{rank}(\mathcal{M})$, with the goal of observing the
 effect on the performance both in terms of time and quality.
 Each result is the average over at least 10 runs.
 
@@ -110,9 +112,9 @@ Figure~\ref{fig:seq-effect} reports the results of this experiment.
 First, we observe that increasing $\tau$ quickly improves the solution before hitting a plateau, where
 building larger coresets does not improve the quality of the solution.
 On \higgs this effect is more pronounced, whereas for \wiki already using a small coreset yields a good-quality solution.
-\mc{Check the following statement in the light of the new experiments.}
-Furthermore, we notice that \stream and \seq have comparable quality, with the former performing slightly 
-worse for the same coreset size, as predicted by the theory.
+Furthermore, we notice that \stream and \seq have comparable quality, 
+with the former performing slightly 
+worse for the same value of $\tau$, as predicted by the theory.
 
 Comparing with \chen (blue horizontal line) on the sampled datasets, both \seq and \stream compute comparable, 
 if not better, solutions using rather small coresets.
@@ -130,10 +132,10 @@ Figure~\ref{fig:seq-time} reports the running times of these experiments,
 showing that coreset based approaches are between two to three orders of magnitude faster than \chen
 (on samples of 10\,000 points of each dataset) for values of $\tau$ giving solutions of comparable quality.
 As for the relative performance of \seq and \stream, on sampled datasets they have similar performance.
-\mc{Reformulate this in the light of the new experiments.}
-On the full datasets, \seq has a very predictable performance, degrading for increasing values of $\tau$.
-The performance of \stream, on the other hand, is almost constant in $\tau$, and slower than $\seq$.
-We emphasize, though, that \stream can work with unbounded inputs.
+On the full datasets, \seq has a very predictable performance, degrading for increasing values 
+of $\tau$.
+\stream performance is comparable of better than \seq, which counterbalances the slightly worse
+approximation, with the addition of using far less memory, as we shall see in the next section.
 
 \subsection{Memory requirements}
 \label{sec:memory}
