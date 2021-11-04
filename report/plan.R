@@ -26,6 +26,28 @@ plan <- drake_plan(
         width=10,
         height=5
     ),
+
+    plot_sequential_coreset_size = do_plot_sequential_coreset_size(data_result),
+    fig_sequential_coreset_size = ggsave("imgs/seq-coreset-size.png", 
+        plot=plot_sequential_coreset_size,
+        width=10,
+        height=5
+    ),
+
+    plot_coreset_construction_comparison = do_coreset_construction_comparision(data_result),
+    fig_coreset_construction_comparison = ggsave("imgs/coreset-construction.png", 
+        plot=plot_coreset_construction_comparison,
+        width=10,
+        height=5
+    ),
+
+    plot_final_approximation = do_plot_final_approximation(data_result),
+    fig_final_approximation = ggsave("imgs/final-approximation.png",
+        plot=plot_final_approximation,
+        width=10,
+        height=5
+    ),
+
     plot_mapreduce_time = do_plot_mapreduce_time(data_result),
     fig_mapreduce_time = ggsave("imgs/mr-time.png", 
         plot=plot_mapreduce_time,
@@ -49,7 +71,7 @@ plan <- drake_plan(
     fig_memory = ggsave("imgs/memory.png",
         plot = plot_memory,
         width = 5,
-        height = 5
+        height = 4
     ),
 
     data_time_ratio = data_result %>%
