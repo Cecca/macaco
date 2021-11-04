@@ -57,7 +57,7 @@ do_plot_sequential_effect <- function(data) {
                 linetype = "solid",
                 size = 1
             ) +
-            facet_grid(vars(dataset), vars(outliers_spec), scales="free_y") +
+            facet_wrap(vars(dataset), scales="free_y") +
             scale_x_continuous(breaks=scales::pretty_breaks()) +
             scale_color_algorithm() +
             # coord_cartesian(ylim=c(0, NA)) +
@@ -72,8 +72,9 @@ do_plot_sequential_effect <- function(data) {
         p
     }
 
-    doplot(filter(plotdata, sample == "full"), "Full data") |
-        doplot(filter(plotdata, sample == "sample"), "Sampled data")
+    ((doplot(filter(plotdata, sample == "full"), "Full data") |
+        doplot(filter(plotdata, sample == "sample"), "Sampled data")) /
+        guide_area()) + plot_layout(guides = "collect")
 
 }
 
@@ -115,7 +116,7 @@ do_plot_sequential_coreset_size <- function(data) {
                 linetype = "solid",
                 size = 1
             ) +
-            facet_grid(vars(dataset), vars(outliers_spec), scales="free_y") +
+            facet_wrap(vars(dataset), scales="free_y") +
             scale_x_continuous(breaks=scales::pretty_breaks()) +
             scale_y_continuous(trans = "log10") +
             scale_color_algorithm() +
@@ -198,7 +199,7 @@ do_plot_sequential_time <- function(data) {
                 color = algopalette['KaleStreaming'],
                 linetype = "solid"
             ) +
-            facet_grid(vars(dataset), vars(outliers_spec), scales="free_y") +
+            facet_wrap(vars(dataset), scales="free_y") +
             scale_y_log10(labels=scales::number_format(accuracy=1)) +
             scale_x_continuous(breaks=scales::pretty_breaks()) +
             scale_color_algorithm() +
@@ -220,7 +221,6 @@ do_plot_sequential_time <- function(data) {
 
 do_plot_mapreduce_time <- function(data) {
     data <- data %>%
-        filter(outliers_spec == 50) %>%
         filter(tau <= 10) %>%
         filter(!str_detect(dataset, "sample")) %>%
         mutate(across(contains("_time"), ~ set_units(.x, "s") %>% drop_units()))
@@ -236,7 +236,7 @@ do_plot_mapreduce_time <- function(data) {
         geom_point(aes(y=coreset_time, shape=factor(workers)), show.legend=F) +
         geom_hline(aes(yintercept=coreset_time), data=seq, linetype="dotted") +
         # geom_segment(aes(xend=tau, y=coreset_time, yend=coreset_time + solution_time), color="red") +
-        facet_grid(vars(dataset, outliers_spec), vars(tau), scales="free") +
+        facet_grid(vars(dataset), vars(tau), scales="free") +
         scale_color_algorithm() +
         scale_x_continuous(
             trans="log2", 
@@ -331,7 +331,7 @@ do_plot_solution_time <- function(data) {
             y="time (s)",
             shape=TeX("\\tau")
         ) +
-        facet_grid(vars(dataset), vars(outliers_spec)) +
+        facet_wrap(vars(dataset)) +
         coord_cartesian(clip="off") +
         theme_paper() +
         theme(
@@ -546,6 +546,7 @@ do_plot_memory <- function(plotdata) {
         filter(algorithm == "SeqCoreset") %>%
         group_by(dataset, outliers_spec) %>%
         slice_min(memory_coreset_mb)
+    print(sequential)
     plotdata <- plotdata %>% filter(algorithm != "SeqCoreset")
     ggplot(plotdata, aes(x = tau, 
                          y=memory_coreset_mb, 
@@ -588,13 +589,13 @@ do_plot_memory <- function(plotdata) {
             vjust = 0,
             size = 4,
             x = 9,
-            y = 13
+            y = 5
         ) +
         # facet_grid(vars(algorithm), vars(dataset), scales="free_y") +
         facet_wrap(vars(dataset)) +
         scale_color_algorithm() +
         # scale_y_log10() +
-        coord_cartesian(ylim=c(0, 13)) +
+        coord_cartesian(ylim=c(0, 6)) +
         labs(
             x = TeX("$\\tau$"),
             y = "Memory (MB)"
