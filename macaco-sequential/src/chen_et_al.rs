@@ -1,3 +1,4 @@
+use macaco_base::matroid::IndependentSet;
 use macaco_base::types::Distance;
 use macaco_base::{
     algorithm::Algorithm,
@@ -453,7 +454,27 @@ impl<'a, T: Clone> DiskMatroid1<'a, T> {
     }
 }
 
-impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'a, T> {
+struct Disk1IndependentSet<'matroid, 'points, 'a, T: Clone, W: WeightMap> {
+    matroid: &'matroid DiskMatroid1<'a, T>,
+    points: Vec<&'points ExpandedDisk<'a, W>>,
+}
+
+impl<'matroid, 'points, 'a, T: Clone, W: WeightMap> IndependentSet<'points, ExpandedDisk<'a, W>>
+    for Disk1IndependentSet<'matroid, 'points, 'a, T, W>
+{
+    fn update(&mut self, x: &'points ExpandedDisk<'a, W>) {
+        self.points.push(x);
+        if !self.matroid.is_independent_ref(&self.points) {
+            self.points.pop();
+        }
+    }
+
+    fn points(&self) -> Vec<&'points ExpandedDisk<'a, W>> {
+        todo!()
+    }
+}
+
+impl<'d, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'d, W>> for DiskMatroid1<'d, T> {
     fn is_independent(&self, _set: &[ExpandedDisk<W>]) -> bool {
         todo!()
     }
@@ -472,11 +493,27 @@ impl<'a, T: Clone, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid1<'
     fn rank(&self) -> usize {
         self.inner.rank()
     }
+
+    fn maximal_independent_set<'a>(
+        &self,
+        set: &[&'a ExpandedDisk<'d, W>],
+    ) -> Vec<&'a ExpandedDisk<'d, W>> {
+        let mut is = Disk1IndependentSet {
+            matroid: &self,
+            points: Vec::new(),
+        };
+
+        for x in set {
+            is.update(*x);
+        }
+
+        is.points
+    }
 }
 
 struct DiskMatroid2;
 
-impl<'a, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid2 {
+impl<'d, W: WeightMap> Matroid<ExpandedDisk<'d, W>> for DiskMatroid2 {
     fn is_independent(&self, _set: &[ExpandedDisk<W>]) -> bool {
         todo!()
     }
@@ -489,5 +526,41 @@ impl<'a, W: WeightMap> Matroid<ExpandedDisk<'a, W>> for DiskMatroid2 {
 
     fn rank(&self) -> usize {
         unimplemented!()
+    }
+
+    fn maximal_independent_set<'a>(
+        &self,
+        set: &[&'a ExpandedDisk<'d, W>],
+    ) -> Vec<&'a ExpandedDisk<'d, W>> {
+        let mut is = Disk2IndependentSet {
+            matroid: &self,
+            points: Vec::new(),
+        };
+
+        for x in set {
+            is.update(*x);
+        }
+
+        is.points
+    }
+}
+
+struct Disk2IndependentSet<'matroid, 'points, 'a, W: WeightMap> {
+    matroid: &'matroid DiskMatroid2,
+    points: Vec<&'points ExpandedDisk<'a, W>>,
+}
+
+impl<'matroid, 'points, 'a, W: WeightMap> IndependentSet<'points, ExpandedDisk<'a, W>>
+    for Disk2IndependentSet<'matroid, 'points, 'a, W>
+{
+    fn update(&mut self, x: &'points ExpandedDisk<'a, W>) {
+        self.points.push(x);
+        if !self.matroid.is_independent_ref(&self.points) {
+            self.points.pop();
+        }
+    }
+
+    fn points(&self) -> Vec<&'points ExpandedDisk<'a, W>> {
+        todo!()
     }
 }

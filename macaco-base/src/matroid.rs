@@ -17,22 +17,7 @@ pub trait Matroid<T> {
     ///  - start with an empty set
     ///  - while there are elements to add
     ///    - add the next element to the set if this keeps the set independent
-    fn maximal_independent_set<'a>(&self, set: &[&'a T]) -> Vec<&'a T> {
-        let mut is = Vec::new();
-        let rank = self.rank();
-
-        for x in set {
-            is.push(*x);
-            if !self.is_independent_ref(&is) {
-                is.pop();
-            }
-            if is.len() == rank {
-                break;
-            }
-        }
-
-        is
-    }
+    fn maximal_independent_set<'a>(&self, set: &[&'a T]) -> Vec<&'a T>;
 
     fn is_maximal(&self, is: &[T], set: &[T]) -> bool {
         use std::iter::FromIterator;
@@ -46,6 +31,110 @@ pub trait Matroid<T> {
         }
         true
     }
+}
+
+pub trait IndependentSet<'points, T> {
+    fn update(&mut self, x: &'points T);
+    fn points(&self) -> Vec<&'points T>;
+}
+
+struct PartitionIndependentSet<'matroid, 'points, T: PartitionMatroidElement> {
+    matroid: &'matroid PartitionMatroid<T>,
+    points: Vec<&'points T>,
+}
+
+impl<'matroid, 'points, T: PartitionMatroidElement> IndependentSet<'points, T>
+    for PartitionIndependentSet<'matroid, 'points, T>
+{
+    fn update(&mut self, x: &'points T) {
+        self.points.push(x);
+        if !self.matroid.is_independent_ref(&self.points) {
+            self.points.pop();
+        }
+    }
+
+    fn points(&self) -> Vec<&'points T> {
+        todo!()
+    }
+}
+
+struct TransversalIndependentSet<'matroid, 'points, T: TransversalMatroidElement> {
+    matroid: &'matroid TransversalMatroid<T>,
+    points: Vec<&'points T>,
+    visited: Vec<bool>,
+    representatives: Vec<Option<usize>>,
+}
+
+impl<'matroid, 'points, T: TransversalMatroidElement> IndependentSet<'points, T>
+    for TransversalIndependentSet<'matroid, 'points, T>
+{
+    fn update(&mut self, x: &'points T) {
+        // First, extend the set, we shall see if such extension is valid
+        self.points.push(x);
+
+        // reset the flags
+        self.visited.fill(false);
+
+        // At this point the assumption is that `self.points` already contains an independent set,
+        // with a valid assignment in `representatives`.
+        //
+        // Therefore, we try to find a matching for the point we just pushed
+        find_matching_for(
+            &self.matroid.topics,
+            &self.points,
+            self.points.len() - 1,
+            &mut self.representatives,
+            &mut self.visited,
+        );
+
+        // Now we count the size of the independent set by counting the number of topics
+        // which have some representative
+        let size = self
+            .representatives
+            .iter()
+            .filter(|opt| opt.is_some())
+            .count();
+
+        // If the size of the independent set in `self.points` is smaller than
+        // `self.points` itself, it means that the point we just inserted does not
+        // fit in there, so we shall remove it
+        if size != self.points.len() {
+            self.points.pop();
+        }
+    }
+
+    fn points(&self) -> Vec<&'points T> {
+        todo!()
+    }
+}
+
+fn find_matching_for<T: TransversalMatroidElement>(
+    topics: &[u32],
+    set: &[&T],
+    idx: usize,
+    representatives: &mut [Option<usize>],
+    visited: &mut [bool],
+) -> bool {
+    for topic in set_intersection(topics.iter().copied(), set[idx].topics().iter().copied()) {
+        if let Some(topic) = topics.binary_search(&topic).ok() {
+            if !visited[topic as usize] {
+                visited[topic as usize] = true;
+                let can_set = if let Some(displacing_idx) = representatives[topic as usize] {
+                    // try to move the representative to another set
+                    find_matching_for(topics, set, displacing_idx, representatives, visited)
+                } else {
+                    true
+                };
+
+                if can_set {
+                    representatives[topic as usize].replace(idx);
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 pub fn augment<T: Clone + PartialEq>(
@@ -101,6 +190,24 @@ impl<T: TransversalMatroidElement> Matroid<T> for TransversalMatroid<T> {
         // perf_counters::inc_matroid_oracle_count();
         debug_assert!(self.maximum_matching_size(&set) == self.maximum_matching_size2(&set));
         set.len() < self.topics.len() && self.maximum_matching_size(&set) == set.len()
+    }
+
+    fn maximal_independent_set<'a>(&self, set: &[&'a T]) -> Vec<&'a T>
+    where
+        Self: Sized,
+    {
+        let mut is = TransversalIndependentSet {
+            matroid: &self,
+            points: Vec::new(),
+            visited: vec![false; self.topics.len()],
+            representatives: vec![None; self.topics.len()],
+        };
+
+        for x in set {
+            is.update(*x);
+        }
+
+        is.points
     }
 }
 
@@ -406,6 +513,19 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
             }
         }
         true
+    }
+
+    fn maximal_independent_set<'a>(&self, set: &[&'a T]) -> Vec<&'a T> {
+        let mut is = PartitionIndependentSet {
+            matroid: &self,
+            points: Vec::new(),
+        };
+
+        for x in set {
+            is.update(*x);
+        }
+
+        is.points
     }
 }
 
