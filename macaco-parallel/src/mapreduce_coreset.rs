@@ -46,7 +46,7 @@ impl<V> MapReduceCoreset<V> {
 
 impl<V: Distance + Clone + Weight + PartialEq> Algorithm<V> for MapReduceCoreset<V> {
     fn version(&self) -> u32 {
-        6
+        7
     }
 
     fn name(&self) -> String {
