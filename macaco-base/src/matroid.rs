@@ -95,6 +95,8 @@ impl<'matroid, 'points, T: TransversalMatroidElement> IndependentSet<'points, T>
             .filter(|opt| opt.is_some())
             .count();
 
+        debug_assert_eq!(size, self.matroid.maximum_matching_size(&self.points));
+
         // If the size of the independent set in `self.points` is smaller than
         // `self.points` itself, it means that the point we just inserted does not
         // fit in there, so we shall remove it
