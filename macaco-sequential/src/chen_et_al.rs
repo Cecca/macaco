@@ -107,26 +107,26 @@ fn improve_solution<'a, V: Clone + Distance + PartialEq, W: WeightMap>(
     _weight_map: &W,
 ) -> Vec<V> {
     assert!(matroid.is_independent(&solution));
-    let rank = matroid
-        .maximal_independent_set(&Vec::from_iter(points.iter()))
-        .len();
+    // let rank = matroid
+    //     .maximal_independent_set(&Vec::from_iter(points.iter()))
+    //     .len();
 
-    let mut points = Vec::from(points);
-    let sort_points = |mut points: Vec<V>, centers: &Vec<V>| {
-        points.sort_by_key(|p| std::cmp::Reverse(p.set_distance(centers).1));
-        points
-    };
-    while solution.len() < rank {
-        points = sort_points(points, &solution);
-        for point in points.iter() {
-            solution.push(point.clone());
-            if !matroid.is_independent(&solution) {
-                solution.pop();
-            } else {
-                break;
-            }
+    // let mut points = Vec::from(points);
+    // let sort_points = |mut points: Vec<V>, centers: &Vec<V>| {
+    //     points.sort_by_key(|p| std::cmp::Reverse(p.set_distance(centers).1));
+    //     points
+    // };
+    // while solution.len() < rank {
+    // points = sort_points(points, &solution);
+    for point in points.iter() {
+        solution.push(point.clone());
+        if !matroid.is_independent(&solution) {
+            solution.pop();
+        } else {
+            break;
         }
     }
+    // }
 
     solution
     // let base_index = solution.len();
