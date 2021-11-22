@@ -1,0 +1,20 @@
+{
+    "shuffle_seed": 345345,
+    "outliers": {
+        "Fixed": 100
+    },
+    "algorithm": {
+        "KaleStreaming": {
+            "epsilon": 1
+        }
+    },
+    "dataset": ".datasets/higgs/higgs-v1.msgpack.gz",
+    "constraint": {
+        "partition": {
+            "categories": {
+                "background": 10,
+                "signal": 10
+            }
+        }
+    }
+}
