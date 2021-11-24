@@ -522,9 +522,13 @@ impl<T: PartitionMatroidElement> Matroid<T> for PartitionMatroid<T> {
             matroid: &self,
             points: Vec::new(),
         };
+        let rank = self.rank();
 
         for x in set {
             is.update(*x);
+            if is.points.len() == rank {
+                break;
+            }
         }
 
         is.points
