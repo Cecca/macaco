@@ -75,12 +75,15 @@ plan <- drake_plan(
         ),
         transform = map(plot_mapreduce_time, outliers = !!num_outliers)
     ),
-    # plot_tradeoff = do_plot_tradeoff(data_result),
-    # fig_tradeoff = ggsave("imgs/tradeoff.png", 
-    #     plot=plot_tradeoff,
-    #     width=8,
-    #     height=7
-    # ),
+    plot_tradeoff = target(do_plot_tradeoff(data_result), transform = map(data_result)),
+    fig_tradeoff = target(ggsave(
+            str_c("imgs/tradeoff-", outliers, ".png"),
+            plot=plot_tradeoff,
+            width=8,
+            height=7
+        ),
+        transform = map(plot_tradeoff, outliers = !!num_outliers)
+    ),
     # plot_solution_time = do_plot_solution_time(data_result),
     # fig_solution_time = ggsave("imgs/solution-time.png",
     #     plot = plot_solution_time,

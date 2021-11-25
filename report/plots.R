@@ -221,7 +221,7 @@ do_plot_sequential_time <- function(data) {
 
 do_plot_mapreduce_time <- function(data) {
     data <- data %>%
-        filter(tau <= 10) %>%
+        filter(tau <= 9) %>%
         filter(!str_detect(dataset, "sample")) %>%
         mutate(across(contains("_time"), ~ set_units(.x, "s") %>% drop_units()))
     mr <- data %>% filter(algorithm == "MRCoreset") %>%
@@ -233,16 +233,16 @@ do_plot_mapreduce_time <- function(data) {
 
     p <- ggplot(mr, aes(x=workers, y=coreset_time)) +
         geom_segment(aes(xend=workers, y=coreset_time, yend=0)) +
-        geom_point(aes(y=coreset_time, shape=factor(workers)), show.legend=F) +
+        geom_point(aes(y=coreset_time), show.legend=F) +
         geom_hline(aes(yintercept=coreset_time), data=seq, linetype="dotted") +
         # geom_segment(aes(xend=tau, y=coreset_time, yend=coreset_time + solution_time), color="red") +
         facet_grid(vars(dataset), vars(tau), scales="free") +
         scale_color_algorithm() +
         scale_x_continuous(
             trans="log2", 
-            limits=c(1, 16),
+            limits=c(0.5, 16),
             # expand=expansion(mult=c(1,1)),
-            breaks=c(2,4,8)
+            breaks=c(1,2,4,8)
         ) +
         scale_y_continuous(trans="identity") +
         theme_paper() +
@@ -253,9 +253,9 @@ do_plot_mapreduce_time <- function(data) {
         ) +
         coord_cartesian(clip="on",) +
         labs(
-            y = "total time (s)"
+            y = "coreset construction time (s)"
         ) +
-        annotate(geom="segment", x=1, xend=16, y=0, yend=0)
+        annotate(geom="segment", x=0.5, xend=16, y=0, yend=0)
 
     p
 }
@@ -349,72 +349,68 @@ do_plot_time_ratio <- function(data) {
         filter(algorithm != "MRCoreset")
 
 
-    ggplot(plotdata, aes(x = tau, color=dominant)) +
-        geom_point(
-            aes(y = coreset_time),
-            color = "#67a9cf"
-        ) +
-        geom_point(
-            aes(y = -solution_time),
-            color = "#ef8a62"
-        ) +
-        geom_linerange(
-            aes(ymax = coreset_time),
-            ymin = 0,
-            color = "#67a9cf"
-        ) +
-        geom_linerange(
-            aes(ymin = -solution_time),
-            ymax = 0,
-            color = "#ef8a62"
-        ) +
-        # geom_segment(aes(yend=1, xend=tau)) +
-        geom_hline(yintercept=0) +
-        # geom_vline(xintercept =0) +
-        scale_y_continuous(
-            trans = "identity",
-            labels = abs
-            # breaks=c(0.01, 0.1, 1, 10, 100),
-            # labels=c("", "10", "1", "10", "")
-        ) +
-        scale_x_continuous(
-            breaks = c(1, 5, 10),
-            limits = c(0, NA)
-        ) +
-        scale_color_identity() +
-        facet_grid(
-            vars(dataset), 
-            vars(algorithm),
-            scales = "free"
-        ) +
-        labs(
-            x = TeX("$\\tau$"),
-            y = "Time"
-        ) +
-        coord_flip() +
-        theme_paper() +
-        theme(
-            panel.grid = element_blank(),
-            panel.grid.major.x = element_line(size=0.2, color="lightgray"),
-            axis.line.y = element_blank(),
-            axis.line.x = element_blank()
-        )
+    plot_one <- function(plotdata, title) {
+        ggplot(plotdata, aes(x = tau, color=dominant)) +
+            geom_point(
+                aes(y = coreset_time),
+                color = "#67a9cf"
+            ) +
+            geom_point(
+                aes(y = -solution_time),
+                color = "#ef8a62"
+            ) +
+            geom_linerange(
+                aes(ymax = coreset_time),
+                ymin = 0,
+                color = "#67a9cf"
+            ) +
+            geom_linerange(
+                aes(ymin = -solution_time),
+                ymax = 0,
+                color = "#ef8a62"
+            ) +
+            # geom_segment(aes(yend=1, xend=tau)) +
+            geom_hline(yintercept=0) +
+            # geom_vline(xintercept =0) +
+            scale_y_continuous(
+                trans = "identity",
+                labels = abs
+                # breaks=c(0.01, 0.1, 1, 10, 100),
+                # labels=c("", "10", "1", "10", "")
+            ) +
+            scale_x_continuous(
+                breaks = c(1, 5, 9),
+                limits = c(0, NA)
+            ) +
+            scale_color_identity() +
+            facet_wrap(
+                vars(dataset), 
+                scales = "free",
+                ncol = 1
+            ) +
+            labs(
+                title = title,
+                x = TeX("$\\tau$"),
+                y = "Time"
+            ) +
+            coord_flip() +
+            theme_paper() +
+            theme(
+                panel.grid = element_blank(),
+                panel.grid.major.x = element_line(size=0.2, color="lightgray"),
+                axis.line.y = element_blank(),
+                axis.line.x = element_blank()
+            )
+    }
+
+    plot_one(filter(plotdata, algorithm == "SeqCoreset"), "SeqCoreset") | plot_one(filter(plotdata, algorithm == "StreamingCoreset"), "StreamingCoreset")
 }
 
 do_plot_tradeoff <- function(data) {
     plotdata <- data %>%
+        filter(algorithm %in% c("StreamingCoreset", "SeqCoreset")) %>%
         mutate(total_time = set_units(total_time, "s") %>% drop_units()) %>%
         mutate(dataset = fct_reorder(dataset, is_sample))
-
-    random <- plotdata %>% 
-        filter(algorithm == "Random")
-
-    random_radii <- random %>%
-        group_by(dataset, rank, outliers_spec) %>%
-        summarise(
-            random_radius = mean(radius),
-            random_ratio_to_best = mean(ratio_to_best)
-        )
 
     averages <- plotdata %>%
         mutate(algorithm_params = if_else(algorithm == "Random", "", algorithm_params)) %>%
@@ -422,11 +418,19 @@ do_plot_tradeoff <- function(data) {
         summarise(radius = mean(radius), ratio_to_best = mean(ratio_to_best), total_time = mean(total_time), coreset_size = mean(coreset_size)) %>%
         ungroup()
 
+    baselines <- data %>%
+        filter(algorithm %in% c("KaleStreaming", "ChenEtAl")) %>%
+        mutate(total_time = set_units(total_time, "s") %>% drop_units()) %>%
+        mutate(dataset = fct_reorder(dataset, is_sample)) %>%
+        group_by(dataset, rank, workers, outliers_spec, algorithm, algorithm_params) %>%
+        summarise(radius = mean(radius), ratio_to_best = mean(ratio_to_best), total_time = mean(total_time), coreset_size = mean(coreset_size)) %>%
+        # Get the configuration running fastest
+        slice_min(total_time) %>%
+        ungroup()
+
     draw <- function(data) {
         data %>% distinct(dataset, rank) %>% print()
         title <- data %>% distinct(dataset) %>% pull()
-        random <- semi_join(random, data)
-        random_radii <- semi_join(random_radii, data)
         ggplot(data, aes(
             x = ratio_to_best, y = total_time, color = algorithm,
             tooltip = str_c(
@@ -446,22 +450,24 @@ do_plot_tradeoff <- function(data) {
             )
         )) +
             geom_vline(
-                aes(xintercept=random_ratio_to_best),
-                data = random_radii,
-                color = algopalette["Random"]
+                aes(xintercept = ratio_to_best),
+                data = baselines
             ) +
-            # geom_point(data = random, alpha = 0.5, size = 0.5) +
+            geom_hline(
+                aes(yintercept = total_time),
+                data = baselines
+            ) +
             geom_point(size = 1.2, stat="summary", fun.data=mean_se) +
-            # scale_y_continuous(trans = "log10") +
+            scale_y_continuous(trans = "log10") +
             scale_color_algorithm() +
             labs(y = "total time (s)", x = "radius", title=title) +
             # facet_grid(vars(dataset), vars(rank), scales = "free") +
-            facet_wrap(vars(dataset, outliers_spec, rank), scales = "free", ncol=1) +
+            facet_wrap(vars(dataset), scales = "free", ncol=1) +
             theme_paper()
     }
 
     averages %>% 
-        filter(dataset %in% c("Higgs", "MusixMatch", "Wikipedia")) %>% 
+        filter(dataset %in% c("Higgs", "Phones", "Wikipedia")) %>% 
         draw()
 }
 
