@@ -1,4 +1,5 @@
 import subprocess
+import numpy as np
 import msgpack
 import gzip
 import zipfile
@@ -44,6 +45,12 @@ class Dataset(object):
         raise NotImplementedError()
 
     def get_path(self):
+        raise NotImplementedError()
+
+    def get_vector(self, item):
+        raise NotImplementedError()
+
+    def set_vector(self, item, v):
         raise NotImplementedError()
 
     def metadata(self):
@@ -220,6 +227,13 @@ class Wikipedia(Dataset):
 
     def get_path(self):
         return os.path.abspath(self.out_fname)
+
+    def get_vector(self, item):
+        return np.array(item["vector"]) 
+
+    def set_vector(self, item, v):
+        item["vector"] = list(v)
+        return item
 
     def build_metadata(self):
         datatype = "WikiPageEuclidean" if self.distance == "euclidean" else "WikiPage"
@@ -489,6 +503,13 @@ class Phones(Dataset):
     def get_path(self):
         return os.path.abspath(self.file_name)
 
+    def get_vector(self, item):
+        return np.array(item["vector"])
+
+    def set_vector(self, item, v):
+        item["vector"] = list(v)
+        return item
+
     def build_metadata(self):
         meta = {
             "name": "Phones",
@@ -563,6 +584,13 @@ class Higgs(Dataset):
 
     def get_path(self):
         return os.path.abspath(self.file_name)
+
+    def get_vector(self, item):
+        return np.array(item["vector"])
+
+    def set_vector(self, item, v):
+        item["vector"] = list(v)
+        return item
 
     def build_metadata(self):
         meta = {
@@ -758,6 +786,88 @@ class BoundedDifficultyDataset(Dataset):
             progress_bar.close()
 
 
+class WithOutliers(Dataset):
+    version = 1
+
+    def __init__(self, base, n_outliers):
+        self.base = base
+        self.n_outliers = n_outliers
+        self.cache_dir = os.path.join(".datasets/with-outliers")
+        if not os.path.isdir(self.cache_dir):
+            os.makedirs(self.cache_dir)
+        params_list = list(base.metadata()["parameters"].items())
+        params_list.sort()
+        params_str = "-".join(["{}-{}".format(k, v) for k, v in params_list])
+        self.path = os.path.join(
+            self.cache_dir,
+            "{}-{}-z{}-v{}.msgpack.gz".format(
+                base.metadata()["name"],
+                params_str,
+                n_outliers,
+                WithOutliers.version,
+            ),
+        )
+
+    def get_path(self):
+        return os.path.abspath(self.path)
+
+    def build_metadata(self):
+        parameters = self.base.metadata()["parameters"]
+        parameters.update(
+            {
+                "n_outliers": self.n_outliers,
+                "base_version": self.base.metadata()["version"],
+            }
+        )
+        return {
+            "name": "{}-z{}".format(self.base.metadata()["name"], self.n_outliers),
+            "constraint": self.base.metadata()["constraint"],
+            "datatype": self.base.metadata()["datatype"],
+            "parameters": parameters,
+            "version": WithOutliers.version,
+        }
+
+    def preprocess(self):
+        if not os.path.isfile(self.path):
+            self.base.try_download_preprocessed()
+            self.base.preprocess()
+
+            n = self.base.num_elements()
+
+            print("Finding center and radius")
+            progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
+            dim = len(self.base.get_vector(next(iter(self.base))))
+            max_coords = np.ones(dim) * (-np.infty)
+            min_coords = np.ones(dim) * np.infty
+            for v in self.base:
+                progress_bar.update(1)
+                # Get the coordinates
+                v = self.base.get_vector(v)
+                # Update the corners of the box
+                min_coords = np.minimum(min_coords, v)
+                max_coords = np.maximum(max_coords, v)
+
+            center = (max_coords - min_coords) / 2
+            radius = np.linalg.norm(max_coords - center)
+
+            progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
+            idx = 0
+            with gzip.open(self.path, "wb") as out_fp:
+                self.write_metadata(out_fp)
+                for item in self.base:
+                    progress_bar.update(1)
+                    if idx < self.n_outliers:
+                        # Displace
+                        v = self.base.get_vector(item)
+                        displaced = (v / np.linalg.norm(v)) * radius * 100.0 + center
+                        updated = self.base.set_vector(item, displaced)
+                        out_fp.write(msgpack.packb(updated))
+                    else:
+                        out_fp.write(msgpack.packb(item))
+                    idx += 1
+            progress_bar.close()
+
+
 DATASETS = {
     "random-10000": Random(
         size=10000,
@@ -809,9 +919,21 @@ for size in [1000000, 100000, 50000, 10000, 1000]:
         base=DATASETS["Higgs"], size=size, seed=12341245
     )
 
+DATASETS["Higgs-z50"] = WithOutliers(
+    base=DATASETS["Higgs"],
+    n_outliers=50
+)
+DATASETS["Phones-z50"] = WithOutliers(
+    base=DATASETS["Phones"],
+    n_outliers=50
+)
+DATASETS["wiki-d10-c50-z50"] = WithOutliers(
+    base=DATASETS["wiki-d10-c50"],
+    n_outliers=50
+)
 
 if __name__ == "__main__":
-    dataset = DATASETS["Higgs-half"]
+    dataset = DATASETS["wiki-d10-c50-z50"]
     dataset.try_download_preprocessed()
     dataset.preprocess()
     print(dataset.metadata())
