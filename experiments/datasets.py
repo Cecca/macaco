@@ -852,11 +852,13 @@ class WithOutliers(Dataset):
 
             progress_bar = tqdm(total=n, unit="pages", unit_scale=False)
             idx = 0
+            np.random.seed(1234)
+            to_displace = np.random.choice(np.arange(0, n), self.n_outliers)
             with gzip.open(self.path, "wb") as out_fp:
                 self.write_metadata(out_fp)
                 for item in self.base:
                     progress_bar.update(1)
-                    if idx < self.n_outliers:
+                    if idx in to_displace:
                         # Displace
                         v = self.base.get_vector(item)
                         displaced = (v / np.linalg.norm(v)) * radius * 100.0 + center
