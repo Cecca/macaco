@@ -121,6 +121,7 @@ def run_higgs():
     """
     datasets = [
         "Higgs",
+        "Higgs-z50"
         # "Higgs-s10000"
     ]
     for dataset in datasets:
@@ -128,9 +129,8 @@ def run_higgs():
         DATASETS[dataset].preprocess()
     constraints = [{"signal": 10, "background": 10}]
     # Fraction of allowed outliers
-    frac_outliers = [0.0001]
-    fix_outliers = [150, 100, 50]
-    fix_outliers = [100]
+    # fix_outliers = [150, 100, 50]
+    fix_outliers = [50]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     shuffle_seeds = [124351243]
@@ -142,7 +142,6 @@ def run_higgs():
         base_conf = {
             "shuffle_seed": shuffle_seed,
             "outliers": {"Fixed": fix_out},
-            # "outliers": {"Percentage": frac_out},
             "dataset": DATASETS[dataset].get_path(),
             "constraint": {"partition": {"categories": constr}},
         }
@@ -157,30 +156,30 @@ def run_higgs():
         #     c = base_conf.copy()
         #     c["algorithm"] = "ChenEtAl"
         #     run(c)
-        for epsilon in [1.0, 0.5, 2.0]:
-            c = base_conf.copy()
-            c["algorithm"] = {"KaleStreaming": {"epsilon": epsilon}}
-            run(c)
+        # for epsilon in [1.0, 0.5, 2.0]:
+        #     c = base_conf.copy()
+        #     c["algorithm"] = {"KaleStreaming": {"epsilon": epsilon}}
+        #     run(c)
 
         # # Run coreset algorithms
-        taus = range(1, 10)
+        taus = [1, 10, 51, 70, 80, 90, 100]
         print(taus)
         for tau in taus:
             # print("Run SeqCoreset", tau)
             c = base_conf.copy()
             c["algorithm"] = {"SeqCoreset": {"tau": tau}}
-            # run(c)
+            run(c)
             print("Run StreamCoreset", tau)
             c["algorithm"] = {"StreamingCoreset": {"tau": tau}}
-            # run(c)
+            run(c)
 
-            if dataset not in {"Higgs-s10000"}:
-                for hosts in [workers[:i] for i in [1, 2, 4, 8]]:
-                    print("Run MRCoreset", tau, hosts)
-                    c = base_conf.copy()
-                    c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
-                    c["parallel"] = {"threads": 1, "hosts": hosts}
-                    run(c)
+            # if dataset not in {"Higgs-s10000"}:
+            #     for hosts in [workers[:i] for i in [1, 2, 4, 8]]:
+            #         print("Run MRCoreset", tau, hosts)
+            #         c = base_conf.copy()
+            #         c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+            #         c["parallel"] = {"threads": 1, "hosts": hosts}
+            #         run(c)
 
 
 def run_wiki():
@@ -259,6 +258,6 @@ def run_wiki():
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
-    run_wiki()
+    # run_wiki()
     run_higgs()
-    run_phones()
+    # run_phones()
