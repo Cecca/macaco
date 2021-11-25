@@ -62,6 +62,7 @@ def run_phones():
     # Fraction of allowed outliers
     frac_outliers = [0.0001]
     fix_outliers = [150, 100, 50]
+    fix_outliers = [100]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     shuffle_seeds = [124351243]
@@ -104,14 +105,14 @@ def run_phones():
             # run(c)
             print("Run StreamCoreset", tau)
             c["algorithm"] = {"StreamingCoreset": {"tau": tau}}
-            run(c)
+            # run(c)
 
-            # for hosts in [workers[:i] for i in [2, 4, 8]]:
-            #     print("Run MRCoreset", tau, hosts)
-            #     c = base_conf.copy()
-            #     c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
-            #     c["parallel"] = {"threads": 1, "hosts": hosts}
-            #     run(c)
+            for hosts in [workers[:i] for i in [1, 2, 4, 8]]:
+                print("Run MRCoreset", tau, hosts)
+                c = base_conf.copy()
+                c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+                c["parallel"] = {"threads": 1, "hosts": hosts}
+                run(c)
 
 
 def run_higgs():
@@ -129,6 +130,7 @@ def run_higgs():
     # Fraction of allowed outliers
     frac_outliers = [0.0001]
     fix_outliers = [150, 100, 50]
+    fix_outliers = [100]
     # These seeds also define the number of repetitions
     shuffle_seeds = [43234]
     shuffle_seeds = [124351243]
@@ -170,15 +172,15 @@ def run_higgs():
             # run(c)
             print("Run StreamCoreset", tau)
             c["algorithm"] = {"StreamingCoreset": {"tau": tau}}
-            run(c)
+            # run(c)
 
-            # if dataset not in {"Higgs-s10000"}:
-            #     for hosts in [workers[:i] for i in [2, 4, 8]]:
-            #         print("Run MRCoreset", tau, hosts)
-            #         c = base_conf.copy()
-            #         c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
-            #         c["parallel"] = {"threads": 1, "hosts": hosts}
-            #         run(c)
+            if dataset not in {"Higgs-s10000"}:
+                for hosts in [workers[:i] for i in [1, 2, 4, 8]]:
+                    print("Run MRCoreset", tau, hosts)
+                    c = base_conf.copy()
+                    c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+                    c["parallel"] = {"threads": 1, "hosts": hosts}
+                    run(c)
 
 
 def run_wiki():
@@ -247,12 +249,12 @@ def run_wiki():
             c = base_conf.copy()
             c["algorithm"] = {"StreamingCoreset": {"tau": tau}}
             run(c)
-            # for hosts in [workers[:i] for i in [2, 4, 8]]:
-            #     print("Run MRCoreset", tau, hosts)
-            #     c = base_conf.copy()
-            #     c["parallel"] = {"threads": 1, "hosts": hosts}
-            #     c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
-            #     run(c)
+            for hosts in [workers[:i] for i in [1, 2, 4, 8]]:
+                print("Run MRCoreset", tau, hosts)
+                c = base_conf.copy()
+                c["parallel"] = {"threads": 1, "hosts": hosts}
+                c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
+                run(c)
 
 
 if __name__ == "__main__":
