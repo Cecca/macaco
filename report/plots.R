@@ -33,6 +33,7 @@ do_plot_sequential_effect <- function(data) {
             sample = if_else(str_detect(dataset, "sample"), "sample", "full"),
             dataset = str_remove(dataset, "-sample-10000")
         )
+    # plotdata %>% ungroup() %>% distinct(dataset) %>% print()
 
     doplot <- function(plotdata, titlestr) {
         baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
@@ -40,8 +41,8 @@ do_plot_sequential_effect <- function(data) {
             filter(algorithm == 'KaleStreaming') %>%
             group_by(dataset, rank, outliers_spec) %>%
             slice_min(ratio_to_best)
-        print(kale)
-        plotdata <- plotdata %>% filter(tau <= 10)
+        # print(kale)
+        # plotdata <- plotdata %>% filter(tau <= 10)
         p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
             geom_point() +
             geom_line() +
@@ -91,16 +92,15 @@ do_plot_sequential_coreset_size <- function(data) {
             dataset = str_remove(dataset, "-sample-10000")
         )
 
+
     doplot <- function(plotdata, titlestr) {
+        plotdata %>% ungroup() %>% filter(dataset == "Higgs-z50") %>% print()
         baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
         kale <- plotdata %>% 
             filter(algorithm == 'KaleStreaming') %>%
             group_by(dataset, rank, outliers_spec) %>%
             slice_min(ratio_to_best)
-        kale %>%
-            select(dataset, ratio_to_best, coreset_size, algorithm_params) %>%
-            print()
-        plotdata <- plotdata %>% filter(tau <= 10)
+        #plotdata <- plotdata %>% filter(tau <= 10)
         p <- ggplot(plotdata, aes(x=tau, y=coreset_size, color=algorithm)) +
             geom_point() +
             geom_line() +
