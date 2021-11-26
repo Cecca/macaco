@@ -9,10 +9,23 @@ plan <- drake_plan(
     data_result = target({
             file_in("macaco-results.sqlite")
             table_result() %>%
-                filter(outliers_spec == num_outliers)
+                filter(outliers_spec == num_outliers) %>%
+                filter(!str_detect(dataset, "-z50"))
         },
         transform = map(num_outliers = !!num_outliers)
     ),
+
+    data_outliers_pilot = target({
+            file_in("macaco-results.sqlite")
+            table_result() %>%
+                filter(outliers_spec == 50) %>%
+                filter(str_detect(dataset, "-z50")) %>%
+                filter(tau != 2) %>%
+                filter(dataset == "Higgs-z50")
+        }
+        #transform = map(num_outliers = !!num_outliers)
+    ),
+
 
     data_memory = target(
         data_result %>%
@@ -21,6 +34,27 @@ plan <- drake_plan(
             mutate(memory_coreset_mb = memory_coreset_bytes / (1024 * 1024)),
         transform = map(data_result)
     ),
+
+    plot_streaming = target(do_plot_streaming(data_memory), transform=map(data_memory)),
+    fig_streaming = target(ggsave(
+            str_c("imgs/streaming-", outliers, ".png"), 
+            plot=plot_streaming,
+            width=8,
+            height=3
+        ), 
+        transform = map(plot_streaming, outliers = !!num_outliers)
+    ),
+
+    plot_streaming_time = target(do_plot_streaming_time(data_memory), transform=map(data_memory)),
+    fig_streaming_time = target(ggsave(
+            str_c("imgs/streaming-time-", outliers, ".png"), 
+            plot=plot_streaming_time,
+            width=8,
+            height=3
+        ), 
+        transform = map(plot_streaming_time, outliers = !!num_outliers)
+    ),
+
 
     plot_sequential_effect = target(do_plot_sequential_effect(data_result), transform=map(data_result)),
     fig_sequential_effect = target(ggsave(
@@ -31,6 +65,14 @@ plan <- drake_plan(
         ), 
         transform = map(plot_sequential_effect, outliers = !!num_outliers)
     ),
+
+    plot_seq_effect_pilot = target(do_plot_sequential_effect_artificial_outliers(data_outliers_pilot)),
+    fig_seq_effect_pilot = target(ggsave(
+        "imgs/seq-effect-pilot-z50.png",
+        plot=plot_seq_effect_pilot,
+        width=8,
+        height=3
+    )),
 
     plot_sequential_time = target(do_plot_sequential_time(data_result), transform=map(data_result)),
     fig_sequential_time = target(ggsave(

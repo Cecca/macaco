@@ -166,6 +166,7 @@ impl<T: Distance + Clone> KaleState<T> {
         let mut instances = Vec::new();
         let mut radius = initial_guess;
         instances.push(StreamingInstance::new(z, rank, radius, Rc::clone(&matroid)));
+        // Appendix A of Kale's APPROX/RANDOM paper
         let threshold = initial_guess * (2.0 + epsilon) / epsilon;
         while radius < threshold {
             radius = radius * (1.0 + epsilon);
