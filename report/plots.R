@@ -26,9 +26,10 @@ scale_color_algorithm <- function() {
 
 do_plot_sequential_effect <- function(data) {
     plotdata <- data %>% 
-        filter(algorithm %in% c("SeqCoreset", "StreamingCoreset", "ChenEtAl", "KaleStreaming")) %>%
+        filter(algorithm %in% c("SeqCoreset", "StreamingCoreset", "ChenEtAl")) %>%
         group_by(dataset, rank, outliers_spec, algorithm, tau, algorithm_params) %>% 
         summarise(ratio_to_best = mean(ratio_to_best)) %>%
+        filter(!str_detect(dataset, "sample")) %>%
         mutate(
             sample = if_else(str_detect(dataset, "sample"), "sample", "full"),
             dataset = str_remove(dataset, "-sample-10000")
@@ -36,50 +37,45 @@ do_plot_sequential_effect <- function(data) {
     # plotdata %>% ungroup() %>% distinct(dataset) %>% print()
 
     doplot <- function(plotdata, titlestr) {
-        baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
-        kale <- plotdata %>% 
-            filter(algorithm == 'KaleStreaming') %>%
-            group_by(dataset, rank, outliers_spec) %>%
-            slice_min(ratio_to_best)
+        # baseline <- plotdata %>% filter(algorithm == "ChenEtAl")
+        # kale <- plotdata %>% 
+        #     filter(algorithm == 'KaleStreaming') %>%
+        #     group_by(dataset, rank, outliers_spec) %>%
+        #     slice_min(ratio_to_best)
         # print(kale)
-        # plotdata <- plotdata %>% filter(tau <= 10)
+        plotdata <- plotdata %>% filter(tau <= 10)
         p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
             geom_point() +
             geom_line() +
-            geom_hline(
-                aes(yintercept=ratio_to_best),
-                data=baseline,
-                color=algopalette['ChenEtAl']
-            ) +
-            geom_hline(
-                aes(yintercept = ratio_to_best),
-                data = kale,
-                color = algopalette['KaleStreaming'],
-                linetype = "solid",
-                size = 1
-            ) +
+            # geom_hline(
+            #     aes(yintercept=ratio_to_best),
+            #     data=baseline,
+            #     color=algopalette['ChenEtAl']
+            # ) +
+            # geom_hline(
+            #     aes(yintercept = ratio_to_best),
+            #     data = kale,
+            #     color = algopalette['KaleStreaming'],
+            #     linetype = "solid",
+            #     size = 1
+            # ) +
             facet_wrap(vars(dataset), scales="free_y") +
             scale_x_continuous(breaks=scales::pretty_breaks()) +
             scale_color_algorithm() +
             # coord_cartesian(ylim=c(0, NA)) +
-            labs(title=titlestr) +
+            labs(
+                title=titlestr,
+                x = TeX("$\\tau$")
+            ) +
             theme_paper() +
             theme(
-                panel.border = element_rect(fill=NA)
-            ) +
-            labs(
-            )
+                legend.position = "none"
+            ) 
 
         p
     }
 
-    if (nrow(filter(plotdata, sample == "sample")) > 0) {
-        ((doplot(filter(plotdata, sample == "full"), "Full data") |
-            doplot(filter(plotdata, sample == "sample"), "Sampled data")) /
-            guide_area()) + plot_layout(guides = "collect")
-    } else {
-        (doplot(filter(plotdata, sample == "full"), "Full data") +guide_area()) + plot_layout(guides = "collect")
-    }
+    doplot(filter(plotdata, sample == "full"), "")
 
 }
 
@@ -99,47 +95,72 @@ do_plot_streaming <- function(data) {
         arrange(tau, epsilon) %>%
         ungroup()
 
-    ggplot(plotdata, aes(x = memory_coreset_mb, y = ratio_to_best, color=algorithm)) +
-        geom_point(size=0.5) +
-        geom_path() +
-        scale_color_algorithm() +
-        facet_wrap(vars(dataset), scales="free_y") +
-        labs(
-            x = "Memory (Mb)",
-            y = "Ratio to best"
-        ) +
-        theme_paper()
+    draw <- function(plotdata, y, xlab, ylab) {
+        p <- ggplot(plotdata, aes(x = memory_coreset_mb, y = {{ y }}, color=algorithm)) +
+            geom_point() +
+            geom_path() +
+            scale_color_algorithm() +
+            facet_wrap(vars(dataset), scales="free_y") +
+            labs(
+                x = xlab,
+                y = ylab
+            ) +
+            theme_paper() +
+            theme(legend.position="none")
+
+        if (length(xlab) == 0) {
+            p <- p + theme(axis.title.x = element_none())
+        }
+
+        p
+    }
+
+    draw(plotdata, ratio_to_best, "", "Ratio to best") / 
+        draw(plotdata, total_time, "Memory (MB)", "Total time") 
+        
 }
 
-
-do_plot_streaming_time <- function(data) {
+do_plot_all_sequential <- function(data) {
     plotdata <- data %>%
-        filter(algorithm %in% c("StreamingCoreset", "KaleStreaming")) %>%
-        filter(!str_detect(dataset, "sample")) %>%
-        rowwise() %>%
-        mutate(epsilon = access_json(algorithm_params, "epsilon")) %>%
-        ungroup() %>%
-        group_by(dataset, rank, outliers_spec, algorithm, epsilon, tau, algorithm_params) %>%
+        filter(!(algorithm %in% c("MRCoreset", "KaleStreaming"))) %>%
+        filter(!(str_detect(dataset, "sample"))) %>%
+        group_by(dataset, rank, outliers_spec, 
+                 algorithm, tau, algorithm_params) %>%
         summarise(
             ratio_to_best = mean(ratio_to_best),
-            total_time = set_units(mean(coreset_time + solution_time), "s") %>% drop_units(),
-            memory_coreset_mb = mean(memory_coreset_mb)
+            total_time = set_units(mean(total_time), "s") %>% drop_units()
         ) %>%
-        arrange(tau, epsilon) %>%
         ungroup()
 
-    ggplot(plotdata, aes(x = memory_coreset_mb, y = total_time, color=algorithm)) +
-        geom_point(size=0.5) +
-        geom_path() +
-        scale_color_algorithm() +
-        scale_y_log10() +
-        facet_wrap(vars(dataset), scales="free_y") +
-        labs(
-            x = "Memory (Mb)",
-            y = "Total time (s)"
-        ) +
-        theme_paper()
+    draw <- function(plotdata, y, xlab, ylab, trans_y = "identity") {
+        plotdata <- filter(plotdata, tau <= 10)
+        p <- ggplot(plotdata, aes(x = tau, y = {{ y }}, color=algorithm)) +
+            geom_point() +
+            geom_path() +
+            scale_color_algorithm() +
+            scale_y_continuous(trans = trans_y) +
+            scale_x_continuous(breaks = scales::pretty_breaks()) +
+            facet_wrap(vars(dataset), scales="free_y") +
+            labs(
+                x = xlab,
+                y = ylab
+            ) +
+            theme_paper() +
+            theme(legend.position="none")
+
+        if (length(xlab) == 0) {
+            p <- p + theme(axis.title.x = element_none())
+        }
+
+        p
+    }
+
+    draw(plotdata, ratio_to_best, "", "Ratio to best") /
+        draw(plotdata, total_time, TeX("$\\tau$"), "Total time", trans_y = "log10")
+
 }
+
+
 
 do_plot_sequential_effect_artificial_outliers <- function(data) {
     plotdata <- data %>% 

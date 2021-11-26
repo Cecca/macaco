@@ -26,7 +26,6 @@ plan <- drake_plan(
         #transform = map(num_outliers = !!num_outliers)
     ),
 
-
     data_memory = target(
         data_result %>%
             filter(!str_detect(dataset, "sample")) %>%
@@ -35,24 +34,30 @@ plan <- drake_plan(
         transform = map(data_result)
     ),
 
+    latex_sample = target(
+        do_latex_sample(data_result),# %>% write_file(str_c("imgs/sample-", outliers, ".tex")),
+        transform = map(data_result, outliers = !!num_outliers)
+    ),
+
     plot_streaming = target(do_plot_streaming(data_memory), transform=map(data_memory)),
     fig_streaming = target(ggsave(
             str_c("imgs/streaming-", outliers, ".png"), 
             plot=plot_streaming,
-            width=8,
-            height=3
+            width=4,
+            height=4
         ), 
         transform = map(plot_streaming, outliers = !!num_outliers)
     ),
 
-    plot_streaming_time = target(do_plot_streaming_time(data_memory), transform=map(data_memory)),
-    fig_streaming_time = target(ggsave(
-            str_c("imgs/streaming-time-", outliers, ".png"), 
-            plot=plot_streaming_time,
-            width=8,
-            height=3
+    # Plot the performance on the samples of datasets
+    plot_all_sequential = target(do_plot_all_sequential(data_result), transform=map(data_result)),
+    fig_all_sequential = target(ggsave(
+            str_c("imgs/sequential-", outliers, ".png"), 
+            plot=plot_all_sequential,
+            width=4,
+            height=4
         ), 
-        transform = map(plot_streaming_time, outliers = !!num_outliers)
+        transform = map(plot_all_sequential, outliers = !!num_outliers)
     ),
 
 
@@ -60,7 +65,7 @@ plan <- drake_plan(
     fig_sequential_effect = target(ggsave(
             str_c("imgs/seq-effect-", outliers, ".png"), 
             plot=plot_sequential_effect,
-            width=8,
+            width=4,
             height=3
         ), 
         transform = map(plot_sequential_effect, outliers = !!num_outliers)

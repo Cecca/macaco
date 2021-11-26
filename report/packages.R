@@ -10,4 +10,5 @@ suppressWarnings({
     library(cowplot)
     library(plotly)
     library(latex2exp)
+    library(kableExtra)
 })
