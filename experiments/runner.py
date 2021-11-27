@@ -255,9 +255,45 @@ def run_wiki():
                 c["algorithm"] = {"MapReduceCoreset": {"tau": tau}}
                 run(c)
 
+def recursive_mr():
+    shuffle_seeds = [1234]
+    datasets = [
+        ('wiki-d10-c50', {"transversal": {"topics": list(range(0, 50))}}),
+        ('Higgs', {"partition": {"categories": {"signal": 10, "background": 10}}}),
+        ('Phones', {"partition": {"categories": {
+            "stand": 5,
+            "null": 5,
+            "sit": 5,
+            "walk": 5,
+            "stairsup": 5,
+            "stairsdown": 5,
+            "bike": 5,
+        }}})
+    ]
+    for shuffle_seed, (dataset, contraint) in itertools.product(
+        shuffle_seeds, datasets
+    ):
+        base_conf = {
+            "shuffle_seed": shuffle_seed,
+            "outliers": {"Fixed": 50},
+            # "outliers": {"Percentage": frac_out},
+            "dataset": DATASETS[dataset].get_path(),
+            "constraint": constraint,
+        }
+        taus = range(1, 10)
+        print(taus)
+        for tau in taus:
+            for hosts in [workers[:i] for i in [8]]:
+                print("Run MRCoresetRec", tau, hosts)
+                c = base_conf.copy()
+                c["parallel"] = {"threads": 1, "hosts": hosts}
+                c["algorithm"] = {"MapReduceCoresetRec": {"tau": tau}}
+                run(c)
+
 
 if __name__ == "__main__":
     subprocess.run(["cargo", "build", "--release"])
     # run_wiki()
-    run_higgs()
+    # run_higgs()
     # run_phones()
+    recursive_mr()
