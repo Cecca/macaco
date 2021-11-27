@@ -5,7 +5,7 @@ use macaco_base::{
     matroid::{Matroid, PartitionMatroid, TransversalMatroid},
     types::{ColorVector, Higgs, Phone, Song, WikiPage, WikiPageEuclidean},
 };
-use macaco_parallel::mapreduce_coreset::MapReduceCoreset;
+use macaco_parallel::mapreduce_coreset::{MapReduceCoreset, MapReduceCoresetRec};
 use macaco_parallel::ParallelAlgorithm;
 use macaco_sequential::{
     chen_et_al::ChenEtAl, greedy_heuristic::GreedyHeuristic, kale::KaleStreaming,
@@ -102,6 +102,7 @@ pub enum AlgorithmConfig {
     SeqCoreset { tau: usize },
     StreamingCoreset { tau: usize },
     MapReduceCoreset { tau: usize },
+    MapReduceCoresetRec { tau: usize },
     KaleStreaming { epsilon: f32 },
 }
 
@@ -109,6 +110,7 @@ impl AlgorithmConfig {
     pub fn is_sequential(&self) -> bool {
         match self {
             Self::MapReduceCoreset { .. } => false,
+            Self::MapReduceCoresetRec { .. } => false,
             _ => true,
         }
     }
@@ -133,6 +135,10 @@ impl Sha for AlgorithmConfig {
             }
             AlgorithmConfig::MapReduceCoreset { tau } => {
                 sha.input("mapreduce-coreset");
+                sha.input(tau.to_le_bytes())
+            }
+            AlgorithmConfig::MapReduceCoresetRec { tau } => {
+                sha.input("mapreduce-coreset-rec");
                 sha.input(tau.to_le_bytes())
             }
             AlgorithmConfig::KaleStreaming { epsilon } => {
@@ -443,6 +449,7 @@ impl Configure for Phone {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
@@ -455,11 +462,15 @@ impl Configure for Phone {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+            AlgorithmConfig::MapReduceCoresetRec { .. } => {
+                panic!("Cannot run MapReduce sequentially")
+            }
         }
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }
@@ -482,6 +493,7 @@ impl Configure for Higgs {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
@@ -494,11 +506,15 @@ impl Configure for Higgs {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+            AlgorithmConfig::MapReduceCoresetRec { .. } => {
+                panic!("Cannot run MapReduce sequentially")
+            }
         }
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }
@@ -521,6 +537,7 @@ impl Configure for ColorVector {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
@@ -533,11 +550,15 @@ impl Configure for ColorVector {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+            AlgorithmConfig::MapReduceCoresetRec { .. } => {
+                panic!("Cannot run MapReduce sequentially")
+            }
         }
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }
@@ -558,6 +579,7 @@ impl Configure for WikiPage {
             AlgorithmConfig::SeqCoreset { tau } => Box::new(SeqCoreset::new(tau)),
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
         }
     }
@@ -570,11 +592,15 @@ impl Configure for WikiPage {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+            AlgorithmConfig::MapReduceCoresetRec { .. } => {
+                panic!("Cannot run MapReduce sequentially")
+            }
         }
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }
@@ -596,6 +622,7 @@ impl Configure for WikiPageEuclidean {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -607,11 +634,15 @@ impl Configure for WikiPageEuclidean {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+            AlgorithmConfig::MapReduceCoresetRec { .. } => {
+                panic!("Cannot run MapReduce sequentially")
+            }
         }
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }
@@ -635,6 +666,7 @@ impl Configure for Song {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
         }
     }
     fn configure_sequential_algorithm(conf: &Configuration) -> Box<dyn SequentialAlgorithm<Self>> {
@@ -646,11 +678,15 @@ impl Configure for Song {
             AlgorithmConfig::StreamingCoreset { tau } => Box::new(StreamingCoreset::new(tau)),
             AlgorithmConfig::KaleStreaming { epsilon } => Box::new(KaleStreaming::new(epsilon)),
             AlgorithmConfig::MapReduceCoreset { .. } => panic!("Cannot run MapReduce sequentially"),
+            AlgorithmConfig::MapReduceCoresetRec { .. } => {
+                panic!("Cannot run MapReduce sequentially")
+            }
         }
     }
     fn configure_parallel_algorithm(conf: &Configuration) -> Box<dyn ParallelAlgorithm<Self>> {
         match conf.algorithm {
             AlgorithmConfig::MapReduceCoreset { tau } => Box::new(MapReduceCoreset::new(tau)),
+            AlgorithmConfig::MapReduceCoresetRec { tau } => Box::new(MapReduceCoresetRec::new(tau)),
             _ => panic!("Cannot run algorithm in parallel"),
         }
     }

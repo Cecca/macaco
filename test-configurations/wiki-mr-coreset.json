@@ -1,14 +1,14 @@
 {
     "shuffle_seed": 345345,
     "parallel": {
-        "threads": 2
+        "threads": 4
     },
     "outliers": {
         "Fixed": 10
     },
     "algorithm": {
-        "MapReduceCoreset": {
-            "tau": 100,
+        "MapReduceCoresetRec": {
+            "tau": 10,
             "seed": 149854
         }
     },
