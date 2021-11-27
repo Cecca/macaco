@@ -2,6 +2,7 @@ theme_paper <- function() {
     theme_minimal() +
         theme(
             legend.position = "bottom",
+            plot.margin = unit(c(0,0,0,0), "mm"),
             axis.line = element_line()
         )
 }
@@ -181,7 +182,7 @@ do_plot_sequential_effect_artificial_outliers <- function(data) {
             group_by(dataset, rank, outliers_spec) %>%
             slice_min(ratio_to_best)
         p <- ggplot(plotdata, aes(x=tau, y=ratio_to_best, color=algorithm)) +
-            geom_text(aes(x = 1, y=50), label="arbitrary independent set", nudge_x=2, hjust=0, inherit.aes=F, linetype="dotted") +
+            # geom_text(aes(x = 1, y=50), label="arbitrary independent set", nudge_x=2, hjust=0, inherit.aes=F, linetype="dotted") +
             geom_vline(aes(xintercept = outliers_spec + 1), inherit.aes=F, linetype="dotted") +
             geom_text(aes(x = outliers_spec + 1, y=50), label="z + 1", nudge_x=1, hjust=0, inherit.aes=F, linetype="dotted") +
             geom_vline(aes(xintercept = rank + outliers_spec), inherit.aes=F, linetype="dashed") +
@@ -201,29 +202,25 @@ do_plot_sequential_effect_artificial_outliers <- function(data) {
                 linetype = "solid",
                 size = 1
             ) +
-            facet_wrap(vars(dataset), scales="free_y") +
+            # facet_wrap(vars(dataset), scales="free_y") +
             scale_x_continuous(breaks=scales::pretty_breaks()) +
             scale_color_algorithm() +
             # coord_cartesian(ylim=c(0, NA)) +
-            labs(title=titlestr) +
+            labs(
+                title=titlestr,
+                x = TeX("$\\tau$"),
+                y = "Ratio to best"
+            ) +
             theme_paper() +
             theme(
                 panel.border = element_rect(fill=NA),
                 legend.position = "none"
-            ) +
-            labs(
             )
 
         p
     }
 
-    if (nrow(filter(plotdata, sample == "sample")) > 0) {
-        ((doplot(filter(plotdata, sample == "full"), "Full data") |
-            doplot(filter(plotdata, sample == "sample"), "Sampled data")) /
-            guide_area()) + plot_layout(guides = "collect")
-    } else {
-        doplot(filter(plotdata, sample == "full"), "Full data")
-    }
+    doplot(filter(plotdata, sample == "full"), "")
 
 }
 
@@ -490,15 +487,16 @@ do_plot_solution_time <- function(data) {
 do_plot_time_ratio <- function(data) {
     plotdata <- data %>%
         filter(
-            workers %in% c(1, 8),
+            ((algorithm == "MRCoreset") & (workers == 8)) | (algorithm != "MRCoreset"),
             tau %in% 1:10
         ) %>%
-        mutate(dominant = if_else(time_ratio < 1, "#ef8a62", "#67a9cf")) %>%
-        filter(algorithm != "MRCoreset")
+        mutate(dominant = if_else(time_ratio < 1, "#ef8a62", "#67a9cf"))
+        # filter(algorithm != "MRCoreset")
 
+    plotdata %>% filter(algorithm == "MRCoreset", dataset=="Higgs") %>% print()
 
-    plot_one <- function(plotdata, title) {
-        ggplot(plotdata, aes(x = tau, color=dominant)) +
+    plot_one <- function(plotdata, title, strip=F, ylab="") {
+        p <- ggplot(plotdata, aes(x = tau, color=dominant)) +
             geom_point(
                 aes(y = coreset_time),
                 color = "#67a9cf"
@@ -534,12 +532,13 @@ do_plot_time_ratio <- function(data) {
             facet_wrap(
                 vars(dataset), 
                 scales = "free",
-                ncol = 1
+                ncol = 1,
+                strip.position = "right"
             ) +
             labs(
                 title = title,
-                x = TeX("$\\tau$"),
-                y = "Time"
+                x = ylab,
+                y = "Time (s)"
             ) +
             coord_flip() +
             theme_paper() +
@@ -547,11 +546,23 @@ do_plot_time_ratio <- function(data) {
                 panel.grid = element_blank(),
                 panel.grid.major.x = element_line(size=0.2, color="lightgray"),
                 axis.line.y = element_blank(),
-                axis.line.x = element_blank()
+                axis.line.x = element_blank(),
+                plot.title = element_text(size = 10),
+                strip.text = element_text(size = 10),
+                panel.spacing = unit(8, "mm")
             )
+        if (!strip) {
+            p <- p + theme(
+                strip.text = element_blank()
+            )
+        }
+
+        p
     }
 
-    plot_one(filter(plotdata, algorithm == "SeqCoreset"), "SeqCoreset") | plot_one(filter(plotdata, algorithm == "StreamingCoreset"), "StreamingCoreset")
+    plot_one(filter(plotdata, algorithm == "SeqCoreset"), "SeqCoreset", ylab=TeX("$\\tau$")) | 
+        (plot_one(filter(plotdata, algorithm == "StreamingCoreset"), "StreamingCoreset") + theme(plot.margin = unit(c(0, 8, 0, 8), "mm"))) |
+        plot_one(filter(plotdata, algorithm == "MRCoreset"), "MRCoreset", strip=T)
 }
 
 do_plot_tradeoff <- function(data) {

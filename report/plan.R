@@ -75,8 +75,8 @@ plan <- drake_plan(
     fig_seq_effect_pilot = target(ggsave(
         "imgs/seq-effect-pilot-z50.png",
         plot=plot_seq_effect_pilot,
-        width=8,
-        height=3
+        width=4,
+        height=2
     )),
 
     plot_sequential_time = target(do_plot_sequential_time(data_result), transform=map(data_result)),
@@ -163,7 +163,7 @@ plan <- drake_plan(
     fig_time_ratio = target(ggsave(
             str_c("imgs/time-ratio-", outliers, ".png"),
             plot = plot_time_ratio,
-            width = 5,
+            width = 8,
             height = 4
         ),
         transform = map(plot_time_ratio, outliers = !!num_outliers)
