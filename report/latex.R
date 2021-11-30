@@ -22,3 +22,4 @@ do_latex_sample <- function(data) {
         kable_styling() %>%
         add_header_above(c(" " = 1, "Total time (s)" = 2, "Ratio" = 2))
 }
+

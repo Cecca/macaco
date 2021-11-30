@@ -117,8 +117,8 @@ plan <- drake_plan(
     fig_mapreduce_time = target(ggsave(
             str_c("imgs/mr-time-", outliers, ".png"), 
             plot=plot_mapreduce_time,
-            width=9,
-            height=6
+            width=4,
+            height=3
         ),
         transform = map(plot_mapreduce_time, outliers = !!num_outliers)
     ),
@@ -154,7 +154,8 @@ plan <- drake_plan(
             filter(!str_detect(dataset, "sample"), str_detect(algorithm, "Coreset")) %>% 
             group_by(dataset, algorithm, workers, tau) %>% 
             summarise(across(c(coreset_time, solution_time), mean)) %>% 
-            mutate(time_ratio = coreset_time / solution_time),
+            mutate(time_ratio = coreset_time / solution_time) %>%
+            ungroup(),
         transform = map(data_result)
     ),
 
@@ -164,8 +165,25 @@ plan <- drake_plan(
             str_c("imgs/time-ratio-", outliers, ".png"),
             plot = plot_time_ratio,
             width = 8,
-            height = 4
+            height = 2
         ),
         transform = map(plot_time_ratio, outliers = !!num_outliers)
-    )
+    ),
+
+    # The approximation ratios of MRCoresetRec against SeqCoreset
+    mapr_rec_ratio = target(
+        data_result %>%
+            filter(!str_detect(dataset, "sample")) %>%
+            filter(((algorithm == "MRCoresetRec" & workers==8) | (algorithm == "SeqCoreset"))) %>%
+            group_by(dataset, algorithm, tau) %>%
+            summarise(
+                ratio_to_best = scales::number(mean(ratio_to_best), accuracy = 0.001)
+            ) %>%
+            pivot_wider(names_from=algorithm, values_from=ratio_to_best) %>%
+            drop_na() %>%
+            kbl(format="latex", booktabs=T, linesep="") %>%
+            kable_styling() %>%
+            write_file(str_c("imgs/mr-rec-approx-", outliers, ".tex")),
+        transform = map(data_result, outliers = !!num_outliers)
+    ),
 )

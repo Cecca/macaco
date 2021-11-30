@@ -99,7 +99,7 @@ do_plot_streaming <- function(data) {
     draw <- function(plotdata, y, xlab, ylab) {
         p <- ggplot(plotdata, aes(x = memory_coreset_mb, y = {{ y }}, color=algorithm)) +
             geom_point() +
-            geom_path() +
+            # geom_path() +
             scale_color_algorithm() +
             facet_wrap(vars(dataset), scales="free_y") +
             labs(
@@ -157,7 +157,7 @@ do_plot_all_sequential <- function(data) {
     }
 
     draw(plotdata, ratio_to_best, "", "Ratio to best") /
-        draw(plotdata, total_time, TeX("$\\tau$"), "Total time", trans_y = "log10")
+        draw(plotdata, total_time, TeX("$\\tau$"), "Total time", trans_y = "identity")
 
 }
 
@@ -366,9 +366,11 @@ do_plot_sequential_time <- function(data) {
 
 do_plot_mapreduce_time <- function(data) {
     data <- data %>%
-        filter(tau <= 9) %>%
+        filter(tau %in% c(3, 6, 9)) %>%
         filter(!str_detect(dataset, "sample")) %>%
-        mutate(across(contains("_time"), ~ set_units(.x, "s") %>% drop_units()))
+        mutate(across(contains("_time"), ~ set_units(.x, "s") %>% drop_units())) %>%
+        mutate(tau = str_c("τ=", tau))
+
     mr <- data %>% filter(algorithm == "MRCoreset") %>%
         group_by(dataset, rank, outliers_spec, workers, tau) %>%
         summarise(across(contains("_time"), mean))
@@ -487,15 +489,18 @@ do_plot_solution_time <- function(data) {
 do_plot_time_ratio <- function(data) {
     plotdata <- data %>%
         filter(
-            ((algorithm == "MRCoreset") & (workers == 8)) | (algorithm != "MRCoreset"),
-            tau %in% 1:10
+            (str_detect(algorithm, "MRCoreset") & (workers == 8)) | (algorithm != "MRCoreset"),
+            tau %in% c(3,6,9)
         ) %>%
         mutate(dominant = if_else(time_ratio < 1, "#ef8a62", "#67a9cf"))
         # filter(algorithm != "MRCoreset")
 
-    plotdata %>% filter(algorithm == "MRCoreset", dataset=="Higgs") %>% print()
+    # plotdata %>% filter(algorithm == "MRCoreset", dataset=="Higgs") %>% print()
 
-    plot_one <- function(plotdata, title, strip=F, ylab="") {
+    plot_one <- function(plotdata, title, strip=F, ylab=NULL) {
+        if (nrow(plotdata) == 0) {
+            return(ggplot())
+        }
         p <- ggplot(plotdata, aes(x = tau, color=dominant)) +
             geom_point(
                 aes(y = coreset_time),
@@ -525,8 +530,7 @@ do_plot_time_ratio <- function(data) {
                 # labels=c("", "10", "1", "10", "")
             ) +
             scale_x_continuous(
-                breaks = c(1, 5, 9),
-                limits = c(0, NA)
+                breaks = c(3,6,9)
             ) +
             scale_color_identity() +
             facet_wrap(
@@ -540,20 +544,43 @@ do_plot_time_ratio <- function(data) {
                 x = ylab,
                 y = "Time (s)"
             ) +
-            coord_flip() +
+            coord_flip(clip="off") +
             theme_paper() +
             theme(
                 panel.grid = element_blank(),
                 panel.grid.major.x = element_line(size=0.2, color="lightgray"),
                 axis.line.y = element_blank(),
                 axis.line.x = element_blank(),
-                plot.title = element_text(size = 10),
-                strip.text = element_text(size = 10),
-                panel.spacing = unit(8, "mm")
+                plot.title = element_text(size = 8),
+                strip.text = element_text(size = 8),
+                strip.background = element_rect(),
+                text = element_text(size = 8),
+                panel.spacing = unit(4, "mm")
             )
-        if (!strip) {
+        # if (!strip) {
+        p <- p + theme(
+            strip.text = element_blank()
+        )
+        # }
+        if (strip) {
+            # Add the strip annotation. We use this trick because facet labels are clipped
+            labels <- plotdata %>%
+                group_by(dataset) %>%
+                summarise(t = max(coreset_time) + max(coreset_time + solution_time) * 0.2)
+            p <- p +
+                geom_text(
+                    aes(label = dataset, y = t),
+                    data = labels,
+                    inherit.aes = F,
+                    x = 6,
+                    angle = 270,
+                    size = 3
+                )
+                #scale_y_continuous(expand = )
+        }
+        if (is.null(ylab)) {
             p <- p + theme(
-                strip.text = element_blank()
+                axis.text.y = element_blank()
             )
         }
 
@@ -561,8 +588,9 @@ do_plot_time_ratio <- function(data) {
     }
 
     plot_one(filter(plotdata, algorithm == "SeqCoreset"), "SeqCoreset", ylab=TeX("$\\tau$")) | 
-        (plot_one(filter(plotdata, algorithm == "StreamingCoreset"), "StreamingCoreset") + theme(plot.margin = unit(c(0, 8, 0, 8), "mm"))) |
-        plot_one(filter(plotdata, algorithm == "MRCoreset"), "MRCoreset", strip=T)
+        (plot_one(filter(plotdata, algorithm == "StreamingCoreset"), "StreamingCoreset") + theme(plot.margin = unit(c(0, 4, 0, 8), "mm"))) |
+        (plot_one(filter(plotdata, algorithm == "MRCoreset"), "MRCoreset", strip=F) + theme(plot.margin = unit(c(0, 8, 0, 4), "mm"))) |
+        plot_one(filter(plotdata, algorithm == "MRCoresetRec"), "MRCoresetRec", strip=T)
 }
 
 do_plot_tradeoff <- function(data) {
